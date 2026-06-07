@@ -1,0 +1,27 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ReSharper / Rider
+.idea/
+*.DotSettings.user
+
+# NuGet
+packages/
+*.nupkg
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# User data (local JSON store — not part of source)
+**/stockdata.json
