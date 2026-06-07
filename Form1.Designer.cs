@@ -8,11 +8,14 @@
         private System.Windows.Forms.Label lblStats;
         private System.Windows.Forms.TabControl tabMain;
         private System.Windows.Forms.TabPage tabInventory;
+        private System.Windows.Forms.TabPage tabCustomers;
         private System.Windows.Forms.TabPage tabTransactions;
         private System.Windows.Forms.TableLayoutPanel tlpInventory;
+        private System.Windows.Forms.TableLayoutPanel tlpCustomers;
         private System.Windows.Forms.Panel panelInventoryToolbar;
         private System.Windows.Forms.TextBox txtSearch;
         private System.Windows.Forms.Button btnSearch;
+        private System.Windows.Forms.Button btnReset;
         private System.Windows.Forms.CheckBox chkLowStockOnly;
         private System.Windows.Forms.Button btnAdd;
         private System.Windows.Forms.Button btnEdit;
@@ -20,15 +23,27 @@
         private System.Windows.Forms.Button btnStockIn;
         private System.Windows.Forms.Button btnStockOut;
         private System.Windows.Forms.DataGridView dgvProducts;
+        private System.Windows.Forms.Panel panelCustomerToolbar;
+        private System.Windows.Forms.TextBox txtCustomerSearch;
+        private System.Windows.Forms.Button btnCustomerSearch;
+        private System.Windows.Forms.Button btnCustomerReset;
+        private System.Windows.Forms.Button btnAddCustomer;
+        private System.Windows.Forms.Button btnEditCustomer;
+        private System.Windows.Forms.Button btnDeleteCustomer;
+        private System.Windows.Forms.DataGridView dgvCustomers;
+        private System.Windows.Forms.TableLayoutPanel tlpTransactions;
+        private System.Windows.Forms.Panel panelTransactionToolbar;
+        private System.Windows.Forms.TextBox txtTxnSearch;
+        private System.Windows.Forms.Button btnTxnSearch;
+        private System.Windows.Forms.Button btnTxnReset;
+        private System.Windows.Forms.Button btnFilterIn;
+        private System.Windows.Forms.Button btnFilterOut;
+        private System.Windows.Forms.Label lblTxnFrom;
+        private System.Windows.Forms.DateTimePicker dtpTxnFrom;
+        private System.Windows.Forms.Label lblTxnTo;
+        private System.Windows.Forms.DateTimePicker dtpTxnTo;
+        private System.Windows.Forms.CheckBox chkTxnDateRange;
         private System.Windows.Forms.DataGridView dgvTransactions;
-        private System.Windows.Forms.MenuStrip menuStrip;
-        private System.Windows.Forms.ToolStripMenuItem menuProducts;
-        private System.Windows.Forms.ToolStripMenuItem menuAddProduct;
-        private System.Windows.Forms.ToolStripMenuItem menuEditProduct;
-        private System.Windows.Forms.ToolStripMenuItem menuDeleteProduct;
-        private System.Windows.Forms.ToolStripSeparator menuSep1;
-        private System.Windows.Forms.ToolStripMenuItem menuStockIn;
-        private System.Windows.Forms.ToolStripMenuItem menuStockOut;
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel statusLabel;
 
@@ -51,33 +66,53 @@
             this.panelInventoryToolbar = new System.Windows.Forms.Panel();
             this.txtSearch = new System.Windows.Forms.TextBox();
             this.btnSearch = new System.Windows.Forms.Button();
+            this.btnReset = new System.Windows.Forms.Button();
             this.chkLowStockOnly = new System.Windows.Forms.CheckBox();
             this.btnAdd = new System.Windows.Forms.Button();
             this.btnEdit = new System.Windows.Forms.Button();
             this.btnDelete = new System.Windows.Forms.Button();
             this.btnStockIn = new System.Windows.Forms.Button();
             this.btnStockOut = new System.Windows.Forms.Button();
+            this.tabCustomers = new System.Windows.Forms.TabPage();
+            this.tlpCustomers = new System.Windows.Forms.TableLayoutPanel();
+            this.dgvCustomers = new System.Windows.Forms.DataGridView();
+            this.panelCustomerToolbar = new System.Windows.Forms.Panel();
+            this.txtCustomerSearch = new System.Windows.Forms.TextBox();
+            this.btnCustomerSearch = new System.Windows.Forms.Button();
+            this.btnCustomerReset = new System.Windows.Forms.Button();
+            this.btnAddCustomer = new System.Windows.Forms.Button();
+            this.btnEditCustomer = new System.Windows.Forms.Button();
+            this.btnDeleteCustomer = new System.Windows.Forms.Button();
             this.tabTransactions = new System.Windows.Forms.TabPage();
+            this.tlpTransactions = new System.Windows.Forms.TableLayoutPanel();
             this.dgvTransactions = new System.Windows.Forms.DataGridView();
-            this.menuStrip = new System.Windows.Forms.MenuStrip();
-            this.menuProducts = new System.Windows.Forms.ToolStripMenuItem();
-            this.menuAddProduct = new System.Windows.Forms.ToolStripMenuItem();
-            this.menuEditProduct = new System.Windows.Forms.ToolStripMenuItem();
-            this.menuDeleteProduct = new System.Windows.Forms.ToolStripMenuItem();
-            this.menuSep1 = new System.Windows.Forms.ToolStripSeparator();
-            this.menuStockIn = new System.Windows.Forms.ToolStripMenuItem();
-            this.menuStockOut = new System.Windows.Forms.ToolStripMenuItem();
+            this.panelTransactionToolbar = new System.Windows.Forms.Panel();
+            this.txtTxnSearch = new System.Windows.Forms.TextBox();
+            this.btnTxnSearch = new System.Windows.Forms.Button();
+            this.btnTxnReset = new System.Windows.Forms.Button();
+            this.btnFilterIn = new System.Windows.Forms.Button();
+            this.btnFilterOut = new System.Windows.Forms.Button();
+            this.lblTxnFrom = new System.Windows.Forms.Label();
+            this.dtpTxnFrom = new System.Windows.Forms.DateTimePicker();
+            this.lblTxnTo = new System.Windows.Forms.Label();
+            this.dtpTxnTo = new System.Windows.Forms.DateTimePicker();
+            this.chkTxnDateRange = new System.Windows.Forms.CheckBox();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.statusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.menuStrip.SuspendLayout();
             this.panelHeader.SuspendLayout();
             this.tabMain.SuspendLayout();
             this.tabInventory.SuspendLayout();
             this.tlpInventory.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvProducts)).BeginInit();
             this.panelInventoryToolbar.SuspendLayout();
+            this.tabCustomers.SuspendLayout();
+            this.tlpCustomers.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvCustomers)).BeginInit();
+            this.panelCustomerToolbar.SuspendLayout();
             this.tabTransactions.SuspendLayout();
+            this.tlpTransactions.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvTransactions)).BeginInit();
+            this.panelTransactionToolbar.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.SuspendLayout();
             //
@@ -107,6 +142,7 @@
             // tabMain
             //
             this.tabMain.Controls.Add(this.tabInventory);
+            this.tabMain.Controls.Add(this.tabCustomers);
             this.tabMain.Controls.Add(this.tabTransactions);
             this.tabMain.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabMain.Font = new System.Drawing.Font("Segoe UI", 9F);
@@ -134,6 +170,7 @@
             this.panelInventoryToolbar.Padding = new System.Windows.Forms.Padding(8, 8, 8, 4);
             this.panelInventoryToolbar.Controls.Add(this.txtSearch);
             this.panelInventoryToolbar.Controls.Add(this.btnSearch);
+            this.panelInventoryToolbar.Controls.Add(this.btnReset);
             this.panelInventoryToolbar.Controls.Add(this.chkLowStockOnly);
             this.panelInventoryToolbar.Controls.Add(this.btnAdd);
             this.panelInventoryToolbar.Controls.Add(this.btnEdit);
@@ -153,43 +190,54 @@
             this.btnSearch.Text = "Search";
             this.btnSearch.UseVisualStyleBackColor = true;
             //
+            // btnReset
+            //
+            this.btnReset.Location = new System.Drawing.Point(308, 10);
+            this.btnReset.Size = new System.Drawing.Size(65, 27);
+            this.btnReset.Text = "Reset";
+            this.btnReset.UseVisualStyleBackColor = true;
+            //
             // chkLowStockOnly
             //
             this.chkLowStockOnly.AutoSize = true;
-            this.chkLowStockOnly.Location = new System.Drawing.Point(318, 14);
+            this.chkLowStockOnly.Location = new System.Drawing.Point(385, 12);
             this.chkLowStockOnly.Text = "Low stock only";
             this.chkLowStockOnly.UseVisualStyleBackColor = true;
             //
             // btnAdd
             //
-            this.btnAdd.Location = new System.Drawing.Point(470, 10);
+            this.btnAdd.Location = new System.Drawing.Point(505, 10);
             this.btnAdd.Size = new System.Drawing.Size(90, 27);
             this.btnAdd.Text = "+ Add Product";
             this.btnAdd.UseVisualStyleBackColor = true;
             //
             // btnEdit
             //
-            this.btnEdit.Location = new System.Drawing.Point(566, 10);
+            this.btnEdit.Location = new System.Drawing.Point(601, 10);
             this.btnEdit.Size = new System.Drawing.Size(75, 27);
             this.btnEdit.Text = "Edit";
+            this.btnEdit.Enabled = false;
             //
             // btnDelete
             //
-            this.btnDelete.Location = new System.Drawing.Point(647, 10);
+            this.btnDelete.Location = new System.Drawing.Point(682, 10);
             this.btnDelete.Size = new System.Drawing.Size(75, 27);
             this.btnDelete.Text = "Delete";
+            this.btnDelete.Enabled = false;
             //
             // btnStockIn
             //
-            this.btnStockIn.Location = new System.Drawing.Point(728, 10);
+            this.btnStockIn.Location = new System.Drawing.Point(763, 10);
             this.btnStockIn.Size = new System.Drawing.Size(85, 27);
             this.btnStockIn.Text = "Stock In";
+            this.btnStockIn.Enabled = false;
             //
             // btnStockOut
             //
-            this.btnStockOut.Location = new System.Drawing.Point(819, 10);
+            this.btnStockOut.Location = new System.Drawing.Point(854, 10);
             this.btnStockOut.Size = new System.Drawing.Size(85, 27);
             this.btnStockOut.Text = "Stock Out";
+            this.btnStockOut.Enabled = false;
             //
             // dgvProducts
             //
@@ -205,10 +253,184 @@
             this.dgvProducts.RowHeadersVisible = false;
             this.dgvProducts.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             //
+            // tabCustomers
+            //
+            this.tabCustomers.Controls.Add(this.tlpCustomers);
+            this.tabCustomers.Text = "Customers";
+            this.tabCustomers.UseVisualStyleBackColor = true;
+            //
+            // tlpCustomers
+            //
+            this.tlpCustomers.ColumnCount = 1;
+            this.tlpCustomers.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tlpCustomers.Controls.Add(this.panelCustomerToolbar, 0, 0);
+            this.tlpCustomers.Controls.Add(this.dgvCustomers, 0, 1);
+            this.tlpCustomers.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tlpCustomers.RowCount = 2;
+            this.tlpCustomers.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tlpCustomers.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            //
+            // panelCustomerToolbar
+            //
+            this.panelCustomerToolbar.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelCustomerToolbar.Padding = new System.Windows.Forms.Padding(8, 8, 8, 4);
+            this.panelCustomerToolbar.Controls.Add(this.txtCustomerSearch);
+            this.panelCustomerToolbar.Controls.Add(this.btnCustomerSearch);
+            this.panelCustomerToolbar.Controls.Add(this.btnCustomerReset);
+            this.panelCustomerToolbar.Controls.Add(this.btnAddCustomer);
+            this.panelCustomerToolbar.Controls.Add(this.btnEditCustomer);
+            this.panelCustomerToolbar.Controls.Add(this.btnDeleteCustomer);
+            //
+            // txtCustomerSearch
+            //
+            this.txtCustomerSearch.Location = new System.Drawing.Point(11, 12);
+            this.txtCustomerSearch.Size = new System.Drawing.Size(220, 23);
+            //
+            // btnCustomerSearch
+            //
+            this.btnCustomerSearch.Location = new System.Drawing.Point(237, 10);
+            this.btnCustomerSearch.Size = new System.Drawing.Size(65, 27);
+            this.btnCustomerSearch.Text = "Search";
+            this.btnCustomerSearch.UseVisualStyleBackColor = true;
+            //
+            // btnCustomerReset
+            //
+            this.btnCustomerReset.Location = new System.Drawing.Point(308, 10);
+            this.btnCustomerReset.Size = new System.Drawing.Size(65, 27);
+            this.btnCustomerReset.Text = "Reset";
+            this.btnCustomerReset.UseVisualStyleBackColor = true;
+            //
+            // btnAddCustomer
+            //
+            this.btnAddCustomer.Location = new System.Drawing.Point(385, 10);
+            this.btnAddCustomer.Size = new System.Drawing.Size(105, 27);
+            this.btnAddCustomer.Text = "+ Add Customer";
+            this.btnAddCustomer.UseVisualStyleBackColor = true;
+            //
+            // btnEditCustomer
+            //
+            this.btnEditCustomer.Location = new System.Drawing.Point(496, 10);
+            this.btnEditCustomer.Size = new System.Drawing.Size(75, 27);
+            this.btnEditCustomer.Text = "Edit";
+            this.btnEditCustomer.Enabled = false;
+            //
+            // btnDeleteCustomer
+            //
+            this.btnDeleteCustomer.Location = new System.Drawing.Point(577, 10);
+            this.btnDeleteCustomer.Size = new System.Drawing.Size(75, 27);
+            this.btnDeleteCustomer.Text = "Delete";
+            this.btnDeleteCustomer.Enabled = false;
+            //
+            // dgvCustomers
+            //
+            this.dgvCustomers.AllowUserToAddRows = false;
+            this.dgvCustomers.AllowUserToDeleteRows = false;
+            this.dgvCustomers.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.dgvCustomers.BackgroundColor = System.Drawing.Color.White;
+            this.dgvCustomers.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.dgvCustomers.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvCustomers.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.dgvCustomers.MultiSelect = false;
+            this.dgvCustomers.ReadOnly = true;
+            this.dgvCustomers.RowHeadersVisible = false;
+            this.dgvCustomers.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            //
             // tabTransactions
             //
-            this.tabTransactions.Controls.Add(this.dgvTransactions);
+            this.tabTransactions.Controls.Add(this.tlpTransactions);
             this.tabTransactions.Text = "Transaction History";
+            //
+            // tlpTransactions
+            //
+            this.tlpTransactions.ColumnCount = 1;
+            this.tlpTransactions.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tlpTransactions.Controls.Add(this.panelTransactionToolbar, 0, 0);
+            this.tlpTransactions.Controls.Add(this.dgvTransactions, 0, 1);
+            this.tlpTransactions.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tlpTransactions.RowCount = 2;
+            this.tlpTransactions.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tlpTransactions.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            //
+            // panelTransactionToolbar
+            //
+            this.panelTransactionToolbar.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelTransactionToolbar.Padding = new System.Windows.Forms.Padding(8, 8, 8, 4);
+            this.panelTransactionToolbar.Controls.Add(this.txtTxnSearch);
+            this.panelTransactionToolbar.Controls.Add(this.btnTxnSearch);
+            this.panelTransactionToolbar.Controls.Add(this.btnTxnReset);
+            this.panelTransactionToolbar.Controls.Add(this.btnFilterIn);
+            this.panelTransactionToolbar.Controls.Add(this.btnFilterOut);
+            this.panelTransactionToolbar.Controls.Add(this.lblTxnFrom);
+            this.panelTransactionToolbar.Controls.Add(this.dtpTxnFrom);
+            this.panelTransactionToolbar.Controls.Add(this.lblTxnTo);
+            this.panelTransactionToolbar.Controls.Add(this.dtpTxnTo);
+            this.panelTransactionToolbar.Controls.Add(this.chkTxnDateRange);
+            //
+            // txtTxnSearch
+            //
+            this.txtTxnSearch.Location = new System.Drawing.Point(11, 12);
+            this.txtTxnSearch.Size = new System.Drawing.Size(200, 23);
+            //
+            // btnTxnSearch
+            //
+            this.btnTxnSearch.Location = new System.Drawing.Point(217, 10);
+            this.btnTxnSearch.Size = new System.Drawing.Size(65, 27);
+            this.btnTxnSearch.Text = "Search";
+            this.btnTxnSearch.UseVisualStyleBackColor = true;
+            //
+            // btnTxnReset
+            //
+            this.btnTxnReset.Location = new System.Drawing.Point(288, 10);
+            this.btnTxnReset.Size = new System.Drawing.Size(65, 27);
+            this.btnTxnReset.Text = "Reset";
+            this.btnTxnReset.UseVisualStyleBackColor = true;
+            //
+            // btnFilterIn
+            //
+            this.btnFilterIn.Location = new System.Drawing.Point(365, 10);
+            this.btnFilterIn.Size = new System.Drawing.Size(50, 27);
+            this.btnFilterIn.Text = "IN";
+            this.btnFilterIn.UseVisualStyleBackColor = true;
+            //
+            // btnFilterOut
+            //
+            this.btnFilterOut.Location = new System.Drawing.Point(421, 10);
+            this.btnFilterOut.Size = new System.Drawing.Size(55, 27);
+            this.btnFilterOut.Text = "OUT";
+            this.btnFilterOut.UseVisualStyleBackColor = true;
+            //
+            // lblTxnFrom
+            //
+            this.lblTxnFrom.AutoSize = true;
+            this.lblTxnFrom.Location = new System.Drawing.Point(490, 14);
+            this.lblTxnFrom.Text = "From:";
+            //
+            // dtpTxnFrom
+            //
+            this.dtpTxnFrom.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpTxnFrom.Location = new System.Drawing.Point(535, 11);
+            this.dtpTxnFrom.Size = new System.Drawing.Size(105, 23);
+            this.dtpTxnFrom.Enabled = false;
+            //
+            // lblTxnTo
+            //
+            this.lblTxnTo.AutoSize = true;
+            this.lblTxnTo.Location = new System.Drawing.Point(648, 14);
+            this.lblTxnTo.Text = "To:";
+            //
+            // dtpTxnTo
+            //
+            this.dtpTxnTo.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpTxnTo.Location = new System.Drawing.Point(675, 11);
+            this.dtpTxnTo.Size = new System.Drawing.Size(105, 23);
+            this.dtpTxnTo.Enabled = false;
+            //
+            // chkTxnDateRange
+            //
+            this.chkTxnDateRange.AutoSize = true;
+            this.chkTxnDateRange.Location = new System.Drawing.Point(790, 14);
+            this.chkTxnDateRange.Text = "Date range";
+            this.chkTxnDateRange.UseVisualStyleBackColor = true;
             //
             // dgvTransactions
             //
@@ -217,30 +439,12 @@
             this.dgvTransactions.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.dgvTransactions.BackgroundColor = System.Drawing.Color.White;
             this.dgvTransactions.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.dgvTransactions.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgvTransactions.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dgvTransactions.MultiSelect = false;
             this.dgvTransactions.ReadOnly = true;
             this.dgvTransactions.RowHeadersVisible = false;
             this.dgvTransactions.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            //
-            // menuStrip
-            //
-            this.menuProducts.Text = "Products";
-            this.menuAddProduct.Text = "Add Product...";
-            this.menuAddProduct.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
-            this.menuEditProduct.Text = "Edit Product...";
-            this.menuDeleteProduct.Text = "Delete Product";
-            this.menuStockIn.Text = "Stock In...";
-            this.menuStockOut.Text = "Stock Out...";
-            this.menuProducts.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.menuAddProduct,
-                this.menuEditProduct,
-                this.menuDeleteProduct,
-                this.menuSep1,
-                this.menuStockIn,
-                this.menuStockOut });
-            this.menuStrip.Items.Add(this.menuProducts);
-            this.menuStrip.Text = "menuStrip";
             //
             // statusStrip
             //
@@ -259,14 +463,10 @@
             this.Controls.Add(this.tabMain);
             this.Controls.Add(this.statusStrip);
             this.Controls.Add(this.panelHeader);
-            this.Controls.Add(this.menuStrip);
-            this.MainMenuStrip = this.menuStrip;
             this.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.MinimumSize = new System.Drawing.Size(900, 500);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Stock Management";
-            this.menuStrip.ResumeLayout(false);
-            this.menuStrip.PerformLayout();
             this.panelHeader.ResumeLayout(false);
             this.panelHeader.PerformLayout();
             this.tabMain.ResumeLayout(false);
@@ -275,8 +475,16 @@
             ((System.ComponentModel.ISupportInitialize)(this.dgvProducts)).EndInit();
             this.panelInventoryToolbar.ResumeLayout(false);
             this.panelInventoryToolbar.PerformLayout();
+            this.tabCustomers.ResumeLayout(false);
+            this.tlpCustomers.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dgvCustomers)).EndInit();
+            this.panelCustomerToolbar.ResumeLayout(false);
+            this.panelCustomerToolbar.PerformLayout();
             this.tabTransactions.ResumeLayout(false);
+            this.tlpTransactions.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dgvTransactions)).EndInit();
+            this.panelTransactionToolbar.ResumeLayout(false);
+            this.panelTransactionToolbar.PerformLayout();
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
             this.ResumeLayout(false);

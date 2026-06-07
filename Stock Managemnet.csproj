@@ -62,10 +62,17 @@
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Models\Customer.cs" />
     <Compile Include="Models\Product.cs" />
     <Compile Include="Models\StockData.cs" />
     <Compile Include="Models\StockTransaction.cs" />
     <Compile Include="Services\StockRepository.cs" />
+    <Compile Include="CustomerEditForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CustomerEditForm.Designer.cs">
+      <DependentUpon>CustomerEditForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="ProductEditForm.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -5,6 +5,10 @@ namespace Stock_Managemnet
         private System.ComponentModel.IContainer components = null;
         private System.Windows.Forms.Label lblProduct;
         private System.Windows.Forms.Label lblAvailable;
+        private System.Windows.Forms.Label lblCustomer;
+        private System.Windows.Forms.TextBox txtCustomerSearch;
+        private System.Windows.Forms.ListBox lstCustomers;
+        private System.Windows.Forms.Button btnClearCustomer;
         private System.Windows.Forms.Label lblQuantity;
         private System.Windows.Forms.NumericUpDown numQuantity;
         private System.Windows.Forms.Label lblNotes;
@@ -23,6 +27,10 @@ namespace Stock_Managemnet
         {
             this.lblProduct = new System.Windows.Forms.Label();
             this.lblAvailable = new System.Windows.Forms.Label();
+            this.lblCustomer = new System.Windows.Forms.Label();
+            this.txtCustomerSearch = new System.Windows.Forms.TextBox();
+            this.lstCustomers = new System.Windows.Forms.ListBox();
+            this.btnClearCustomer = new System.Windows.Forms.Button();
             this.lblQuantity = new System.Windows.Forms.Label();
             this.numQuantity = new System.Windows.Forms.NumericUpDown();
             this.lblNotes = new System.Windows.Forms.Label();
@@ -38,6 +46,24 @@ namespace Stock_Managemnet
             //
             this.lblAvailable.Location = new System.Drawing.Point(20, 45);
             this.lblAvailable.Size = new System.Drawing.Size(360, 20);
+            //
+            this.lblCustomer.AutoSize = true;
+            this.lblCustomer.Location = new System.Drawing.Point(20, 75);
+            this.lblCustomer.Text = "Customer:";
+            this.lblCustomer.Visible = false;
+            //
+            this.txtCustomerSearch.Location = new System.Drawing.Point(20, 95);
+            this.txtCustomerSearch.Size = new System.Drawing.Size(280, 23);
+            this.txtCustomerSearch.Visible = false;
+            //
+            this.btnClearCustomer.Location = new System.Drawing.Point(305, 94);
+            this.btnClearCustomer.Size = new System.Drawing.Size(75, 25);
+            this.btnClearCustomer.Text = "Clear";
+            this.btnClearCustomer.Visible = false;
+            //
+            this.lstCustomers.Location = new System.Drawing.Point(20, 125);
+            this.lstCustomers.Size = new System.Drawing.Size(360, 95);
+            this.lstCustomers.Visible = false;
             //
             this.lblQuantity.AutoSize = true;
             this.lblQuantity.Location = new System.Drawing.Point(20, 80);
@@ -76,6 +102,10 @@ namespace Stock_Managemnet
             this.Controls.Add(this.lblNotes);
             this.Controls.Add(this.numQuantity);
             this.Controls.Add(this.lblQuantity);
+            this.Controls.Add(this.lstCustomers);
+            this.Controls.Add(this.btnClearCustomer);
+            this.Controls.Add(this.txtCustomerSearch);
+            this.Controls.Add(this.lblCustomer);
             this.Controls.Add(this.lblAvailable);
             this.Controls.Add(this.lblProduct);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
