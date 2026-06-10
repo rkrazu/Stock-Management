@@ -17,6 +17,7 @@ namespace Stock_Managemnet
             _isNew = product == null;
             _product = product ?? new Product();
             InitializeComponent();
+            UiStyles.Apply(this);
             Text = _isNew ? "Add Product" : "Edit Product";
             btnSave.Text = _isNew ? "Add" : "Save";
 

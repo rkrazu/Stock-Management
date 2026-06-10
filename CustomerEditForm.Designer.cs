@@ -41,7 +41,7 @@ namespace Stock_Managemnet
             //
             this.txtName.Location = new System.Drawing.Point(120, 17);
             this.txtName.MaxLength = 200;
-            this.txtName.Size = new System.Drawing.Size(280, 23);
+            this.txtName.Size = new System.Drawing.Size(460, 23);
             //
             this.lblAddress.AutoSize = true;
             this.lblAddress.Location = new System.Drawing.Point(20, 55);
@@ -50,7 +50,7 @@ namespace Stock_Managemnet
             this.txtAddress.Location = new System.Drawing.Point(120, 52);
             this.txtAddress.MaxLength = 300;
             this.txtAddress.Multiline = true;
-            this.txtAddress.Size = new System.Drawing.Size(280, 60);
+            this.txtAddress.Size = new System.Drawing.Size(460, 60);
             //
             this.lblPhone.AutoSize = true;
             this.lblPhone.Location = new System.Drawing.Point(20, 125);
@@ -58,7 +58,7 @@ namespace Stock_Managemnet
             //
             this.txtPhone.Location = new System.Drawing.Point(120, 122);
             this.txtPhone.MaxLength = 30;
-            this.txtPhone.Size = new System.Drawing.Size(280, 23);
+            this.txtPhone.Size = new System.Drawing.Size(460, 23);
             //
             this.lblEmail.AutoSize = true;
             this.lblEmail.Location = new System.Drawing.Point(20, 160);
@@ -66,16 +66,16 @@ namespace Stock_Managemnet
             //
             this.txtEmail.Location = new System.Drawing.Point(120, 157);
             this.txtEmail.MaxLength = 200;
-            this.txtEmail.Size = new System.Drawing.Size(280, 23);
+            this.txtEmail.Size = new System.Drawing.Size(460, 23);
             //
-            this.btnSave.Location = new System.Drawing.Point(244, 205);
+            this.btnSave.Location = new System.Drawing.Point(424, 205);
             this.btnSave.Size = new System.Drawing.Size(75, 28);
             this.btnSave.Text = "Save";
             this.btnSave.UseVisualStyleBackColor = true;
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
             //
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(325, 205);
+            this.btnCancel.Location = new System.Drawing.Point(505, 205);
             this.btnCancel.Size = new System.Drawing.Size(75, 28);
             this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
@@ -85,7 +85,7 @@ namespace Stock_Managemnet
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
-            this.ClientSize = new System.Drawing.Size(420, 250);
+            this.ClientSize = new System.Drawing.Size(600, 250);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.txtEmail);

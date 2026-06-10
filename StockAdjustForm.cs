@@ -1,5 +1,7 @@
 using System;
+using System.Drawing;
 using System.Windows.Forms;
+using Stock_Managemnet.Controls;
 using Stock_Managemnet.Models;
 using Stock_Managemnet.Services;
 
@@ -10,7 +12,6 @@ namespace Stock_Managemnet
         private readonly StockRepository _repository;
         private readonly Product _product;
         private readonly TransactionType _type;
-        private Customer _selectedCustomer;
 
         public StockAdjustForm(StockRepository repository, Product product, TransactionType type)
         {
@@ -18,6 +19,10 @@ namespace Stock_Managemnet
             _product = product;
             _type = type;
             InitializeComponent();
+            UiStyles.Apply(this);
+
+            btnApply.BringToFront();
+            btnCancel.BringToFront();
 
             Text = type == TransactionType.StockIn ? "Stock In" : "Stock Out";
             lblProduct.Text = $"{product.Name} ({product.Sku})";
@@ -26,79 +31,109 @@ namespace Stock_Managemnet
                 : $"Current stock: {product.Quantity}";
 
             if (type == TransactionType.StockOut)
+                ConfigureStockOutLayout();
+        }
+
+        private void ConfigureStockOutLayout()
+        {
+            panelCustomer.Visible = true;
+            AcceptButton = null;
+
+            customerSelect.BindSearch(
+                term => _repository.SearchCustomers(term),
+                (customer, term) => _repository.CustomerMatchesSearchTerm(customer, term));
+
+            lblQuantity.Location = new Point(20, 145);
+            numQuantity.Location = new Point(120, 142);
+            lblNotes.Location = new Point(20, 180);
+            AlignNotesWithCustomerSelect();
+            txtNotes.Height = 70;
+
+            ClientSize = new Size(580, 330);
+            Shown += StockOutForm_Shown;
+            Resize += StockOutForm_Resize;
+        }
+
+        private void StockOutForm_Resize(object sender, EventArgs e)
+        {
+            if (panelCustomer.Visible)
+                AlignNotesWithCustomerSelect();
+        }
+
+        private void StockOutForm_Shown(object sender, EventArgs e)
+        {
+            BeginInvoke(new Action(() =>
             {
-                lblCustomer.Visible = true;
-                txtCustomerSearch.Visible = true;
-                lstCustomers.Visible = true;
-                btnClearCustomer.Visible = true;
-
-                lblQuantity.Location = new System.Drawing.Point(20, 230);
-                numQuantity.Location = new System.Drawing.Point(120, 227);
-                lblNotes.Location = new System.Drawing.Point(20, 265);
-                txtNotes.Location = new System.Drawing.Point(20, 285);
-                btnApply.Location = new System.Drawing.Point(224, 360);
-                btnCancel.Location = new System.Drawing.Point(305, 360);
-                ClientSize = new System.Drawing.Size(400, 405);
-
-                lstCustomers.FormattingEnabled = true;
-                lstCustomers.Format += LstCustomers_Format;
-                txtCustomerSearch.TextChanged += (s, e) => RefreshCustomerList();
-                lstCustomers.SelectedIndexChanged += LstCustomers_SelectedIndexChanged;
-                btnClearCustomer.Click += (s, e) => ClearSelectedCustomer();
-                RefreshCustomerList();
-            }
+                ActiveControl = null;
+                customerSelect.HideDropDownIfOpen();
+            }));
         }
 
-        private void RefreshCustomerList()
+        private void AlignNotesWithCustomerSelect()
         {
-            var term = txtCustomerSearch.Text;
-
-            lstCustomers.BeginUpdate();
-            lstCustomers.Items.Clear();
-            _selectedCustomer = null;
-
-            foreach (var c in _repository.SearchCustomers(term))
-                lstCustomers.Items.Add(c);
-
-            lstCustomers.ClearSelected();
-            lstCustomers.EndUpdate();
+            txtNotes.Location = new Point(customerSelect.Left, 200);
+            txtNotes.Width = customerSelect.Width;
+            txtNotes.Anchor = AnchorStyles.Top | AnchorStyles.Left;
         }
 
-        private void LstCustomers_Format(object sender, ListControlConvertEventArgs e)
+        protected override bool ProcessDialogKey(Keys keyData)
         {
-            if (e.ListItem is Customer c)
+            if (_type == TransactionType.StockOut && keyData == Keys.Enter)
             {
-                e.Value = string.IsNullOrWhiteSpace(c.Phone)
-                    ? c.Name
-                    : $"{c.Name} — {c.Phone}";
+                if (ActiveControl == txtNotes)
+                    return base.ProcessDialogKey(keyData);
+
+                if (customerSelect.IsInputFocused || customerSelect.IsDropDownOpen)
+                {
+                    customerSelect.TrySelectHighlightedCustomer();
+                    return true;
+                }
             }
-        }
 
-        private void LstCustomers_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            _selectedCustomer = lstCustomers.SelectedItem as Customer;
-        }
-
-        private void ClearSelectedCustomer()
-        {
-            _selectedCustomer = null;
-            lstCustomers.ClearSelected();
+            return base.ProcessDialogKey(keyData);
         }
 
         private void BtnApply_Click(object sender, EventArgs e)
         {
             var qty = (int)numQuantity.Value;
-            Guid? customerId = _type == TransactionType.StockOut ? _selectedCustomer?.Id : null;
-            var error = _repository.AdjustStock(_product.Id, _type, qty, txtNotes.Text.Trim(), customerId);
 
-            if (error != null)
+            if (_type == TransactionType.StockIn)
             {
-                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                var error = _repository.AdjustStock(_product.Id, _type, qty, txtNotes.Text.Trim());
+                if (error != null)
+                {
+                    MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DialogResult = DialogResult.OK;
+                Close();
                 return;
             }
 
-            DialogResult = DialogResult.OK;
-            Close();
+            var request = new StockOutRequest
+            {
+                ProductId = _product.Id,
+                Quantity = qty,
+                CustomerId = customerSelect.SelectedCustomer?.Id,
+                Notes = txtNotes.Text.Trim()
+            };
+
+            var validationError = _repository.ValidateStockOut(request);
+            if (validationError != null)
+            {
+                MessageBox.Show(validationError, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (var form = new InvoiceForm(_repository, request))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                {
+                    DialogResult = DialogResult.OK;
+                    Close();
+                }
+            }
         }
 
         private void BtnCancel_Click(object sender, EventArgs e)

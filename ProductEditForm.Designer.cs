@@ -58,7 +58,7 @@ namespace Stock_Managemnet
             //
             this.txtSku.Location = new System.Drawing.Point(120, 17);
             this.txtSku.MaxLength = 50;
-            this.txtSku.Size = new System.Drawing.Size(280, 23);
+            this.txtSku.Size = new System.Drawing.Size(460, 23);
             //
             // lblName
             //
@@ -70,7 +70,7 @@ namespace Stock_Managemnet
             //
             this.txtName.Location = new System.Drawing.Point(120, 52);
             this.txtName.MaxLength = 200;
-            this.txtName.Size = new System.Drawing.Size(280, 23);
+            this.txtName.Size = new System.Drawing.Size(460, 23);
             //
             // lblCategory
             //
@@ -82,7 +82,7 @@ namespace Stock_Managemnet
             //
             this.txtCategory.Location = new System.Drawing.Point(120, 87);
             this.txtCategory.MaxLength = 100;
-            this.txtCategory.Size = new System.Drawing.Size(280, 23);
+            this.txtCategory.Size = new System.Drawing.Size(460, 23);
             //
             // lblPrice
             //
@@ -123,7 +123,7 @@ namespace Stock_Managemnet
             //
             // btnSave
             //
-            this.btnSave.Location = new System.Drawing.Point(244, 240);
+            this.btnSave.Location = new System.Drawing.Point(424, 240);
             this.btnSave.Size = new System.Drawing.Size(75, 28);
             this.btnSave.Text = "Save";
             this.btnSave.UseVisualStyleBackColor = true;
@@ -132,7 +132,7 @@ namespace Stock_Managemnet
             // btnCancel
             //
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(325, 240);
+            this.btnCancel.Location = new System.Drawing.Point(505, 240);
             this.btnCancel.Size = new System.Drawing.Size(75, 28);
             this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
@@ -144,7 +144,7 @@ namespace Stock_Managemnet
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
-            this.ClientSize = new System.Drawing.Size(420, 285);
+            this.ClientSize = new System.Drawing.Size(600, 285);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.numReorder);

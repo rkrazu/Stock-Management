@@ -62,11 +62,29 @@
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Models\Invoice.cs" />
+    <Compile Include="Models\InvoiceLineItem.cs" />
+    <Compile Include="Models\StockOutRequest.cs" />
     <Compile Include="Models\Customer.cs" />
     <Compile Include="Models\Product.cs" />
+    <Compile Include="Models\ProductionMaterial.cs" />
+    <Compile Include="Models\ProductionRecipe.cs" />
+    <Compile Include="Models\ProductionOrder.cs" />
     <Compile Include="Models\StockData.cs" />
     <Compile Include="Models\StockTransaction.cs" />
     <Compile Include="Services\StockRepository.cs" />
+    <Compile Include="RecipeEditForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RecipeEditForm.Designer.cs">
+      <DependentUpon>RecipeEditForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ProductionRunForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ProductionRunForm.Designer.cs">
+      <DependentUpon>ProductionRunForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="CustomerEditForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -85,12 +103,29 @@
     <Compile Include="StockAdjustForm.Designer.cs">
       <DependentUpon>StockAdjustForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="InvoiceForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="InvoiceForm.Designer.cs">
+      <DependentUpon>InvoiceForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="InvoiceDocumentBuilder.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\CustomerSelectControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\ProductSelectControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\SearchableSelectControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="UiStyles.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">

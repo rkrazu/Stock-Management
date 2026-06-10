@@ -9,6 +9,10 @@ namespace Stock_Managemnet.Models
         [DataMember] public List<Product> Products { get; set; } = new List<Product>();
         [DataMember] public List<Customer> Customers { get; set; } = new List<Customer>();
         [DataMember] public List<StockTransaction> Transactions { get; set; } = new List<StockTransaction>();
+        [DataMember] public List<ProductionRecipe> ProductionRecipes { get; set; } = new List<ProductionRecipe>();
+        [DataMember] public List<ProductionOrder> ProductionOrders { get; set; } = new List<ProductionOrder>();
+        [DataMember] public List<Invoice> Invoices { get; set; } = new List<Invoice>();
         [DataMember] public int NextInvoiceNumber { get; set; } = 1;
+        [DataMember] public int NextProductionNumber { get; set; } = 1;
     }
 }

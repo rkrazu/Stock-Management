@@ -36,9 +36,16 @@ namespace Stock_Managemnet.Services
                 if (Data.Products == null) Data.Products = new List<Product>();
                 if (Data.Customers == null) Data.Customers = new List<Customer>();
                 if (Data.Transactions == null) Data.Transactions = new List<StockTransaction>();
+                if (Data.ProductionRecipes == null) Data.ProductionRecipes = new List<ProductionRecipe>();
+                if (Data.ProductionOrders == null) Data.ProductionOrders = new List<ProductionOrder>();
+                if (Data.Invoices == null) Data.Invoices = new List<Invoice>();
                 if (Data.NextInvoiceNumber < 1) Data.NextInvoiceNumber = 1;
+                if (Data.NextProductionNumber < 1) Data.NextProductionNumber = 1;
 
                 MigrateTransactions();
+                NormalizeSaleTransactions();
+                MigrateInvoicesFromTransactions();
+                EnsureProductionSequence();
             }
             catch
             {
@@ -100,7 +107,195 @@ namespace Stock_Managemnet.Services
         {
             Data.Products.RemoveAll(p => p.Id == id);
             Data.Transactions.RemoveAll(t => t.ProductId == id);
+            foreach (var invoice in Data.Invoices)
+                invoice.Items?.RemoveAll(i => i.ProductId == id);
+            Data.Invoices.RemoveAll(i => i.Items == null || i.Items.Count == 0);
             Save();
+        }
+
+        public string ValidateStockOut(StockOutRequest request)
+        {
+            if (request == null)
+                return "Invalid stock out request.";
+
+            if (request.Quantity <= 0)
+                return "Quantity must be greater than zero.";
+
+            var product = GetProduct(request.ProductId);
+            if (product == null)
+                return "Product not found.";
+
+            if (product.Quantity < request.Quantity)
+                return $"Insufficient stock. Available: {product.Quantity}";
+
+            if (request.CustomerId.HasValue && GetCustomer(request.CustomerId.Value) == null)
+                return "Customer not found.";
+
+            if (!request.CustomerId.HasValue)
+                return "Select a customer for sales stock out.";
+
+            return null;
+        }
+
+        public Invoice BuildStockOutInvoicePreview(StockOutRequest request)
+        {
+            var product = GetProduct(request.ProductId);
+            var customer = request.CustomerId.HasValue ? GetCustomer(request.CustomerId.Value) : null;
+            var unitPrice = product?.UnitPrice ?? 0;
+            var lineTotal = unitPrice * request.Quantity;
+
+            return new Invoice
+            {
+                CustomerId = customer?.Id,
+                CustomerName = customer?.Name,
+                CustomerPhone = customer?.Phone,
+                CustomerAddress = customer?.Address,
+                Notes = request.Notes ?? string.Empty,
+                CreatedAt = DateTime.Now,
+                TotalAmount = lineTotal,
+                Items = new List<InvoiceLineItem>
+                {
+                    new InvoiceLineItem
+                    {
+                        ProductId = product.Id,
+                        ProductSku = product.Sku,
+                        ProductName = product.Name,
+                        Quantity = request.Quantity,
+                        UnitPrice = unitPrice,
+                        LineTotal = lineTotal
+                    }
+                }
+            };
+        }
+
+        public string CompleteStockOut(StockOutRequest request)
+        {
+            var error = ValidateStockOut(request);
+            if (error != null)
+                return error;
+
+            var product = GetProduct(request.ProductId);
+            var customer = request.CustomerId.HasValue ? GetCustomer(request.CustomerId.Value) : null;
+            var invoiceNumber = GenerateInvoiceNumber();
+            var unitPrice = product.UnitPrice;
+            var lineTotal = unitPrice * request.Quantity;
+            var transactionId = Guid.NewGuid();
+
+            product.Quantity -= request.Quantity;
+            product.LastUpdated = DateTime.Now;
+
+            Data.Transactions.Insert(0, new StockTransaction
+            {
+                Id = transactionId,
+                InvoiceNumber = invoiceNumber,
+                IsSale = true,
+                ProductId = product.Id,
+                ProductName = product.Name,
+                ProductSku = product.Sku,
+                Type = TransactionType.StockOut,
+                Quantity = request.Quantity,
+                UnitPrice = unitPrice,
+                TotalValue = lineTotal,
+                Notes = request.Notes ?? string.Empty,
+                CustomerId = customer?.Id,
+                CustomerName = customer?.Name,
+                Timestamp = DateTime.Now
+            });
+
+            Data.Invoices.Insert(0, new Invoice
+            {
+                InvoiceNumber = invoiceNumber,
+                CustomerId = customer?.Id,
+                CustomerName = customer?.Name ?? string.Empty,
+                CustomerPhone = customer?.Phone ?? string.Empty,
+                CustomerAddress = customer?.Address ?? string.Empty,
+                Notes = request.Notes ?? string.Empty,
+                TotalAmount = lineTotal,
+                TransactionId = transactionId,
+                CreatedAt = DateTime.Now,
+                Items = new List<InvoiceLineItem>
+                {
+                    new InvoiceLineItem
+                    {
+                        ProductId = product.Id,
+                        ProductSku = product.Sku,
+                        ProductName = product.Name,
+                        Quantity = request.Quantity,
+                        UnitPrice = unitPrice,
+                        LineTotal = lineTotal
+                    }
+                }
+            });
+
+            Save();
+            return null;
+        }
+
+        public Invoice GetInvoice(Guid id) =>
+            Data.Invoices.FirstOrDefault(i => i.Id == id);
+
+        public IEnumerable<Invoice> SearchInvoices(string term)
+        {
+            if (string.IsNullOrWhiteSpace(term))
+                return Data.Invoices.OrderByDescending(i => i.CreatedAt);
+
+            term = term.Trim();
+            return Data.Invoices
+                .Where(i =>
+                    (i.InvoiceNumber != null && i.InvoiceNumber.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (i.CustomerName != null && i.CustomerName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (i.CustomerPhone != null && i.CustomerPhone.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (i.Notes != null && i.Notes.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    i.Items.Any(item =>
+                        (item.ProductSku != null && item.ProductSku.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                        (item.ProductName != null && item.ProductName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0)))
+                .OrderByDescending(i => i.CreatedAt);
+        }
+
+        private void MigrateInvoicesFromTransactions()
+        {
+            var changed = false;
+
+            foreach (var transaction in Data.Transactions
+                .Where(t => t.IsSale && !string.IsNullOrWhiteSpace(t.InvoiceNumber))
+                .OrderBy(t => t.Timestamp))
+            {
+                if (Data.Invoices.Any(i => string.Equals(i.InvoiceNumber, transaction.InvoiceNumber, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                var customer = transaction.CustomerId.HasValue
+                    ? GetCustomer(transaction.CustomerId.Value)
+                    : null;
+
+                Data.Invoices.Add(new Invoice
+                {
+                    InvoiceNumber = transaction.InvoiceNumber,
+                    CustomerId = transaction.CustomerId,
+                    CustomerName = transaction.CustomerName ?? string.Empty,
+                    CustomerPhone = customer?.Phone ?? string.Empty,
+                    CustomerAddress = customer?.Address ?? string.Empty,
+                    Notes = transaction.Notes ?? string.Empty,
+                    TotalAmount = transaction.TotalValue,
+                    TransactionId = transaction.Id,
+                    CreatedAt = transaction.Timestamp,
+                    Items = new List<InvoiceLineItem>
+                    {
+                        new InvoiceLineItem
+                        {
+                            ProductId = transaction.ProductId,
+                            ProductSku = transaction.ProductSku,
+                            ProductName = transaction.ProductName,
+                            Quantity = transaction.Quantity,
+                            UnitPrice = transaction.UnitPrice,
+                            LineTotal = transaction.TotalValue
+                        }
+                    }
+                });
+                changed = true;
+            }
+
+            if (changed)
+                Save();
         }
 
         public string AdjustStock(Guid productId, TransactionType type, int quantity, string notes, Guid? customerId = null)
@@ -132,7 +327,6 @@ namespace Stock_Managemnet.Services
 
             Data.Transactions.Insert(0, new StockTransaction
             {
-                InvoiceNumber = GenerateInvoiceNumber(),
                 ProductId = product.Id,
                 ProductName = product.Name,
                 ProductSku = product.Sku,
@@ -143,6 +337,7 @@ namespace Stock_Managemnet.Services
                 Notes = notes ?? string.Empty,
                 CustomerId = customer?.Id,
                 CustomerName = customer?.Name,
+                IsSale = false,
                 Timestamp = DateTime.Now
             });
 
@@ -205,13 +400,99 @@ namespace Stock_Managemnet.Services
                 return Data.Customers.OrderBy(c => c.Name);
 
             term = term.Trim();
+
+            if (TryParseDisplaySearch(term, out var namePart, out var phonePart))
+            {
+                return Data.Customers
+                    .Where(c => MatchesTextPart(c.Name, namePart) && MatchesPhonePart(c.Phone, phonePart))
+                    .OrderBy(c => c.Name);
+            }
+
             return Data.Customers
                 .Where(c =>
-                    (c.Name != null && c.Name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (c.Phone != null && c.Phone.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (c.Email != null && c.Email.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (c.Address != null && c.Address.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0))
+                    MatchesTextPart(c.Name, term) ||
+                    MatchesTextPart(c.Phone, term) ||
+                    MatchesTextPart(c.Email, term) ||
+                    MatchesTextPart(c.Address, term))
                 .OrderBy(c => c.Name);
+        }
+
+        public bool CustomerMatchesSearchTerm(Customer customer, string term)
+        {
+            if (customer == null)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(term))
+                return true;
+
+            term = term.Trim();
+
+            if (TryParseDisplaySearch(term, out var namePart, out var phonePart))
+                return MatchesTextPart(customer.Name, namePart) && MatchesPhonePart(customer.Phone, phonePart);
+
+            return MatchesTextPart(customer.Name, term) ||
+                   MatchesTextPart(customer.Phone, term) ||
+                   MatchesTextPart(customer.Email, term) ||
+                   MatchesTextPart(customer.Address, term);
+        }
+
+        private static bool TryParseDisplaySearch(string term, out string namePart, out string phonePart)
+        {
+            namePart = string.Empty;
+            phonePart = string.Empty;
+
+            var separators = new[] { " — ", " – ", " -- ", " - ", "—", "–", "--" };
+            foreach (var separator in separators.OrderByDescending(s => s.Length))
+            {
+                var index = term.IndexOf(separator, StringComparison.Ordinal);
+                if (index < 0)
+                    continue;
+
+                namePart = term.Substring(0, index).Trim();
+                phonePart = term.Substring(index + separator.Length).Trim();
+                return true;
+            }
+
+            var trailingSeparators = new[] { " —", " –", " --", " -", "—", "–", "--", "-" };
+            foreach (var separator in trailingSeparators.OrderByDescending(s => s.Length))
+            {
+                if (!term.EndsWith(separator, StringComparison.Ordinal))
+                    continue;
+
+                namePart = term.Substring(0, term.Length - separator.Length).Trim();
+                phonePart = string.Empty;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool MatchesTextPart(string value, string part)
+        {
+            if (string.IsNullOrEmpty(part))
+                return true;
+
+            return !string.IsNullOrEmpty(value) &&
+                   value.IndexOf(part, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool MatchesPhonePart(string phone, string phonePart)
+        {
+            if (string.IsNullOrEmpty(phonePart))
+                return true;
+
+            if (string.IsNullOrEmpty(phone))
+                return false;
+
+            if (phone.IndexOf(phonePart, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            var partDigits = NormalizePhone(phonePart);
+            if (partDigits.Length == 0)
+                return true;
+
+            var phoneDigits = NormalizePhone(phone);
+            return phoneDigits.IndexOf(partDigits, StringComparison.Ordinal) >= 0;
         }
 
         public IEnumerable<Product> SearchProducts(string term)
@@ -220,12 +501,38 @@ namespace Stock_Managemnet.Services
                 return Data.Products.OrderBy(p => p.Name);
 
             term = term.Trim();
+
+            if (TryParseDisplaySearch(term, out var namePart, out var skuPart))
+            {
+                return Data.Products
+                    .Where(p => MatchesTextPart(p.Name, namePart) && MatchesTextPart(p.Sku, skuPart))
+                    .OrderBy(p => p.Name);
+            }
+
             return Data.Products
                 .Where(p =>
-                    (p.Name != null && p.Name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (p.Sku != null && p.Sku.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (p.Category != null && p.Category.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0))
+                    MatchesTextPart(p.Name, term) ||
+                    MatchesTextPart(p.Sku, term) ||
+                    MatchesTextPart(p.Category, term))
                 .OrderBy(p => p.Name);
+        }
+
+        public bool ProductMatchesSearchTerm(Product product, string term)
+        {
+            if (product == null)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(term))
+                return true;
+
+            term = term.Trim();
+
+            if (TryParseDisplaySearch(term, out var namePart, out var skuPart))
+                return MatchesTextPart(product.Name, namePart) && MatchesTextPart(product.Sku, skuPart);
+
+            return MatchesTextPart(product.Name, term) ||
+                   MatchesTextPart(product.Sku, term) ||
+                   MatchesTextPart(product.Category, term);
         }
 
         public IEnumerable<StockTransaction> SearchTransactions(
@@ -276,12 +583,6 @@ namespace Stock_Managemnet.Services
             var changed = false;
             foreach (var transaction in Data.Transactions.OrderBy(t => t.Timestamp))
             {
-                if (string.IsNullOrWhiteSpace(transaction.InvoiceNumber))
-                {
-                    transaction.InvoiceNumber = GenerateInvoiceNumber();
-                    changed = true;
-                }
-
                 if (transaction.TotalValue == 0 && transaction.UnitPrice == 0)
                 {
                     var product = GetProduct(transaction.ProductId);
@@ -298,6 +599,65 @@ namespace Stock_Managemnet.Services
                 Save();
         }
 
+        private void NormalizeSaleTransactions()
+        {
+            var changed = false;
+
+            foreach (var transaction in Data.Transactions)
+            {
+                var isSale = IsSaleTransaction(transaction);
+                if (transaction.IsSale != isSale)
+                {
+                    transaction.IsSale = isSale;
+                    changed = true;
+                }
+
+                if (!isSale && !string.IsNullOrWhiteSpace(transaction.InvoiceNumber))
+                {
+                    transaction.InvoiceNumber = null;
+                    changed = true;
+                }
+            }
+
+            var removedInvoices = Data.Invoices.RemoveAll(i =>
+            {
+                if (i.TransactionId.HasValue)
+                {
+                    var txn = Data.Transactions.FirstOrDefault(t => t.Id == i.TransactionId);
+                    return txn == null || !txn.IsSale;
+                }
+
+                return !Data.Transactions.Any(t =>
+                    t.IsSale &&
+                    string.Equals(t.InvoiceNumber, i.InvoiceNumber, StringComparison.OrdinalIgnoreCase));
+            });
+            if (removedInvoices > 0)
+                changed = true;
+
+            if (changed)
+                Save();
+        }
+
+        private static bool IsSaleTransaction(StockTransaction transaction)
+        {
+            if (transaction.Type != TransactionType.StockOut)
+                return false;
+
+            if (IsProductionTransaction(transaction))
+                return false;
+
+            if (transaction.IsSale)
+                return true;
+
+            return transaction.CustomerId.HasValue;
+        }
+
+        private static bool IsProductionTransaction(StockTransaction transaction)
+        {
+            return !string.IsNullOrWhiteSpace(transaction.Notes) &&
+                   transaction.Notes.TrimStart().StartsWith("Production ", StringComparison.OrdinalIgnoreCase);
+        }
+
         private string GenerateInvoiceNumber()
         {
             string invoice;
@@ -307,7 +667,9 @@ namespace Stock_Managemnet.Services
                 Data.NextInvoiceNumber++;
             }
             while (Data.Transactions.Any(t =>
-                string.Equals(t.InvoiceNumber, invoice, StringComparison.OrdinalIgnoreCase)));
+                       string.Equals(t.InvoiceNumber, invoice, StringComparison.OrdinalIgnoreCase)) ||
+                   Data.Invoices.Any(i =>
+                       string.Equals(i.InvoiceNumber, invoice, StringComparison.OrdinalIgnoreCase)));
 
             return invoice;
         }
@@ -315,7 +677,14 @@ namespace Stock_Managemnet.Services
         private void EnsureInvoiceSequence()
         {
             var max = 0;
-            foreach (var transaction in Data.Transactions)
+
+            foreach (var invoice in Data.Invoices)
+            {
+                if (TryParseInvoiceSequence(invoice.InvoiceNumber, out var sequence) && sequence > max)
+                    max = sequence;
+            }
+
+            foreach (var transaction in Data.Transactions.Where(t => t.IsSale))
             {
                 if (TryParseInvoiceSequence(transaction.InvoiceNumber, out var sequence) && sequence > max)
                     max = sequence;
@@ -332,6 +701,177 @@ namespace Stock_Managemnet.Services
                 return false;
 
             var parts = invoiceNumber.Trim().Split('-');
+            if (parts.Length == 0)
+                return false;
+
+            return int.TryParse(parts[parts.Length - 1], out sequence);
+        }
+
+        public ProductionRecipe GetRecipe(Guid id) =>
+            Data.ProductionRecipes.FirstOrDefault(r => r.Id == id);
+
+        public void AddRecipe(ProductionRecipe recipe)
+        {
+            recipe.CreatedAt = DateTime.Now;
+            Data.ProductionRecipes.Add(recipe);
+            Save();
+        }
+
+        public void UpdateRecipe(ProductionRecipe recipe)
+        {
+            var existing = GetRecipe(recipe.Id);
+            if (existing == null) return;
+
+            existing.Name = recipe.Name;
+            existing.OutputProductId = recipe.OutputProductId;
+            existing.OutputProductSku = recipe.OutputProductSku;
+            existing.OutputProductName = recipe.OutputProductName;
+            existing.Materials = recipe.Materials ?? new List<ProductionMaterial>();
+            Save();
+        }
+
+        public void DeleteRecipe(Guid id)
+        {
+            Data.ProductionRecipes.RemoveAll(r => r.Id == id);
+            Save();
+        }
+
+        public IEnumerable<ProductionRecipe> SearchRecipes(string term)
+        {
+            if (string.IsNullOrWhiteSpace(term))
+                return Data.ProductionRecipes.OrderBy(r => r.Name);
+
+            term = term.Trim();
+            return Data.ProductionRecipes
+                .Where(r =>
+                    (r.Name != null && r.Name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (r.OutputProductSku != null && r.OutputProductSku.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (r.OutputProductName != null && r.OutputProductName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0))
+                .OrderBy(r => r.Name);
+        }
+
+        public IEnumerable<ProductionOrder> SearchProductionOrders(string term)
+        {
+            if (string.IsNullOrWhiteSpace(term))
+                return Data.ProductionOrders.OrderByDescending(o => o.Timestamp);
+
+            term = term.Trim();
+            return Data.ProductionOrders
+                .Where(o =>
+                    (o.ProductionNumber != null && o.ProductionNumber.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (o.RecipeName != null && o.RecipeName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (o.OutputProductSku != null && o.OutputProductSku.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (o.OutputProductName != null && o.OutputProductName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0))
+                .OrderByDescending(o => o.Timestamp);
+        }
+
+        public string RunProduction(ProductionRecipe recipe, int batchQuantity, string notes)
+        {
+            if (recipe == null)
+                return "Recipe not found.";
+
+            if (batchQuantity <= 0)
+                return "Quantity must be greater than zero.";
+
+            if (recipe.Materials == null || recipe.Materials.Count == 0)
+                return "Recipe has no materials.";
+
+            var output = GetProduct(recipe.OutputProductId);
+            if (output == null)
+                return "Output product not found.";
+
+            foreach (var material in recipe.Materials)
+            {
+                if (material.QuantityPerUnit <= 0)
+                    return $"Invalid quantity for material '{material.ProductName}'.";
+
+                var product = GetProduct(material.ProductId);
+                if (product == null)
+                    return $"Material '{material.ProductName}' not found.";
+
+                var required = material.QuantityPerUnit * batchQuantity;
+                if (product.Quantity < required)
+                    return $"Insufficient '{product.Name}'. Required: {required}, Available: {product.Quantity}";
+            }
+
+            var productionNumber = GenerateProductionNumber();
+            var notePrefix = $"Production {productionNumber}";
+
+            foreach (var material in recipe.Materials)
+            {
+                var required = material.QuantityPerUnit * batchQuantity;
+                var error = AdjustStock(material.ProductId, TransactionType.StockOut, required, notePrefix);
+                if (error != null)
+                    return error;
+            }
+
+            var stockInError = AdjustStock(output.Id, TransactionType.StockIn, batchQuantity, notePrefix);
+            if (stockInError != null)
+                return stockInError;
+
+            output = GetProduct(output.Id);
+            var unitPrice = output?.UnitPrice ?? 0;
+
+            Data.ProductionOrders.Insert(0, new ProductionOrder
+            {
+                ProductionNumber = productionNumber,
+                RecipeId = recipe.Id,
+                RecipeName = recipe.Name,
+                OutputProductId = recipe.OutputProductId,
+                OutputProductSku = recipe.OutputProductSku,
+                OutputProductName = recipe.OutputProductName,
+                QuantityProduced = batchQuantity,
+                OutputUnitPrice = unitPrice,
+                TotalOutputValue = unitPrice * batchQuantity,
+                MaterialsUsed = recipe.Materials.Select(m => new ProductionMaterial
+                {
+                    ProductId = m.ProductId,
+                    ProductSku = m.ProductSku,
+                    ProductName = m.ProductName,
+                    QuantityPerUnit = m.QuantityPerUnit * batchQuantity
+                }).ToList(),
+                Notes = notes ?? string.Empty,
+                Timestamp = DateTime.Now
+            });
+
+            Save();
+            return null;
+        }
+
+        private string GenerateProductionNumber()
+        {
+            string productionNumber;
+            do
+            {
+                productionNumber = $"PRO-{Data.NextProductionNumber:D6}";
+                Data.NextProductionNumber++;
+            }
+            while (Data.ProductionOrders.Any(o =>
+                string.Equals(o.ProductionNumber, productionNumber, StringComparison.OrdinalIgnoreCase)));
+
+            return productionNumber;
+        }
+
+        private void EnsureProductionSequence()
+        {
+            var max = 0;
+            foreach (var order in Data.ProductionOrders)
+            {
+                if (TryParseProductionSequence(order.ProductionNumber, out var sequence) && sequence > max)
+                    max = sequence;
+            }
+
+            if (Data.NextProductionNumber <= max)
+                Data.NextProductionNumber = max + 1;
+        }
+
+        private static bool TryParseProductionSequence(string productionNumber, out int sequence)
+        {
+            sequence = 0;
+            if (string.IsNullOrWhiteSpace(productionNumber))
+                return false;
+
+            var parts = productionNumber.Trim().Split('-');
             if (parts.Length == 0)
                 return false;
 

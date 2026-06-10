@@ -14,6 +14,7 @@ namespace Stock_Managemnet.Models
     {
         [DataMember] public Guid Id { get; set; } = Guid.NewGuid();
         [DataMember] public string InvoiceNumber { get; set; }
+        [DataMember] public bool IsSale { get; set; }
         [DataMember] public Guid ProductId { get; set; }
         [DataMember] public string ProductName { get; set; }
         [DataMember] public string ProductSku { get; set; }

@@ -20,9 +20,12 @@ namespace Stock_Managemnet
             InitializeComponent();
             ConfigureProductGrid();
             ConfigureCustomerGrid();
+            ConfigureInvoiceGrid();
+            ConfigureProductionGrids();
             ConfigureTransactionGrid();
             ConfigureTransactionFilters();
             WireEvents();
+            UiStyles.Apply(this);
             _repository.Load();
             _allowGridSelection = false;
             RefreshAll();
@@ -63,9 +66,14 @@ namespace Stock_Managemnet
         {
             ClearGridSelection(dgvProducts);
             ClearGridSelection(dgvCustomers);
+            ClearGridSelection(dgvInvoices);
+            ClearGridSelection(dgvRecipes);
+            ClearGridSelection(dgvProductionOrders);
             ClearGridSelection(dgvTransactions);
             UpdateActionButtons();
             UpdateCustomerButtons();
+            UpdateInvoiceButtons();
+            UpdateProductionButtons();
         }
 
         private void GuardGridSelection(DataGridView grid)
@@ -144,6 +152,46 @@ namespace Stock_Managemnet
                     e.SuppressKeyPress = true;
                 }
             };
+            btnInvoiceSearch.Click += (s, e) => RefreshInvoices(preserveSelection: false);
+            btnInvoiceReset.Click += (s, e) => ResetInvoiceFilters();
+            btnViewInvoice.Click += BtnViewInvoice_Click;
+            btnPrintInvoice.Click += BtnPrintInvoice_Click;
+            dgvInvoices.SelectionChanged += (s, e) =>
+            {
+                GuardGridSelection(dgvInvoices);
+                UpdateInvoiceButtons();
+            };
+            dgvInvoices.CellDoubleClick += (s, e) => BtnViewInvoice_Click(s, e);
+            txtInvoiceSearch.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    RefreshInvoices(preserveSelection: false);
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
+            btnProductionSearch.Click += (s, e) => RefreshProduction(preserveSelection: false);
+            btnProductionReset.Click += (s, e) => ResetProductionFilters();
+            btnAddRecipe.Click += BtnAddRecipe_Click;
+            btnEditRecipe.Click += BtnEditRecipe_Click;
+            btnDeleteRecipe.Click += BtnDeleteRecipe_Click;
+            btnRunProduction.Click += BtnRunProduction_Click;
+            dgvRecipes.SelectionChanged += (s, e) =>
+            {
+                GuardGridSelection(dgvRecipes);
+                UpdateProductionButtons();
+            };
+            dgvRecipes.CellDoubleClick += (s, e) => BtnEditRecipe_Click(s, e);
+            txtProductionSearch.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    RefreshProduction(preserveSelection: false);
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
             tabMain.SelectedIndexChanged += TabMain_SelectedIndexChanged;
             btnTxnSearch.Click += (s, e) => RefreshTransactions();
             btnTxnReset.Click += (s, e) => ResetTransactionFilters();
@@ -164,6 +212,9 @@ namespace Stock_Managemnet
             dgvTransactions.SelectionChanged += (s, e) => GuardGridSelection(dgvTransactions);
             dgvProducts.VisibleChanged += Grid_VisibleChanged;
             dgvCustomers.VisibleChanged += Grid_VisibleChanged;
+            dgvInvoices.VisibleChanged += Grid_VisibleChanged;
+            dgvRecipes.VisibleChanged += Grid_VisibleChanged;
+            dgvProductionOrders.VisibleChanged += Grid_VisibleChanged;
             dgvTransactions.VisibleChanged += Grid_VisibleChanged;
         }
 
@@ -210,6 +261,48 @@ namespace Stock_Managemnet
             dgvCustomers.Columns.Add("Address", "Address");
         }
 
+        private void ConfigureInvoiceGrid()
+        {
+            dgvInvoices.AutoGenerateColumns = false;
+            dgvInvoices.Columns.Clear();
+            dgvInvoices.Columns.Add("CreatedAt", "Date/Time");
+            dgvInvoices.Columns.Add("InvoiceNumber", "Invoice #");
+            dgvInvoices.Columns.Add("CustomerName", "Customer");
+            dgvInvoices.Columns.Add("ProductSummary", "Product");
+            dgvInvoices.Columns.Add("TotalAmount", "Total");
+            dgvInvoices.Columns.Add("Notes", "Notes");
+
+            dgvInvoices.Columns["CreatedAt"].DefaultCellStyle.Format = "g";
+            dgvInvoices.Columns["TotalAmount"].DefaultCellStyle.Format = "C2";
+            dgvInvoices.Columns["TotalAmount"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+        }
+
+        private void ConfigureProductionGrids()
+        {
+            dgvRecipes.AutoGenerateColumns = false;
+            dgvRecipes.Columns.Clear();
+            dgvRecipes.Columns.Add("Name", "Recipe");
+            dgvRecipes.Columns.Add("OutputSku", "Output SKU");
+            dgvRecipes.Columns.Add("OutputName", "Output Product");
+            dgvRecipes.Columns.Add("MaterialCount", "Materials");
+
+            dgvProductionOrders.AutoGenerateColumns = false;
+            dgvProductionOrders.Columns.Clear();
+            dgvProductionOrders.Columns.Add("Timestamp", "Date/Time");
+            dgvProductionOrders.Columns.Add("ProductionNumber", "Production #");
+            dgvProductionOrders.Columns.Add("RecipeName", "Recipe");
+            dgvProductionOrders.Columns.Add("OutputSku", "Output SKU");
+            dgvProductionOrders.Columns.Add("OutputName", "Output Product");
+            dgvProductionOrders.Columns.Add("QuantityProduced", "Qty");
+            dgvProductionOrders.Columns.Add("TotalOutputValue", "Value");
+            dgvProductionOrders.Columns.Add("Notes", "Notes");
+
+            dgvProductionOrders.Columns["Timestamp"].DefaultCellStyle.Format = "g";
+            dgvProductionOrders.Columns["QuantityProduced"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvProductionOrders.Columns["TotalOutputValue"].DefaultCellStyle.Format = "C2";
+            dgvProductionOrders.Columns["TotalOutputValue"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+        }
+
         private void ConfigureTransactionGrid()
         {
             dgvTransactions.AutoGenerateColumns = false;
@@ -230,6 +323,12 @@ namespace Stock_Managemnet
             dgvTransactions.Columns["TotalValue"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
         }
 
+        private void ResetProductionFilters()
+        {
+            txtProductionSearch.Clear();
+            RefreshProduction(preserveSelection: false);
+        }
+
         private void ConfigureTransactionFilters()
         {
             ResetTransactionDateDefaults();
@@ -247,6 +346,12 @@ namespace Stock_Managemnet
         {
             txtCustomerSearch.Clear();
             RefreshCustomers(preserveSelection: false);
+        }
+
+        private void ResetInvoiceFilters()
+        {
+            txtInvoiceSearch.Clear();
+            RefreshInvoices(preserveSelection: false);
         }
 
         private void ResetTransactionFilters()
@@ -328,9 +433,13 @@ namespace Stock_Managemnet
             RefreshHeader();
             RefreshProducts();
             RefreshCustomers();
+            RefreshInvoices();
+            RefreshProduction();
             RefreshTransactions();
             UpdateActionButtons();
             UpdateCustomerButtons();
+            UpdateInvoiceButtons();
+            UpdateProductionButtons();
         }
 
         private void RefreshHeader()
@@ -435,6 +544,112 @@ namespace Stock_Managemnet
             UpdateCustomerButtons();
         }
 
+        private void RefreshInvoices(bool preserveSelection = true)
+        {
+            var selectedId = preserveSelection ? GetSelectedInvoice()?.Id : null;
+            dgvInvoices.Rows.Clear();
+
+            foreach (var invoice in _repository.SearchInvoices(txtInvoiceSearch.Text))
+            {
+                var idx = dgvInvoices.Rows.Add(
+                    invoice.CreatedAt,
+                    invoice.InvoiceNumber,
+                    invoice.CustomerName ?? string.Empty,
+                    FormatInvoiceProductSummary(invoice),
+                    invoice.TotalAmount,
+                    invoice.Notes ?? string.Empty);
+                dgvInvoices.Rows[idx].Tag = invoice;
+            }
+
+            if (selectedId.HasValue)
+            {
+                var reselected = false;
+                foreach (DataGridViewRow row in dgvInvoices.Rows)
+                {
+                    if (row.Tag is Invoice inv && inv.Id == selectedId.Value)
+                    {
+                        _allowGridSelection = true;
+                        row.Selected = true;
+                        reselected = true;
+                        break;
+                    }
+                }
+
+                if (!reselected)
+                    ApplyNoSelection(dgvInvoices);
+            }
+            else
+            {
+                ApplyNoSelection(dgvInvoices);
+            }
+
+            UpdateInvoiceButtons();
+        }
+
+        private static string FormatInvoiceProductSummary(Invoice invoice)
+        {
+            if (invoice.Items == null || invoice.Items.Count == 0)
+                return string.Empty;
+
+            if (invoice.Items.Count == 1)
+                return invoice.Items[0].ProductName ?? invoice.Items[0].ProductSku ?? string.Empty;
+
+            return $"{invoice.Items.Count} items";
+        }
+
+        private void RefreshProduction(bool preserveSelection = true)
+        {
+            var selectedId = preserveSelection ? GetSelectedRecipe()?.Id : null;
+            var term = txtProductionSearch.Text;
+
+            dgvRecipes.Rows.Clear();
+            foreach (var recipe in _repository.SearchRecipes(term))
+            {
+                var materialCount = recipe.Materials?.Count ?? 0;
+                var idx = dgvRecipes.Rows.Add(recipe.Name, recipe.OutputProductSku, recipe.OutputProductName, materialCount);
+                dgvRecipes.Rows[idx].Tag = recipe;
+            }
+
+            if (selectedId.HasValue)
+            {
+                var reselected = false;
+                foreach (DataGridViewRow row in dgvRecipes.Rows)
+                {
+                    if (row.Tag is ProductionRecipe recipe && recipe.Id == selectedId.Value)
+                    {
+                        _allowGridSelection = true;
+                        row.Selected = true;
+                        reselected = true;
+                        break;
+                    }
+                }
+
+                if (!reselected)
+                    ApplyNoSelection(dgvRecipes);
+            }
+            else
+            {
+                ApplyNoSelection(dgvRecipes);
+            }
+
+            dgvProductionOrders.Rows.Clear();
+            foreach (var order in _repository.SearchProductionOrders(term))
+            {
+                dgvProductionOrders.Rows.Add(
+                    order.Timestamp,
+                    order.ProductionNumber,
+                    order.RecipeName,
+                    order.OutputProductSku,
+                    order.OutputProductName,
+                    order.QuantityProduced,
+                    order.TotalOutputValue,
+                    order.Notes);
+            }
+
+            ApplyNoSelection(dgvProductionOrders);
+            UpdateProductionButtons();
+        }
+
         private void RefreshTransactions()
         {
             if (!TryGetTransactionDateRange(out var fromDate, out var toDate))
@@ -452,7 +667,7 @@ namespace Stock_Managemnet
                 var typeLabel = t.Type == TransactionType.StockIn ? "IN" : "OUT";
                 dgvTransactions.Rows.Add(
                     t.Timestamp,
-                    t.InvoiceNumber,
+                    t.IsSale ? (t.InvoiceNumber ?? string.Empty) : string.Empty,
                     typeLabel,
                     t.ProductSku,
                     t.ProductName,
@@ -477,6 +692,18 @@ namespace Stock_Managemnet
             return dgvCustomers.SelectedRows[0].Tag as Customer;
         }
 
+        private Invoice GetSelectedInvoice()
+        {
+            if (dgvInvoices.SelectedRows.Count == 0) return null;
+            return dgvInvoices.SelectedRows[0].Tag as Invoice;
+        }
+
+        private ProductionRecipe GetSelectedRecipe()
+        {
+            if (dgvRecipes.SelectedRows.Count == 0) return null;
+            return dgvRecipes.SelectedRows[0].Tag as ProductionRecipe;
+        }
+
         private void UpdateActionButtons()
         {
             var hasSelection = GetSelectedProduct() != null;
@@ -491,6 +718,81 @@ namespace Stock_Managemnet
             var hasSelection = GetSelectedCustomer() != null;
             btnEditCustomer.Enabled = hasSelection;
             btnDeleteCustomer.Enabled = hasSelection;
+        }
+
+        private void UpdateInvoiceButtons()
+        {
+            var hasSelection = GetSelectedInvoice() != null;
+            btnViewInvoice.Enabled = hasSelection;
+            btnPrintInvoice.Enabled = hasSelection;
+        }
+
+        private void UpdateProductionButtons()
+        {
+            var hasSelection = GetSelectedRecipe() != null;
+            btnEditRecipe.Enabled = hasSelection;
+            btnDeleteRecipe.Enabled = hasSelection;
+            btnRunProduction.Enabled = hasSelection;
+        }
+
+        private void BtnAddRecipe_Click(object sender, EventArgs e)
+        {
+            using (var form = new RecipeEditForm(_repository))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                    RefreshAll();
+            }
+        }
+
+        private void BtnEditRecipe_Click(object sender, EventArgs e)
+        {
+            var recipe = GetSelectedRecipe();
+            if (recipe == null)
+            {
+                MessageBox.Show("Select a recipe first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var latest = _repository.GetRecipe(recipe.Id) ?? recipe;
+            using (var form = new RecipeEditForm(_repository, latest))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                    RefreshAll();
+            }
+        }
+
+        private void BtnDeleteRecipe_Click(object sender, EventArgs e)
+        {
+            var recipe = GetSelectedRecipe();
+            if (recipe == null) return;
+
+            var confirm = MessageBox.Show(
+                $"Delete recipe \"{recipe.Name}\"?",
+                "Confirm Delete",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes) return;
+
+            _repository.DeleteRecipe(recipe.Id);
+            RefreshAll();
+        }
+
+        private void BtnRunProduction_Click(object sender, EventArgs e)
+        {
+            var recipe = GetSelectedRecipe();
+            if (recipe == null)
+            {
+                MessageBox.Show("Select a recipe first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var latest = _repository.GetRecipe(recipe.Id) ?? recipe;
+            using (var form = new ProductionRunForm(_repository, latest))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                    RefreshAll();
+            }
         }
 
         private void BtnAddCustomer_Click(object sender, EventArgs e)
@@ -534,6 +836,33 @@ namespace Stock_Managemnet
 
             _repository.DeleteCustomer(customer.Id);
             RefreshAll();
+        }
+
+        private void BtnViewInvoice_Click(object sender, EventArgs e)
+        {
+            var invoice = GetSelectedInvoice();
+            if (invoice == null)
+            {
+                MessageBox.Show("Select an invoice first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var latest = _repository.GetInvoice(invoice.Id) ?? invoice;
+            using (var form = new InvoiceForm(_repository, latest))
+                form.ShowDialog(this);
+        }
+
+        private void BtnPrintInvoice_Click(object sender, EventArgs e)
+        {
+            var invoice = GetSelectedInvoice();
+            if (invoice == null)
+            {
+                MessageBox.Show("Select an invoice first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var latest = _repository.GetInvoice(invoice.Id) ?? invoice;
+            InvoiceDocumentBuilder.Print(latest, isDraft: false);
         }
 
         private void BtnAdd_Click(object sender, EventArgs e)
