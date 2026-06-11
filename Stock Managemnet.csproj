@@ -53,6 +53,7 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
@@ -72,7 +73,19 @@
     <Compile Include="Models\ProductionOrder.cs" />
     <Compile Include="Models\StockData.cs" />
     <Compile Include="Models\StockTransaction.cs" />
+    <Compile Include="Data\DatabaseInitializer.cs" />
+    <Compile Include="Data\DatabaseBackupService.cs" />
+    <Compile Include="Data\CredentialStore.cs" />
+    <Compile Include="Data\StockDatabase.cs" />
+    <Compile Include="Services\AuthenticationService.cs" />
+    <Compile Include="Services\PasswordPolicy.cs" />
     <Compile Include="Services\StockRepository.cs" />
+    <Compile Include="LoginForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="LoginForm.Designer.cs">
+      <DependentUpon>LoginForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="RecipeEditForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -116,6 +129,9 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\PasswordFieldControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Controls\CustomerSelectControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -123,7 +139,7 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Controls\SearchableSelectControl.cs">
-      <SubType>Component</SubType>
+      <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="UiStyles.cs" />
     <Compile Include="Program.cs" />
@@ -149,6 +165,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="Database\Schema.sql" />
+    <Content Include="Assets\rk-razu.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">

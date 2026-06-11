@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using Stock_Managemnet.Data;
 using Stock_Managemnet.Models;
 using Stock_Managemnet.Services;
 
@@ -26,8 +29,12 @@ namespace Stock_Managemnet
             ConfigureTransactionFilters();
             WireEvents();
             UiStyles.Apply(this);
+            lblPasswordRules.Text = PasswordPolicy.RequirementsText;
+            lstSettingsNav.SelectedIndex = 0;
+            ShowSettingsSection(0);
             _repository.Load();
             _allowGridSelection = false;
+            ConfigureFooter();
             RefreshAll();
             Shown += Form1_Shown;
         }
@@ -41,7 +48,39 @@ namespace Stock_Managemnet
         private void TabMain_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (!_isFormLoaded) return;
+
+            if (tabMain.SelectedTab == tabSettings)
+            {
+                RefreshSettingsTab();
+                if (lstSettingsNav.SelectedIndex < 0)
+                    lstSettingsNav.SelectedIndex = 0;
+            }
+
             ResetGridSelections();
+        }
+
+        private void LstSettingsNav_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (lstSettingsNav.SelectedIndex < 0)
+                return;
+
+            ShowSettingsSection(lstSettingsNav.SelectedIndex);
+        }
+
+        private void ShowSettingsSection(int index)
+        {
+            panelSettingsBackup.Visible = index == 0;
+            panelSettingsPassword.Visible = index == 1;
+
+            if (index == 1)
+                ClearPasswordChangeFields();
+        }
+
+        private void ClearPasswordChangeFields()
+        {
+            txtCurrentPassword.Clear();
+            txtNewPassword.Clear();
+            txtConfirmPassword.Clear();
         }
 
         private void ResetGridSelections()
@@ -216,6 +255,10 @@ namespace Stock_Managemnet
             dgvRecipes.VisibleChanged += Grid_VisibleChanged;
             dgvProductionOrders.VisibleChanged += Grid_VisibleChanged;
             dgvTransactions.VisibleChanged += Grid_VisibleChanged;
+            btnBackupDatabase.Click += BtnBackupDatabase_Click;
+            btnRestoreDatabase.Click += BtnRestoreDatabase_Click;
+            lstSettingsNav.SelectedIndexChanged += LstSettingsNav_SelectedIndexChanged;
+            btnChangePassword.Click += BtnChangePassword_Click;
         }
 
         private void Grid_VisibleChanged(object sender, EventArgs e)
@@ -444,7 +487,7 @@ namespace Stock_Managemnet
 
         private void RefreshHeader()
         {
-            var count = _repository.Data.Products.Count;
+            var count = _repository.ProductCount;
             var low = _repository.LowStockCount;
             var value = _repository.TotalInventoryValue;
             lblStats.Text =
@@ -503,7 +546,6 @@ namespace Stock_Managemnet
                 ApplyNoSelection(dgvProducts);
             }
 
-            statusLabel.Text = $"Showing {dgvProducts.Rows.Count} item(s)";
             RefreshHeader();
             UpdateActionButtons();
         }
@@ -923,6 +965,197 @@ namespace Stock_Managemnet
                 if (form.ShowDialog(this) == DialogResult.OK)
                     RefreshAll();
             }
+        }
+
+        private void ConfigureFooter()
+        {
+            var imagePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "rk-razu.png");
+            if (!File.Exists(imagePath))
+                return;
+
+            try
+            {
+                const int avatarSize = 42;
+                using (var source = Image.FromFile(imagePath))
+                    statusFooter.Image = CreateFooterAvatar(source, avatarSize);
+
+                statusStrip.ImageScalingSize = new Size(avatarSize, avatarSize);
+            }
+            catch
+            {
+                // Keep copyright text if the image cannot be loaded.
+            }
+        }
+
+        private static Image CreateFooterAvatar(Image source, int size)
+        {
+            var avatar = new Bitmap(size, size);
+            using (var graphics = Graphics.FromImage(avatar))
+            {
+                graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                graphics.CompositingQuality = CompositingQuality.HighQuality;
+
+                var cropSize = Math.Min(source.Width, source.Height);
+                var cropX = (source.Width - cropSize) / 2;
+                var cropY = (source.Height - cropSize) / 2;
+                var sourceRect = new Rectangle(cropX, cropY, cropSize, cropSize);
+                var destRect = new Rectangle(0, 0, size, size);
+
+                using (var path = new GraphicsPath())
+                {
+                    path.AddEllipse(1, 1, size - 2, size - 2);
+                    graphics.SetClip(path);
+                    graphics.DrawImage(source, destRect, sourceRect, GraphicsUnit.Pixel);
+                }
+            }
+
+            return avatar;
+        }
+
+        private void RefreshSettingsTab()
+        {
+            try
+            {
+                lblSettingsServerValue.Text = DatabaseBackupService.ServerName;
+                lblSettingsDatabaseValue.Text = DatabaseBackupService.DatabaseName;
+            }
+            catch (Exception ex)
+            {
+                lblSettingsServerValue.Text = "Unavailable";
+                lblSettingsDatabaseValue.Text = ex.Message;
+            }
+        }
+
+        private void BtnBackupDatabase_Click(object sender, EventArgs e)
+        {
+            var defaultFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "StockManagement Backups");
+
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.Title = "Save Database Backup";
+                dialog.Filter = "SQL Server Backup (*.bak)|*.bak";
+                dialog.DefaultExt = "bak";
+                dialog.FileName = $"{DatabaseBackupService.DatabaseName}_{DateTime.Now:yyyyMMdd_HHmmss}.bak";
+                dialog.InitialDirectory = Directory.Exists(defaultFolder)
+                    ? defaultFolder
+                    : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return;
+
+                try
+                {
+                    UseWaitCursor = true;
+                    btnBackupDatabase.Enabled = false;
+                    btnRestoreDatabase.Enabled = false;
+
+                    _repository.Save();
+                    DatabaseBackupService.Backup(dialog.FileName);
+
+                    MessageBox.Show(
+                        "Backup completed successfully.\r\n\r\n" + dialog.FileName,
+                        Text,
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        "Backup failed.\r\n\r\n" + ex.Message,
+                        Text,
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+                finally
+                {
+                    UseWaitCursor = false;
+                    btnBackupDatabase.Enabled = true;
+                    btnRestoreDatabase.Enabled = true;
+                }
+            }
+        }
+
+        private void BtnRestoreDatabase_Click(object sender, EventArgs e)
+        {
+            var confirm = MessageBox.Show(
+                "Restore will replace ALL current database data with the selected backup.\r\n\r\nContinue?",
+                "Confirm Restore",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes)
+                return;
+
+            using (var dialog = new OpenFileDialog())
+            {
+                dialog.Title = "Select Database Backup";
+                dialog.Filter = "SQL Server Backup (*.bak)|*.bak";
+                dialog.CheckFileExists = true;
+
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return;
+
+                try
+                {
+                    UseWaitCursor = true;
+                    btnBackupDatabase.Enabled = false;
+                    btnRestoreDatabase.Enabled = false;
+                    tabMain.Enabled = false;
+
+                    _repository.Save();
+                    DatabaseBackupService.Restore(dialog.FileName);
+                    AuthenticationService.EnsureDefaultPassword();
+                    _repository.Load();
+                    RefreshAll();
+                    RefreshSettingsTab();
+
+                    MessageBox.Show(
+                        "Database restored successfully.",
+                        Text,
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        "Restore failed.\r\n\r\n" + ex.Message,
+                        Text,
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+                finally
+                {
+                    UseWaitCursor = false;
+                    btnBackupDatabase.Enabled = true;
+                    btnRestoreDatabase.Enabled = true;
+                    tabMain.Enabled = true;
+                }
+            }
+        }
+
+        private void BtnChangePassword_Click(object sender, EventArgs e)
+        {
+            var error = AuthenticationService.ChangePassword(
+                txtCurrentPassword.Text,
+                txtNewPassword.Text,
+                txtConfirmPassword.Text);
+
+            if (error != null)
+            {
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            ClearPasswordChangeFields();
+            MessageBox.Show(
+                "Password changed successfully.",
+                Text,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
     }
 }

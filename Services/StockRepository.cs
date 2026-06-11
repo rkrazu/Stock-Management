@@ -1,19 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.Serialization.Json;
 using System.Windows.Forms;
+using Stock_Managemnet.Data;
 using Stock_Managemnet.Models;
 
 namespace Stock_Managemnet.Services
 {
     public class StockRepository
     {
-        private static readonly string DataPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "StockManagement",
-            "stockdata.json");
+        private readonly StockDatabase _database = new StockDatabase();
 
         public StockData Data { get; private set; } = new StockData();
 
@@ -21,17 +17,8 @@ namespace Stock_Managemnet.Services
         {
             try
             {
-                if (!File.Exists(DataPath))
-                {
-                    Data = new StockData();
-                    return;
-                }
-
-                using (var stream = File.OpenRead(DataPath))
-                {
-                    var serializer = new DataContractJsonSerializer(typeof(StockData));
-                    Data = (StockData)serializer.ReadObject(stream) ?? new StockData();
-                }
+                DatabaseInitializer.EnsureCreated();
+                Data = _database.LoadAll();
 
                 if (Data.Products == null) Data.Products = new List<Product>();
                 if (Data.Customers == null) Data.Customers = new List<Customer>();
@@ -42,16 +29,15 @@ namespace Stock_Managemnet.Services
                 if (Data.NextInvoiceNumber < 1) Data.NextInvoiceNumber = 1;
                 if (Data.NextProductionNumber < 1) Data.NextProductionNumber = 1;
 
-                MigrateTransactions();
-                NormalizeSaleTransactions();
-                MigrateInvoicesFromTransactions();
+                EnsureInvoiceSequence();
                 EnsureProductionSequence();
             }
-            catch
+            catch (Exception ex)
             {
                 Data = new StockData();
                 MessageBox.Show(
-                    "Could not load saved data. Starting with an empty inventory.",
+                    "Could not connect to SQL Server or load data.\r\n\r\n" + ex.Message +
+                    "\r\n\r\nCheck App.config connection string and ensure SQL Server is running.",
                     "Stock Management",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
@@ -60,15 +46,7 @@ namespace Stock_Managemnet.Services
 
         public void Save()
         {
-            var dir = Path.GetDirectoryName(DataPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            using (var stream = File.Create(DataPath))
-            {
-                var serializer = new DataContractJsonSerializer(typeof(StockData));
-                serializer.WriteObject(stream, Data);
-            }
+            _database.SaveAll(Data);
         }
 
         public Product GetProduct(Guid id) =>
@@ -250,52 +228,6 @@ namespace Stock_Managemnet.Services
                         (item.ProductSku != null && item.ProductSku.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
                         (item.ProductName != null && item.ProductName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0)))
                 .OrderByDescending(i => i.CreatedAt);
-        }
-
-        private void MigrateInvoicesFromTransactions()
-        {
-            var changed = false;
-
-            foreach (var transaction in Data.Transactions
-                .Where(t => t.IsSale && !string.IsNullOrWhiteSpace(t.InvoiceNumber))
-                .OrderBy(t => t.Timestamp))
-            {
-                if (Data.Invoices.Any(i => string.Equals(i.InvoiceNumber, transaction.InvoiceNumber, StringComparison.OrdinalIgnoreCase)))
-                    continue;
-
-                var customer = transaction.CustomerId.HasValue
-                    ? GetCustomer(transaction.CustomerId.Value)
-                    : null;
-
-                Data.Invoices.Add(new Invoice
-                {
-                    InvoiceNumber = transaction.InvoiceNumber,
-                    CustomerId = transaction.CustomerId,
-                    CustomerName = transaction.CustomerName ?? string.Empty,
-                    CustomerPhone = customer?.Phone ?? string.Empty,
-                    CustomerAddress = customer?.Address ?? string.Empty,
-                    Notes = transaction.Notes ?? string.Empty,
-                    TotalAmount = transaction.TotalValue,
-                    TransactionId = transaction.Id,
-                    CreatedAt = transaction.Timestamp,
-                    Items = new List<InvoiceLineItem>
-                    {
-                        new InvoiceLineItem
-                        {
-                            ProductId = transaction.ProductId,
-                            ProductSku = transaction.ProductSku,
-                            ProductName = transaction.ProductName,
-                            Quantity = transaction.Quantity,
-                            UnitPrice = transaction.UnitPrice,
-                            LineTotal = transaction.TotalValue
-                        }
-                    }
-                });
-                changed = true;
-            }
-
-            if (changed)
-                Save();
         }
 
         public string AdjustStock(Guid productId, TransactionType type, int quantity, string notes, Guid? customerId = null)
@@ -576,88 +508,6 @@ namespace Stock_Managemnet.Services
             return query.OrderByDescending(t => t.Timestamp);
         }
 
-        private void MigrateTransactions()
-        {
-            EnsureInvoiceSequence();
-
-            var changed = false;
-            foreach (var transaction in Data.Transactions.OrderBy(t => t.Timestamp))
-            {
-                if (transaction.TotalValue == 0 && transaction.UnitPrice == 0)
-                {
-                    var product = GetProduct(transaction.ProductId);
-                    if (product != null)
-                    {
-                        transaction.UnitPrice = product.UnitPrice;
-                        transaction.TotalValue = transaction.Quantity * product.UnitPrice;
-                        changed = true;
-                    }
-                }
-            }
-
-            if (changed)
-                Save();
-        }
-
-        private void NormalizeSaleTransactions()
-        {
-            var changed = false;
-
-            foreach (var transaction in Data.Transactions)
-            {
-                var isSale = IsSaleTransaction(transaction);
-                if (transaction.IsSale != isSale)
-                {
-                    transaction.IsSale = isSale;
-                    changed = true;
-                }
-
-                if (!isSale && !string.IsNullOrWhiteSpace(transaction.InvoiceNumber))
-                {
-                    transaction.InvoiceNumber = null;
-                    changed = true;
-                }
-            }
-
-            var removedInvoices = Data.Invoices.RemoveAll(i =>
-            {
-                if (i.TransactionId.HasValue)
-                {
-                    var txn = Data.Transactions.FirstOrDefault(t => t.Id == i.TransactionId);
-                    return txn == null || !txn.IsSale;
-                }
-
-                return !Data.Transactions.Any(t =>
-                    t.IsSale &&
-                    string.Equals(t.InvoiceNumber, i.InvoiceNumber, StringComparison.OrdinalIgnoreCase));
-            });
-            if (removedInvoices > 0)
-                changed = true;
-
-            if (changed)
-                Save();
-        }
-
-        private static bool IsSaleTransaction(StockTransaction transaction)
-        {
-            if (transaction.Type != TransactionType.StockOut)
-                return false;
-
-            if (IsProductionTransaction(transaction))
-                return false;
-
-            if (transaction.IsSale)
-                return true;
-
-            return transaction.CustomerId.HasValue;
-        }
-
-        private static bool IsProductionTransaction(StockTransaction transaction)
-        {
-            return !string.IsNullOrWhiteSpace(transaction.Notes) &&
-                   transaction.Notes.TrimStart().StartsWith("Production ", StringComparison.OrdinalIgnoreCase);
-        }
-
         private string GenerateInvoiceNumber()
         {
             string invoice;
@@ -878,6 +728,7 @@ namespace Stock_Managemnet.Services
             return int.TryParse(parts[parts.Length - 1], out sequence);
         }
 
+        public int ProductCount => Data.Products.Count;
         public int LowStockCount => Data.Products.Count(p => p.IsLowStock);
         public decimal TotalInventoryValue => Data.Products.Sum(p => p.StockValue);
     }

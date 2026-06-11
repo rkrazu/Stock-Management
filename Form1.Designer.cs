@@ -12,6 +12,31 @@
         private System.Windows.Forms.TabPage tabInvoices;
         private System.Windows.Forms.TabPage tabProduction;
         private System.Windows.Forms.TabPage tabTransactions;
+        private System.Windows.Forms.TabPage tabSettings;
+        private System.Windows.Forms.Panel panelSettings;
+        private System.Windows.Forms.Panel panelSettingsNav;
+        private System.Windows.Forms.ListBox lstSettingsNav;
+        private System.Windows.Forms.Panel panelSettingsContent;
+        private System.Windows.Forms.Panel panelSettingsBackup;
+        private System.Windows.Forms.Panel panelSettingsPassword;
+        private System.Windows.Forms.GroupBox grpDatabaseInfo;
+        private System.Windows.Forms.Label lblSettingsServerCaption;
+        private System.Windows.Forms.Label lblSettingsServerValue;
+        private System.Windows.Forms.Label lblSettingsDatabaseCaption;
+        private System.Windows.Forms.Label lblSettingsDatabaseValue;
+        private System.Windows.Forms.GroupBox grpBackupRestore;
+        private System.Windows.Forms.Label lblBackupHelp;
+        private System.Windows.Forms.Button btnBackupDatabase;
+        private System.Windows.Forms.Button btnRestoreDatabase;
+        private System.Windows.Forms.GroupBox grpPasswordChange;
+        private System.Windows.Forms.Label lblCurrentPassword;
+        private Stock_Managemnet.Controls.PasswordFieldControl txtCurrentPassword;
+        private System.Windows.Forms.Label lblNewPassword;
+        private Stock_Managemnet.Controls.PasswordFieldControl txtNewPassword;
+        private System.Windows.Forms.Label lblConfirmPassword;
+        private Stock_Managemnet.Controls.PasswordFieldControl txtConfirmPassword;
+        private System.Windows.Forms.Label lblPasswordRules;
+        private System.Windows.Forms.Button btnChangePassword;
         private System.Windows.Forms.TableLayoutPanel tlpInventory;
         private System.Windows.Forms.TableLayoutPanel tlpCustomers;
         private System.Windows.Forms.Panel panelInventoryToolbar;
@@ -68,7 +93,8 @@
         private System.Windows.Forms.CheckBox chkTxnDateRange;
         private System.Windows.Forms.DataGridView dgvTransactions;
         private System.Windows.Forms.StatusStrip statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel statusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel statusFooterSpacer;
+        private System.Windows.Forms.ToolStripStatusLabel statusFooter;
 
         protected override void Dispose(bool disposing)
         {
@@ -143,8 +169,34 @@
             this.lblTxnTo = new System.Windows.Forms.Label();
             this.dtpTxnTo = new System.Windows.Forms.DateTimePicker();
             this.chkTxnDateRange = new System.Windows.Forms.CheckBox();
+            this.tabSettings = new System.Windows.Forms.TabPage();
+            this.panelSettings = new System.Windows.Forms.Panel();
+            this.panelSettingsNav = new System.Windows.Forms.Panel();
+            this.lstSettingsNav = new System.Windows.Forms.ListBox();
+            this.panelSettingsContent = new System.Windows.Forms.Panel();
+            this.panelSettingsBackup = new System.Windows.Forms.Panel();
+            this.panelSettingsPassword = new System.Windows.Forms.Panel();
+            this.grpDatabaseInfo = new System.Windows.Forms.GroupBox();
+            this.lblSettingsServerCaption = new System.Windows.Forms.Label();
+            this.lblSettingsServerValue = new System.Windows.Forms.Label();
+            this.lblSettingsDatabaseCaption = new System.Windows.Forms.Label();
+            this.lblSettingsDatabaseValue = new System.Windows.Forms.Label();
+            this.grpBackupRestore = new System.Windows.Forms.GroupBox();
+            this.lblBackupHelp = new System.Windows.Forms.Label();
+            this.btnBackupDatabase = new System.Windows.Forms.Button();
+            this.btnRestoreDatabase = new System.Windows.Forms.Button();
+            this.grpPasswordChange = new System.Windows.Forms.GroupBox();
+            this.lblCurrentPassword = new System.Windows.Forms.Label();
+            this.txtCurrentPassword = new Stock_Managemnet.Controls.PasswordFieldControl();
+            this.lblNewPassword = new System.Windows.Forms.Label();
+            this.txtNewPassword = new Stock_Managemnet.Controls.PasswordFieldControl();
+            this.lblConfirmPassword = new System.Windows.Forms.Label();
+            this.txtConfirmPassword = new Stock_Managemnet.Controls.PasswordFieldControl();
+            this.lblPasswordRules = new System.Windows.Forms.Label();
+            this.btnChangePassword = new System.Windows.Forms.Button();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
-            this.statusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.statusFooterSpacer = new System.Windows.Forms.ToolStripStatusLabel();
+            this.statusFooter = new System.Windows.Forms.ToolStripStatusLabel();
             this.panelHeader.SuspendLayout();
             this.tabMain.SuspendLayout();
             this.tabInventory.SuspendLayout();
@@ -165,6 +217,15 @@
             this.panelProductionToolbar.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvProductionOrders)).BeginInit();
             this.tabTransactions.SuspendLayout();
+            this.tabSettings.SuspendLayout();
+            this.panelSettings.SuspendLayout();
+            this.panelSettingsNav.SuspendLayout();
+            this.panelSettingsContent.SuspendLayout();
+            this.panelSettingsBackup.SuspendLayout();
+            this.panelSettingsPassword.SuspendLayout();
+            this.grpDatabaseInfo.SuspendLayout();
+            this.grpBackupRestore.SuspendLayout();
+            this.grpPasswordChange.SuspendLayout();
             this.tlpTransactions.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvTransactions)).BeginInit();
             this.panelTransactionToolbar.SuspendLayout();
@@ -201,6 +262,7 @@
             this.tabMain.Controls.Add(this.tabInvoices);
             this.tabMain.Controls.Add(this.tabProduction);
             this.tabMain.Controls.Add(this.tabTransactions);
+            this.tabMain.Controls.Add(this.tabSettings);
             this.tabMain.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabMain.Font = new System.Drawing.Font("Segoe UI", 11F);
             //
@@ -703,14 +765,214 @@
             this.dgvTransactions.RowHeadersVisible = false;
             this.dgvTransactions.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             //
+            // tabSettings
+            //
+            this.tabSettings.Controls.Add(this.panelSettings);
+            this.tabSettings.Text = "Settings";
+            this.tabSettings.UseVisualStyleBackColor = true;
+            //
+            // panelSettings
+            //
+            this.panelSettings.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelSettings.Controls.Add(this.panelSettingsContent);
+            this.panelSettings.Controls.Add(this.panelSettingsNav);
+            //
+            // panelSettingsNav
+            //
+            this.panelSettingsNav.BackColor = System.Drawing.Color.FromArgb(243, 244, 246);
+            this.panelSettingsNav.Dock = System.Windows.Forms.DockStyle.Left;
+            this.panelSettingsNav.Padding = new System.Windows.Forms.Padding(12, 16, 12, 16);
+            this.panelSettingsNav.Width = 220;
+            this.panelSettingsNav.Controls.Add(this.lstSettingsNav);
+            //
+            // lstSettingsNav
+            //
+            this.lstSettingsNav.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.lstSettingsNav.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lstSettingsNav.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.lstSettingsNav.IntegralHeight = false;
+            this.lstSettingsNav.ItemHeight = 34;
+            this.lstSettingsNav.Items.AddRange(new object[] {
+            "Backup & Restore",
+            "Password"});
+            //
+            // panelSettingsContent
+            //
+            this.panelSettingsContent.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelSettingsContent.Padding = new System.Windows.Forms.Padding(24);
+            this.panelSettingsContent.Controls.Add(this.panelSettingsPassword);
+            this.panelSettingsContent.Controls.Add(this.panelSettingsBackup);
+            //
+            // panelSettingsBackup
+            //
+            this.panelSettingsBackup.AutoScroll = true;
+            this.panelSettingsBackup.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelSettingsBackup.Controls.Add(this.grpBackupRestore);
+            this.panelSettingsBackup.Controls.Add(this.grpDatabaseInfo);
+            //
+            // panelSettingsPassword
+            //
+            this.panelSettingsPassword.AutoScroll = true;
+            this.panelSettingsPassword.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelSettingsPassword.Visible = false;
+            this.panelSettingsPassword.Controls.Add(this.grpPasswordChange);
+            //
+            // grpDatabaseInfo
+            //
+            this.grpDatabaseInfo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpDatabaseInfo.Location = new System.Drawing.Point(0, 0);
+            this.grpDatabaseInfo.Margin = new System.Windows.Forms.Padding(0, 0, 0, 16);
+            this.grpDatabaseInfo.Size = new System.Drawing.Size(760, 110);
+            this.grpDatabaseInfo.Text = "Database";
+            this.grpDatabaseInfo.Controls.Add(this.lblSettingsServerCaption);
+            this.grpDatabaseInfo.Controls.Add(this.lblSettingsServerValue);
+            this.grpDatabaseInfo.Controls.Add(this.lblSettingsDatabaseCaption);
+            this.grpDatabaseInfo.Controls.Add(this.lblSettingsDatabaseValue);
+            //
+            // lblSettingsServerCaption
+            //
+            this.lblSettingsServerCaption.AutoSize = true;
+            this.lblSettingsServerCaption.Location = new System.Drawing.Point(20, 34);
+            this.lblSettingsServerCaption.Text = "Server:";
+            //
+            // lblSettingsServerValue
+            //
+            this.lblSettingsServerValue.AutoSize = true;
+            this.lblSettingsServerValue.Location = new System.Drawing.Point(120, 34);
+            this.lblSettingsServerValue.Text = "-";
+            //
+            // lblSettingsDatabaseCaption
+            //
+            this.lblSettingsDatabaseCaption.AutoSize = true;
+            this.lblSettingsDatabaseCaption.Location = new System.Drawing.Point(20, 68);
+            this.lblSettingsDatabaseCaption.Text = "Database:";
+            //
+            // lblSettingsDatabaseValue
+            //
+            this.lblSettingsDatabaseValue.AutoSize = true;
+            this.lblSettingsDatabaseValue.Location = new System.Drawing.Point(120, 68);
+            this.lblSettingsDatabaseValue.Text = "-";
+            //
+            // grpBackupRestore
+            //
+            this.grpBackupRestore.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpBackupRestore.Location = new System.Drawing.Point(0, 126);
+            this.grpBackupRestore.Size = new System.Drawing.Size(760, 220);
+            this.grpBackupRestore.Text = "Backup && Restore";
+            this.grpBackupRestore.Controls.Add(this.lblBackupHelp);
+            this.grpBackupRestore.Controls.Add(this.btnBackupDatabase);
+            this.grpBackupRestore.Controls.Add(this.btnRestoreDatabase);
+            //
+            // lblBackupHelp
+            //
+            this.lblBackupHelp.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblBackupHelp.Location = new System.Drawing.Point(20, 30);
+            this.lblBackupHelp.Size = new System.Drawing.Size(720, 90);
+            this.lblBackupHelp.Text = "Create a .bak backup file to USB drive or cloud storage. If this computer fails, install the app and SQL Server on a new PC, then restore the backup file to recover all data.";
+            //
+            // btnBackupDatabase
+            //
+            this.btnBackupDatabase.Location = new System.Drawing.Point(20, 140);
+            this.btnBackupDatabase.Size = new System.Drawing.Size(150, 34);
+            this.btnBackupDatabase.Text = "Backup Database...";
+            this.btnBackupDatabase.UseVisualStyleBackColor = true;
+            //
+            // btnRestoreDatabase
+            //
+            this.btnRestoreDatabase.Location = new System.Drawing.Point(180, 140);
+            this.btnRestoreDatabase.Size = new System.Drawing.Size(150, 34);
+            this.btnRestoreDatabase.Text = "Restore Database...";
+            this.btnRestoreDatabase.UseVisualStyleBackColor = true;
+            //
+            // grpPasswordChange
+            //
+            this.grpPasswordChange.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpPasswordChange.Location = new System.Drawing.Point(0, 0);
+            this.grpPasswordChange.Size = new System.Drawing.Size(760, 320);
+            this.grpPasswordChange.Text = "Change Password";
+            this.grpPasswordChange.Controls.Add(this.lblCurrentPassword);
+            this.grpPasswordChange.Controls.Add(this.txtCurrentPassword);
+            this.grpPasswordChange.Controls.Add(this.lblNewPassword);
+            this.grpPasswordChange.Controls.Add(this.txtNewPassword);
+            this.grpPasswordChange.Controls.Add(this.lblConfirmPassword);
+            this.grpPasswordChange.Controls.Add(this.txtConfirmPassword);
+            this.grpPasswordChange.Controls.Add(this.lblPasswordRules);
+            this.grpPasswordChange.Controls.Add(this.btnChangePassword);
+            //
+            // lblCurrentPassword
+            //
+            this.lblCurrentPassword.AutoSize = true;
+            this.lblCurrentPassword.Location = new System.Drawing.Point(20, 36);
+            this.lblCurrentPassword.Text = "Current password:";
+            //
+            // txtCurrentPassword
+            //
+            this.txtCurrentPassword.Location = new System.Drawing.Point(180, 33);
+            this.txtCurrentPassword.Size = new System.Drawing.Size(320, 30);
+            //
+            // lblNewPassword
+            //
+            this.lblNewPassword.AutoSize = true;
+            this.lblNewPassword.Location = new System.Drawing.Point(20, 76);
+            this.lblNewPassword.Text = "New password:";
+            //
+            // txtNewPassword
+            //
+            this.txtNewPassword.Location = new System.Drawing.Point(180, 73);
+            this.txtNewPassword.Size = new System.Drawing.Size(320, 30);
+            //
+            // lblConfirmPassword
+            //
+            this.lblConfirmPassword.AutoSize = true;
+            this.lblConfirmPassword.Location = new System.Drawing.Point(20, 116);
+            this.lblConfirmPassword.Text = "Confirm password:";
+            //
+            // txtConfirmPassword
+            //
+            this.txtConfirmPassword.Location = new System.Drawing.Point(180, 113);
+            this.txtConfirmPassword.Size = new System.Drawing.Size(320, 30);
+            //
+            // lblPasswordRules
+            //
+            this.lblPasswordRules.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblPasswordRules.ForeColor = System.Drawing.Color.FromArgb(75, 85, 99);
+            this.lblPasswordRules.Location = new System.Drawing.Point(20, 156);
+            this.lblPasswordRules.Size = new System.Drawing.Size(720, 90);
+            this.lblPasswordRules.Text = "Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character.";
+            //
+            // btnChangePassword
+            //
+            this.btnChangePassword.Location = new System.Drawing.Point(180, 260);
+            this.btnChangePassword.Size = new System.Drawing.Size(150, 34);
+            this.btnChangePassword.Text = "Change Password";
+            this.btnChangePassword.UseVisualStyleBackColor = true;
+            //
             // statusStrip
             //
-            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { this.statusLabel });
+            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.statusFooterSpacer,
+            this.statusFooter});
+            this.statusStrip.Padding = new System.Windows.Forms.Padding(8, 4, 12, 4);
+            this.statusStrip.Size = new System.Drawing.Size(1060, 50);
             //
-            // statusLabel
+            // statusFooterSpacer
             //
-            this.statusLabel.Spring = true;
-            this.statusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.statusFooterSpacer.Name = "statusFooterSpacer";
+            this.statusFooterSpacer.Spring = true;
+            //
+            // statusFooter
+            //
+            this.statusFooter.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.statusFooter.ImageAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.statusFooter.Name = "statusFooter";
+            this.statusFooter.Text = "Software developed by RK Razu";
+            this.statusFooter.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.statusFooter.TextImageRelation = System.Windows.Forms.TextImageRelation.TextBeforeImage;
             //
             // Form1
             //
@@ -723,6 +985,7 @@
             this.Font = new System.Drawing.Font("Segoe UI", 11F);
             this.MinimumSize = new System.Drawing.Size(900, 500);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Text = "Stock Management";
             this.panelHeader.ResumeLayout(false);
             this.panelHeader.PerformLayout();
@@ -750,6 +1013,17 @@
             this.panelProductionToolbar.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvProductionOrders)).EndInit();
             this.tabTransactions.ResumeLayout(false);
+            this.tabSettings.ResumeLayout(false);
+            this.panelSettings.ResumeLayout(false);
+            this.panelSettingsNav.ResumeLayout(false);
+            this.panelSettingsContent.ResumeLayout(false);
+            this.panelSettingsBackup.ResumeLayout(false);
+            this.panelSettingsPassword.ResumeLayout(false);
+            this.grpDatabaseInfo.ResumeLayout(false);
+            this.grpDatabaseInfo.PerformLayout();
+            this.grpBackupRestore.ResumeLayout(false);
+            this.grpPasswordChange.ResumeLayout(false);
+            this.grpPasswordChange.PerformLayout();
             this.tlpTransactions.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dgvTransactions)).EndInit();
             this.panelTransactionToolbar.ResumeLayout(false);
