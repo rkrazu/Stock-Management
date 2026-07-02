@@ -11,7 +11,7 @@ namespace Stock_Managemnet
         private readonly Product _product;
         private readonly bool _isNew;
 
-        public ProductEditForm(StockRepository repository, Product product = null)
+        public ProductEditForm(StockRepository repository, Product product = null, ProductType? defaultType = null)
         {
             _repository = repository;
             _isNew = product == null;
@@ -20,12 +20,17 @@ namespace Stock_Managemnet
             UiStyles.Apply(this);
             Text = _isNew ? "Add Product" : "Edit Product";
             btnSave.Text = _isNew ? "Add" : "Save";
+            cmbType.SelectedIndex = 0;
+
+            if (_isNew && defaultType.HasValue)
+                cmbType.SelectedItem = ProductTypeLabels.ToLabel(defaultType.Value);
 
             if (!_isNew)
             {
                 txtSku.Text = _product.Sku;
                 txtName.Text = _product.Name;
                 txtCategory.Text = _product.Category;
+                cmbType.SelectedItem = ProductTypeLabels.ToLabel(_product.ProductType);
                 numPrice.Value = ClampDecimal(_product.UnitPrice, numPrice.Minimum, numPrice.Maximum);
                 numReorder.Value = Math.Max(0, Math.Min(numReorder.Maximum, _product.ReorderLevel));
                 numQuantity.Value = Math.Max(0, Math.Min(numQuantity.Maximum, _product.Quantity));
@@ -55,6 +60,13 @@ namespace Stock_Managemnet
                 return;
             }
 
+            if (cmbType.SelectedItem == null)
+            {
+                MessageBox.Show("Product type is required.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                cmbType.Focus();
+                return;
+            }
+
             if (_repository.SkuExists(sku, _isNew ? (Guid?)null : _product.Id))
             {
                 MessageBox.Show("A product with this SKU already exists.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -65,6 +77,7 @@ namespace Stock_Managemnet
             _product.Sku = sku;
             _product.Name = name;
             _product.Category = txtCategory.Text.Trim();
+            _product.ProductType = ProductTypeLabels.FromLabel(cmbType.SelectedItem.ToString());
             _product.UnitPrice = numPrice.Value;
             _product.ReorderLevel = (int)numReorder.Value;
 

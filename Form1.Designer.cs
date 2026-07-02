@@ -1,4 +1,4 @@
-﻿namespace Stock_Managemnet
+namespace Stock_Managemnet
 {
     partial class Form1
     {
@@ -39,10 +39,17 @@
         private System.Windows.Forms.Button btnChangePassword;
         private System.Windows.Forms.TableLayoutPanel tlpInventory;
         private System.Windows.Forms.TableLayoutPanel tlpCustomers;
+        private System.Windows.Forms.TabControl tabInventorySub;
+        private System.Windows.Forms.TabPage tabInventoryFg;
+        private System.Windows.Forms.TabPage tabInventoryRawMaterial;
         private System.Windows.Forms.Panel panelInventoryToolbar;
+        private System.Windows.Forms.FlowLayoutPanel flowInventoryFilters;
+        private System.Windows.Forms.FlowLayoutPanel flowInventoryActions;
         private System.Windows.Forms.TextBox txtSearch;
         private System.Windows.Forms.Button btnSearch;
         private System.Windows.Forms.Button btnReset;
+        private System.Windows.Forms.Label lblProductCategory;
+        private System.Windows.Forms.ComboBox cmbProductCategory;
         private System.Windows.Forms.CheckBox chkLowStockOnly;
         private System.Windows.Forms.Button btnAdd;
         private System.Windows.Forms.Button btnEdit;
@@ -111,11 +118,18 @@
             this.tabMain = new System.Windows.Forms.TabControl();
             this.tabInventory = new System.Windows.Forms.TabPage();
             this.tlpInventory = new System.Windows.Forms.TableLayoutPanel();
+            this.tabInventorySub = new System.Windows.Forms.TabControl();
+            this.tabInventoryFg = new System.Windows.Forms.TabPage();
+            this.tabInventoryRawMaterial = new System.Windows.Forms.TabPage();
             this.dgvProducts = new System.Windows.Forms.DataGridView();
             this.panelInventoryToolbar = new System.Windows.Forms.Panel();
+            this.flowInventoryFilters = new System.Windows.Forms.FlowLayoutPanel();
+            this.flowInventoryActions = new System.Windows.Forms.FlowLayoutPanel();
             this.txtSearch = new System.Windows.Forms.TextBox();
             this.btnSearch = new System.Windows.Forms.Button();
             this.btnReset = new System.Windows.Forms.Button();
+            this.lblProductCategory = new System.Windows.Forms.Label();
+            this.cmbProductCategory = new System.Windows.Forms.ComboBox();
             this.chkLowStockOnly = new System.Windows.Forms.CheckBox();
             this.btnAdd = new System.Windows.Forms.Button();
             this.btnEdit = new System.Windows.Forms.Button();
@@ -201,8 +215,11 @@
             this.tabMain.SuspendLayout();
             this.tabInventory.SuspendLayout();
             this.tlpInventory.SuspendLayout();
+            this.tabInventorySub.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvProducts)).BeginInit();
             this.panelInventoryToolbar.SuspendLayout();
+            this.flowInventoryFilters.SuspendLayout();
+            this.flowInventoryActions.SuspendLayout();
             this.tabCustomers.SuspendLayout();
             this.tlpCustomers.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvCustomers)).BeginInit();
@@ -272,88 +289,137 @@
             this.tabInventory.Text = "Inventory";
             this.tabInventory.UseVisualStyleBackColor = true;
             //
-            // tlpInventory — row 0 toolbar, row 1 grid (grid cannot overlap toolbar)
+            // tlpInventory — sub-tabs, toolbar, grid
             //
             this.tlpInventory.ColumnCount = 1;
             this.tlpInventory.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tlpInventory.Controls.Add(this.panelInventoryToolbar, 0, 0);
-            this.tlpInventory.Controls.Add(this.dgvProducts, 0, 1);
+            this.tlpInventory.Controls.Add(this.tabInventorySub, 0, 0);
+            this.tlpInventory.Controls.Add(this.panelInventoryToolbar, 0, 1);
+            this.tlpInventory.Controls.Add(this.dgvProducts, 0, 2);
             this.tlpInventory.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tlpInventory.RowCount = 2;
-            this.tlpInventory.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tlpInventory.RowCount = 3;
+            this.tlpInventory.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 34F));
+            this.tlpInventory.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 48F));
             this.tlpInventory.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            //
+            // tabInventorySub
+            //
+            this.tabInventorySub.Controls.Add(this.tabInventoryFg);
+            this.tabInventorySub.Controls.Add(this.tabInventoryRawMaterial);
+            this.tabInventorySub.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabInventorySub.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.tabInventorySub.SelectedIndex = 0;
+            //
+            // tabInventoryFg
+            //
+            this.tabInventoryFg.Text = "FG";
+            this.tabInventoryFg.UseVisualStyleBackColor = true;
+            //
+            // tabInventoryRawMaterial
+            //
+            this.tabInventoryRawMaterial.Text = "Raw Materials";
+            this.tabInventoryRawMaterial.UseVisualStyleBackColor = true;
             //
             // panelInventoryToolbar
             //
             this.panelInventoryToolbar.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelInventoryToolbar.Padding = new System.Windows.Forms.Padding(8, 8, 8, 4);
-            this.panelInventoryToolbar.Controls.Add(this.txtSearch);
-            this.panelInventoryToolbar.Controls.Add(this.btnSearch);
-            this.panelInventoryToolbar.Controls.Add(this.btnReset);
-            this.panelInventoryToolbar.Controls.Add(this.chkLowStockOnly);
-            this.panelInventoryToolbar.Controls.Add(this.btnAdd);
-            this.panelInventoryToolbar.Controls.Add(this.btnEdit);
-            this.panelInventoryToolbar.Controls.Add(this.btnDelete);
-            this.panelInventoryToolbar.Controls.Add(this.btnStockIn);
-            this.panelInventoryToolbar.Controls.Add(this.btnStockOut);
+            this.panelInventoryToolbar.Controls.Add(this.flowInventoryActions);
+            this.panelInventoryToolbar.Controls.Add(this.flowInventoryFilters);
+            //
+            // flowInventoryFilters
+            //
+            this.flowInventoryFilters.AutoSize = true;
+            this.flowInventoryFilters.Dock = System.Windows.Forms.DockStyle.Left;
+            this.flowInventoryFilters.WrapContents = false;
+            this.flowInventoryFilters.Controls.Add(this.txtSearch);
+            this.flowInventoryFilters.Controls.Add(this.btnSearch);
+            this.flowInventoryFilters.Controls.Add(this.btnReset);
+            this.flowInventoryFilters.Controls.Add(this.lblProductCategory);
+            this.flowInventoryFilters.Controls.Add(this.cmbProductCategory);
+            this.flowInventoryFilters.Controls.Add(this.chkLowStockOnly);
+            //
+            // flowInventoryActions
+            //
+            this.flowInventoryActions.AutoSize = true;
+            this.flowInventoryActions.Dock = System.Windows.Forms.DockStyle.Right;
+            this.flowInventoryActions.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.flowInventoryActions.WrapContents = false;
+            this.flowInventoryActions.Controls.Add(this.btnAdd);
+            this.flowInventoryActions.Controls.Add(this.btnEdit);
+            this.flowInventoryActions.Controls.Add(this.btnDelete);
+            this.flowInventoryActions.Controls.Add(this.btnStockIn);
+            this.flowInventoryActions.Controls.Add(this.btnStockOut);
             //
             // txtSearch
             //
-            this.txtSearch.Location = new System.Drawing.Point(11, 12);
-            this.txtSearch.Size = new System.Drawing.Size(220, 23);
+            this.txtSearch.Margin = new System.Windows.Forms.Padding(3, 6, 3, 3);
+            this.txtSearch.Size = new System.Drawing.Size(180, 23);
             //
             // btnSearch
             //
-            this.btnSearch.Location = new System.Drawing.Point(237, 10);
+            this.btnSearch.Margin = new System.Windows.Forms.Padding(3, 5, 3, 3);
             this.btnSearch.Size = new System.Drawing.Size(65, 27);
             this.btnSearch.Text = "Search";
             this.btnSearch.UseVisualStyleBackColor = true;
             //
             // btnReset
             //
-            this.btnReset.Location = new System.Drawing.Point(308, 10);
+            this.btnReset.Margin = new System.Windows.Forms.Padding(3, 5, 3, 3);
             this.btnReset.Size = new System.Drawing.Size(65, 27);
             this.btnReset.Text = "Reset";
             this.btnReset.UseVisualStyleBackColor = true;
             //
+            // lblProductCategory
+            //
+            this.lblProductCategory.AutoSize = true;
+            this.lblProductCategory.Margin = new System.Windows.Forms.Padding(12, 10, 3, 0);
+            this.lblProductCategory.Text = "Category:";
+            //
+            // cmbProductCategory
+            //
+            this.cmbProductCategory.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbProductCategory.Margin = new System.Windows.Forms.Padding(3, 6, 3, 3);
+            this.cmbProductCategory.Size = new System.Drawing.Size(150, 23);
+            //
             // chkLowStockOnly
             //
             this.chkLowStockOnly.AutoSize = true;
-            this.chkLowStockOnly.Location = new System.Drawing.Point(385, 12);
+            this.chkLowStockOnly.Margin = new System.Windows.Forms.Padding(12, 9, 3, 3);
             this.chkLowStockOnly.Text = "Low stock only";
             this.chkLowStockOnly.UseVisualStyleBackColor = true;
             //
             // btnAdd
             //
-            this.btnAdd.Location = new System.Drawing.Point(505, 10);
-            this.btnAdd.Size = new System.Drawing.Size(90, 27);
+            this.btnAdd.Margin = new System.Windows.Forms.Padding(3, 5, 3, 3);
+            this.btnAdd.Size = new System.Drawing.Size(100, 27);
             this.btnAdd.Text = "+ Add Product";
             this.btnAdd.UseVisualStyleBackColor = true;
             //
             // btnEdit
             //
-            this.btnEdit.Location = new System.Drawing.Point(601, 10);
+            this.btnEdit.Margin = new System.Windows.Forms.Padding(3, 5, 3, 3);
             this.btnEdit.Size = new System.Drawing.Size(75, 27);
             this.btnEdit.Text = "Edit";
             this.btnEdit.Enabled = false;
             //
             // btnDelete
             //
-            this.btnDelete.Location = new System.Drawing.Point(682, 10);
+            this.btnDelete.Margin = new System.Windows.Forms.Padding(3, 5, 3, 3);
             this.btnDelete.Size = new System.Drawing.Size(75, 27);
             this.btnDelete.Text = "Delete";
             this.btnDelete.Enabled = false;
             //
             // btnStockIn
             //
-            this.btnStockIn.Location = new System.Drawing.Point(763, 10);
+            this.btnStockIn.Margin = new System.Windows.Forms.Padding(3, 5, 3, 3);
             this.btnStockIn.Size = new System.Drawing.Size(85, 27);
             this.btnStockIn.Text = "Stock In";
             this.btnStockIn.Enabled = false;
+            this.btnStockIn.Visible = false;
             //
             // btnStockOut
             //
-            this.btnStockOut.Location = new System.Drawing.Point(854, 10);
+            this.btnStockOut.Margin = new System.Windows.Forms.Padding(3, 5, 3, 3);
             this.btnStockOut.Size = new System.Drawing.Size(85, 27);
             this.btnStockOut.Text = "Stock Out";
             this.btnStockOut.Enabled = false;
@@ -992,9 +1058,14 @@
             this.tabMain.ResumeLayout(false);
             this.tabInventory.ResumeLayout(false);
             this.tlpInventory.ResumeLayout(false);
+            this.tlpInventory.PerformLayout();
+            this.tabInventorySub.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dgvProducts)).EndInit();
             this.panelInventoryToolbar.ResumeLayout(false);
             this.panelInventoryToolbar.PerformLayout();
+            this.flowInventoryFilters.ResumeLayout(false);
+            this.flowInventoryFilters.PerformLayout();
+            this.flowInventoryActions.ResumeLayout(false);
             this.tabCustomers.ResumeLayout(false);
             this.tlpCustomers.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dgvCustomers)).EndInit();

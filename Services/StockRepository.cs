@@ -75,6 +75,7 @@ namespace Stock_Managemnet.Services
             existing.Sku = product.Sku;
             existing.Name = product.Name;
             existing.Category = product.Category;
+            existing.ProductType = product.ProductType;
             existing.UnitPrice = product.UnitPrice;
             existing.ReorderLevel = product.ReorderLevel;
             existing.LastUpdated = DateTime.Now;
@@ -96,15 +97,21 @@ namespace Stock_Managemnet.Services
             if (request == null)
                 return "Invalid stock out request.";
 
-            if (request.Quantity <= 0)
-                return "Quantity must be greater than zero.";
+            if (request.Lines == null || request.Lines.Count == 0)
+                return "Add at least one product.";
 
-            var product = GetProduct(request.ProductId);
-            if (product == null)
-                return "Product not found.";
+            foreach (var line in request.Lines)
+            {
+                if (line.Quantity <= 0)
+                    return "Quantity must be greater than zero.";
 
-            if (product.Quantity < request.Quantity)
-                return $"Insufficient stock. Available: {product.Quantity}";
+                var product = GetProduct(line.ProductId);
+                if (product == null)
+                    return "Product not found.";
+
+                if (product.Quantity < line.Quantity)
+                    return $"Insufficient stock for {product.Name}. Available: {product.Quantity}";
+            }
 
             if (request.CustomerId.HasValue && GetCustomer(request.CustomerId.Value) == null)
                 return "Customer not found.";
@@ -117,10 +124,30 @@ namespace Stock_Managemnet.Services
 
         public Invoice BuildStockOutInvoicePreview(StockOutRequest request)
         {
-            var product = GetProduct(request.ProductId);
             var customer = request.CustomerId.HasValue ? GetCustomer(request.CustomerId.Value) : null;
-            var unitPrice = product?.UnitPrice ?? 0;
-            var lineTotal = unitPrice * request.Quantity;
+            var items = new List<InvoiceLineItem>();
+            decimal totalAmount = 0;
+
+            foreach (var line in request.Lines)
+            {
+                var product = GetProduct(line.ProductId);
+                if (product == null)
+                    continue;
+
+                var unitPrice = product.UnitPrice;
+                var lineTotal = unitPrice * line.Quantity;
+                totalAmount += lineTotal;
+                items.Add(new InvoiceLineItem
+                {
+                    ProductId = product.Id,
+                    ProductSku = product.Sku,
+                    ProductName = product.Name,
+                    ProductCategory = product.Category ?? string.Empty,
+                    Quantity = line.Quantity,
+                    UnitPrice = unitPrice,
+                    LineTotal = lineTotal
+                });
+            }
 
             return new Invoice
             {
@@ -130,19 +157,8 @@ namespace Stock_Managemnet.Services
                 CustomerAddress = customer?.Address,
                 Notes = request.Notes ?? string.Empty,
                 CreatedAt = DateTime.Now,
-                TotalAmount = lineTotal,
-                Items = new List<InvoiceLineItem>
-                {
-                    new InvoiceLineItem
-                    {
-                        ProductId = product.Id,
-                        ProductSku = product.Sku,
-                        ProductName = product.Name,
-                        Quantity = request.Quantity,
-                        UnitPrice = unitPrice,
-                        LineTotal = lineTotal
-                    }
-                }
+                TotalAmount = totalAmount,
+                Items = items
             };
         }
 
@@ -152,33 +168,54 @@ namespace Stock_Managemnet.Services
             if (error != null)
                 return error;
 
-            var product = GetProduct(request.ProductId);
             var customer = request.CustomerId.HasValue ? GetCustomer(request.CustomerId.Value) : null;
             var invoiceNumber = GenerateInvoiceNumber();
-            var unitPrice = product.UnitPrice;
-            var lineTotal = unitPrice * request.Quantity;
-            var transactionId = Guid.NewGuid();
+            var items = new List<InvoiceLineItem>();
+            Guid? firstTransactionId = null;
+            decimal totalAmount = 0;
 
-            product.Quantity -= request.Quantity;
-            product.LastUpdated = DateTime.Now;
-
-            Data.Transactions.Insert(0, new StockTransaction
+            foreach (var line in request.Lines)
             {
-                Id = transactionId,
-                InvoiceNumber = invoiceNumber,
-                IsSale = true,
-                ProductId = product.Id,
-                ProductName = product.Name,
-                ProductSku = product.Sku,
-                Type = TransactionType.StockOut,
-                Quantity = request.Quantity,
-                UnitPrice = unitPrice,
-                TotalValue = lineTotal,
-                Notes = request.Notes ?? string.Empty,
-                CustomerId = customer?.Id,
-                CustomerName = customer?.Name,
-                Timestamp = DateTime.Now
-            });
+                var product = GetProduct(line.ProductId);
+                var unitPrice = product.UnitPrice;
+                var lineTotal = unitPrice * line.Quantity;
+                var transactionId = Guid.NewGuid();
+                if (!firstTransactionId.HasValue)
+                    firstTransactionId = transactionId;
+
+                product.Quantity -= line.Quantity;
+                product.LastUpdated = DateTime.Now;
+                totalAmount += lineTotal;
+
+                Data.Transactions.Insert(0, new StockTransaction
+                {
+                    Id = transactionId,
+                    InvoiceNumber = invoiceNumber,
+                    IsSale = true,
+                    ProductId = product.Id,
+                    ProductName = product.Name,
+                    ProductSku = product.Sku,
+                    Type = TransactionType.StockOut,
+                    Quantity = line.Quantity,
+                    UnitPrice = unitPrice,
+                    TotalValue = lineTotal,
+                    Notes = request.Notes ?? string.Empty,
+                    CustomerId = customer?.Id,
+                    CustomerName = customer?.Name,
+                    Timestamp = DateTime.Now
+                });
+
+                items.Add(new InvoiceLineItem
+                {
+                    ProductId = product.Id,
+                    ProductSku = product.Sku,
+                    ProductName = product.Name,
+                    ProductCategory = product.Category ?? string.Empty,
+                    Quantity = line.Quantity,
+                    UnitPrice = unitPrice,
+                    LineTotal = lineTotal
+                });
+            }
 
             Data.Invoices.Insert(0, new Invoice
             {
@@ -188,21 +225,10 @@ namespace Stock_Managemnet.Services
                 CustomerPhone = customer?.Phone ?? string.Empty,
                 CustomerAddress = customer?.Address ?? string.Empty,
                 Notes = request.Notes ?? string.Empty,
-                TotalAmount = lineTotal,
-                TransactionId = transactionId,
+                TotalAmount = totalAmount,
+                TransactionId = firstTransactionId,
                 CreatedAt = DateTime.Now,
-                Items = new List<InvoiceLineItem>
-                {
-                    new InvoiceLineItem
-                    {
-                        ProductId = product.Id,
-                        ProductSku = product.Sku,
-                        ProductName = product.Name,
-                        Quantity = request.Quantity,
-                        UnitPrice = unitPrice,
-                        LineTotal = lineTotal
-                    }
-                }
+                Items = items
             });
 
             Save();
@@ -427,26 +453,50 @@ namespace Stock_Managemnet.Services
             return phoneDigits.IndexOf(partDigits, StringComparison.Ordinal) >= 0;
         }
 
-        public IEnumerable<Product> SearchProducts(string term)
+        public IEnumerable<Product> SearchProducts(string term, ProductType? typeFilter = null, string categoryFilter = null)
         {
+            IEnumerable<Product> query = Data.Products;
+
+            if (typeFilter.HasValue)
+                query = query.Where(p => p.ProductType == typeFilter.Value);
+
+            if (!string.IsNullOrWhiteSpace(categoryFilter))
+            {
+                categoryFilter = categoryFilter.Trim();
+                query = query.Where(p =>
+                    !string.IsNullOrWhiteSpace(p.Category) &&
+                    string.Equals(p.Category.Trim(), categoryFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
             if (string.IsNullOrWhiteSpace(term))
-                return Data.Products.OrderBy(p => p.Name);
+                return query.OrderBy(p => p.Name);
 
             term = term.Trim();
 
             if (TryParseDisplaySearch(term, out var namePart, out var skuPart))
             {
-                return Data.Products
+                return query
                     .Where(p => MatchesTextPart(p.Name, namePart) && MatchesTextPart(p.Sku, skuPart))
                     .OrderBy(p => p.Name);
             }
 
-            return Data.Products
+            return query
                 .Where(p =>
                     MatchesTextPart(p.Name, term) ||
                     MatchesTextPart(p.Sku, term) ||
-                    MatchesTextPart(p.Category, term))
+                    MatchesTextPart(p.Category, term) ||
+                    MatchesTextPart(ProductTypeLabels.ToLabel(p.ProductType), term))
                 .OrderBy(p => p.Name);
+        }
+
+        public IEnumerable<string> GetProductCategories()
+        {
+            return Data.Products
+                .Select(p => p.Category)
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Select(c => c.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(c => c, StringComparer.OrdinalIgnoreCase);
         }
 
         public bool ProductMatchesSearchTerm(Product product, string term)

@@ -1,9 +1,11 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 using Stock_Managemnet.Data;
 using Stock_Managemnet.Models;
 using Stock_Managemnet.Services;
@@ -17,6 +19,10 @@ namespace Stock_Managemnet
         private bool _allowGridSelection;
         private bool _filterInActive;
         private bool _filterOutActive;
+        private bool _suppressCategoryFilterChange;
+        private readonly HashSet<Guid> _fgSelectedProductIds = new HashSet<Guid>();
+        private bool _suppressFgCheckboxEvents;
+        private bool? _selectAllHeaderState;
 
         public Form1()
         {
@@ -34,6 +40,7 @@ namespace Stock_Managemnet
             ShowSettingsSection(0);
             _repository.Load();
             _allowGridSelection = false;
+            ConfigureProductFilters();
             ConfigureFooter();
             RefreshAll();
             Shown += Form1_Shown;
@@ -148,19 +155,21 @@ namespace Stock_Managemnet
 
         private void WireEvents()
         {
-            btnSearch.Click += (s, e) => RefreshProducts(preserveSelection: false);
+            btnSearch.Click += (s, e) => RefreshProducts();
             btnReset.Click += (s, e) => ResetProductFilters();
+            tabInventorySub.SelectedIndexChanged += TabInventorySub_SelectedIndexChanged;
             btnAdd.Click += BtnAdd_Click;
             btnEdit.Click += BtnEdit_Click;
             btnDelete.Click += BtnDelete_Click;
             btnStockIn.Click += (s, e) => OpenStockAdjust(TransactionType.StockIn);
-            btnStockOut.Click += (s, e) => OpenStockAdjust(TransactionType.StockOut);
-            chkLowStockOnly.CheckedChanged += (s, e) => RefreshProducts(preserveSelection: false);
+            btnStockOut.Click += (s, e) => OpenStockOut();
+            chkLowStockOnly.CheckedChanged += (s, e) => RefreshProducts();
+            cmbProductCategory.SelectedIndexChanged += CmbProductCategory_SelectedIndexChanged;
             txtSearch.KeyDown += (s, e) =>
             {
                 if (e.KeyCode == Keys.Enter)
                 {
-                    RefreshProducts(preserveSelection: false);
+                    RefreshProducts();
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                 }
@@ -170,6 +179,10 @@ namespace Stock_Managemnet
                 GuardGridSelection(dgvProducts);
                 UpdateActionButtons();
             };
+            dgvProducts.CellValueChanged += DgvProducts_CellValueChanged;
+            dgvProducts.CurrentCellDirtyStateChanged += DgvProducts_CurrentCellDirtyStateChanged;
+            dgvProducts.CellPainting += DgvProducts_CellPainting;
+            dgvProducts.ColumnHeaderMouseClick += DgvProducts_ColumnHeaderMouseClick;
             dgvProducts.CellDoubleClick += (s, e) => BtnEdit_Click(s, e);
             btnCustomerSearch.Click += (s, e) => RefreshCustomers(preserveSelection: false);
             btnCustomerReset.Click += (s, e) => ResetCustomerFilters();
@@ -278,7 +291,17 @@ namespace Stock_Managemnet
         private void ConfigureProductGrid()
         {
             dgvProducts.AutoGenerateColumns = false;
+            dgvProducts.ReadOnly = false;
             dgvProducts.Columns.Clear();
+
+            var colSelect = new DataGridViewCheckBoxColumn
+            {
+                Name = "Select",
+                HeaderText = "Select All",
+                Width = 96,
+                ReadOnly = false
+            };
+            dgvProducts.Columns.Add(colSelect);
             dgvProducts.Columns.Add("Sku", "SKU");
             dgvProducts.Columns.Add("Name", "Name");
             dgvProducts.Columns.Add("Category", "Category");
@@ -288,10 +311,199 @@ namespace Stock_Managemnet
             dgvProducts.Columns.Add("StockValue", "Value");
             dgvProducts.Columns.Add("Status", "Status");
 
+            foreach (DataGridViewColumn column in dgvProducts.Columns)
+            {
+                if (column.Name != "Select")
+                    column.ReadOnly = true;
+            }
+
             dgvProducts.Columns["UnitPrice"].DefaultCellStyle.Format = "C2";
             dgvProducts.Columns["StockValue"].DefaultCellStyle.Format = "C2";
             dgvProducts.Columns["Quantity"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvProducts.Columns["ReorderLevel"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvProducts.Columns["Select"].Visible = false;
+        }
+
+        private void DgvProducts_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        {
+            if (!dgvProducts.IsCurrentCellDirty)
+                return;
+
+            if (dgvProducts.CurrentCell is DataGridViewCheckBoxCell)
+                dgvProducts.CommitEdit(DataGridViewDataErrorContexts.Commit);
+        }
+
+        private void DgvProducts_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (_suppressFgCheckboxEvents || e.RowIndex < 0 || e.ColumnIndex < 0)
+                return;
+
+            if (dgvProducts.Columns[e.ColumnIndex].Name != "Select")
+                return;
+
+            var row = dgvProducts.Rows[e.RowIndex];
+            if (!(row.Tag is Product product))
+                return;
+
+            var isChecked = row.Cells["Select"].Value is bool value && value;
+            if (isChecked)
+                _fgSelectedProductIds.Add(product.Id);
+            else
+                _fgSelectedProductIds.Remove(product.Id);
+
+            UpdateSelectAllHeaderState();
+            UpdateActionButtons();
+        }
+
+        private void DgvProducts_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex != -1 || e.ColumnIndex < 0)
+                return;
+
+            if (dgvProducts.Columns[e.ColumnIndex].Name != "Select")
+                return;
+
+            e.Paint(e.CellBounds, DataGridViewPaintParts.Background | DataGridViewPaintParts.Border);
+
+            var checkSize = CheckBoxRenderer.GetGlyphSize(e.Graphics, CheckBoxState.UncheckedNormal);
+            var checkY = e.CellBounds.Top + (e.CellBounds.Height - checkSize.Height) / 2;
+            var checkX = e.CellBounds.Left + 6;
+            var checkRect = new Rectangle(checkX, checkY, checkSize.Width, checkSize.Height);
+
+            CheckBoxState state;
+            if (_selectAllHeaderState == null)
+                state = CheckBoxState.MixedNormal;
+            else if (_selectAllHeaderState.Value)
+                state = CheckBoxState.CheckedNormal;
+            else
+                state = CheckBoxState.UncheckedNormal;
+
+            CheckBoxRenderer.DrawCheckBox(e.Graphics, checkRect.Location, state);
+
+            var textRect = new Rectangle(
+                checkRect.Right + 6,
+                e.CellBounds.Top,
+                e.CellBounds.Width - checkRect.Width - 12,
+                e.CellBounds.Height);
+            TextRenderer.DrawText(
+                e.Graphics,
+                "Select All",
+                dgvProducts.ColumnHeadersDefaultCellStyle.Font,
+                textRect,
+                dgvProducts.ColumnHeadersDefaultCellStyle.ForeColor,
+                TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+
+            e.Handled = true;
+        }
+
+        private void DgvProducts_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (!IsFgInventoryTab || e.ColumnIndex < 0)
+                return;
+
+            if (dgvProducts.Columns[e.ColumnIndex].Name != "Select")
+                return;
+
+            ToggleSelectAllHeader();
+        }
+
+        private void ToggleSelectAllHeader()
+        {
+            ApplyVisibleProductCheckboxes(_selectAllHeaderState != true);
+        }
+
+        private void ApplyVisibleProductCheckboxes(bool selectVisible)
+        {
+            dgvProducts.EndEdit();
+
+            try
+            {
+                dgvProducts.CurrentCell = null;
+            }
+            catch (InvalidOperationException)
+            {
+                // Grid may not allow clearing the current cell in some states.
+            }
+
+            _suppressFgCheckboxEvents = true;
+            try
+            {
+                if (selectVisible)
+                {
+                    foreach (DataGridViewRow row in dgvProducts.Rows)
+                    {
+                        if (row.Tag is Product product)
+                            _fgSelectedProductIds.Add(product.Id);
+
+                        row.Cells["Select"].Value = true;
+                    }
+                }
+                else
+                {
+                    _fgSelectedProductIds.Clear();
+                    foreach (DataGridViewRow row in dgvProducts.Rows)
+                        row.Cells["Select"].Value = false;
+                }
+            }
+            finally
+            {
+                _suppressFgCheckboxEvents = false;
+            }
+
+            var selectColumnIndex = dgvProducts.Columns["Select"].Index;
+            foreach (DataGridViewRow row in dgvProducts.Rows)
+                dgvProducts.InvalidateCell(selectColumnIndex, row.Index);
+
+            _selectAllHeaderState = selectVisible ? (bool?)true : false;
+            dgvProducts.InvalidateColumn(selectColumnIndex);
+            UpdateActionButtons();
+        }
+
+        private void UpdateSelectAllHeaderState()
+        {
+            if (!IsFgInventoryTab || dgvProducts.Rows.Count == 0)
+            {
+                _selectAllHeaderState = _fgSelectedProductIds.Count > 0 ? (bool?)null : false;
+                dgvProducts.InvalidateColumn(dgvProducts.Columns["Select"].Index);
+                return;
+            }
+
+            var visibleIds = dgvProducts.Rows
+                .Cast<DataGridViewRow>()
+                .Select(row => row.Tag as Product)
+                .Where(product => product != null)
+                .Select(product => product.Id)
+                .ToList();
+
+            if (visibleIds.Count == 0)
+            {
+                _selectAllHeaderState = _fgSelectedProductIds.Count > 0 ? (bool?)null : false;
+            }
+            else
+            {
+                var selectedVisibleCount = visibleIds.Count(id => _fgSelectedProductIds.Contains(id));
+                if (selectedVisibleCount == 0)
+                    _selectAllHeaderState = false;
+                else if (selectedVisibleCount == visibleIds.Count)
+                    _selectAllHeaderState = true;
+                else
+                    _selectAllHeaderState = null;
+            }
+
+            dgvProducts.InvalidateColumn(dgvProducts.Columns["Select"].Index);
+        }
+
+        private void ClearFgProductSelection()
+        {
+            ApplyVisibleProductCheckboxes(selectVisible: false);
+        }
+
+        private List<Product> GetFgCartProducts()
+        {
+            return _fgSelectedProductIds
+                .Select(id => _repository.GetProduct(id))
+                .Where(product => product != null && product.ProductType == ProductType.FG)
+                .ToList();
         }
 
         private void ConfigureCustomerGrid()
@@ -378,11 +590,74 @@ namespace Stock_Managemnet
             UpdateFilterButtonStyles();
         }
 
+        private void ConfigureProductFilters()
+        {
+            RefreshProductCategoryFilter();
+            ApplyInventorySubTabSettings();
+        }
+
+        private void TabInventorySub_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ApplyInventorySubTabSettings();
+        }
+
+        private bool IsFgInventoryTab => tabInventorySub.SelectedTab == tabInventoryFg;
+
+        private ProductType GetActiveInventoryProductType() =>
+            IsFgInventoryTab ? ProductType.FG : ProductType.RawMaterial;
+
+        private void ApplyInventorySubTabSettings()
+        {
+            var isFg = IsFgInventoryTab;
+            dgvProducts.MultiSelect = false;
+            dgvProducts.Columns["Select"].Visible = isFg;
+            btnStockIn.Visible = !isFg;
+            btnStockOut.Visible = isFg;
+            RefreshProducts();
+            UpdateActionButtons();
+        }
+
+        private void RefreshProductCategoryFilter()
+        {
+            var selected = cmbProductCategory.SelectedItem?.ToString();
+            _suppressCategoryFilterChange = true;
+            cmbProductCategory.Items.Clear();
+            cmbProductCategory.Items.Add("All categories");
+            foreach (var category in _repository.GetProductCategories())
+                cmbProductCategory.Items.Add(category);
+
+            if (!string.IsNullOrEmpty(selected) && cmbProductCategory.Items.Contains(selected))
+                cmbProductCategory.SelectedItem = selected;
+            else
+                cmbProductCategory.SelectedIndex = 0;
+
+            _suppressCategoryFilterChange = false;
+        }
+
+        private void CmbProductCategory_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (_suppressCategoryFilterChange)
+                return;
+
+            RefreshProducts();
+        }
+
+        private string GetSelectedCategoryFilter()
+        {
+            if (cmbProductCategory.SelectedIndex <= 0)
+                return null;
+
+            return cmbProductCategory.SelectedItem?.ToString();
+        }
+
         private void ResetProductFilters()
         {
             txtSearch.Clear();
             chkLowStockOnly.Checked = false;
-            RefreshProducts(preserveSelection: false);
+            _suppressCategoryFilterChange = true;
+            cmbProductCategory.SelectedIndex = 0;
+            _suppressCategoryFilterChange = false;
+            RefreshProducts();
         }
 
         private void ResetCustomerFilters()
@@ -474,6 +749,7 @@ namespace Stock_Managemnet
         private void RefreshAll()
         {
             RefreshHeader();
+            RefreshProductCategoryFilter();
             RefreshProducts();
             RefreshCustomers();
             RefreshInvoices();
@@ -494,34 +770,47 @@ namespace Stock_Managemnet
                 $"{count} product(s)  |  {low} low stock  |  Total value: {value:C2}";
         }
 
-        private void RefreshProducts(bool preserveSelection = true)
+        private void RefreshProducts(bool preserveRowSelection = true)
         {
-            var selectedId = preserveSelection ? GetSelectedProduct()?.Id : null;
+            var selectedId = preserveRowSelection ? GetSelectedProduct()?.Id : null;
+
             dgvProducts.Rows.Clear();
 
-            var products = _repository.SearchProducts(txtSearch.Text);
+            var products = _repository.SearchProducts(
+                txtSearch.Text,
+                GetActiveInventoryProductType(),
+                GetSelectedCategoryFilter());
             if (chkLowStockOnly.Checked)
                 products = products.Where(p => p.IsLowStock);
 
-            foreach (var p in products)
+            _suppressFgCheckboxEvents = true;
+            try
             {
-                var idx = dgvProducts.Rows.Add(
-                    p.Sku,
-                    p.Name,
-                    p.Category,
-                    p.Quantity,
-                    p.ReorderLevel,
-                    p.UnitPrice,
-                    p.StockValue,
-                    p.IsLowStock ? "LOW" : "OK");
-
-                dgvProducts.Rows[idx].Tag = p;
-
-                if (p.IsLowStock)
+                foreach (var p in products)
                 {
-                    dgvProducts.Rows[idx].DefaultCellStyle.BackColor = Color.FromArgb(254, 226, 226);
-                    dgvProducts.Rows[idx].DefaultCellStyle.ForeColor = Color.FromArgb(153, 27, 27);
+                    var idx = dgvProducts.Rows.Add(
+                        _fgSelectedProductIds.Contains(p.Id),
+                        p.Sku,
+                        p.Name,
+                        p.Category,
+                        p.Quantity,
+                        p.ReorderLevel,
+                        p.UnitPrice,
+                        p.StockValue,
+                        p.IsLowStock ? "LOW" : "OK");
+
+                    dgvProducts.Rows[idx].Tag = p;
+
+                    if (p.IsLowStock)
+                    {
+                        dgvProducts.Rows[idx].DefaultCellStyle.BackColor = Color.FromArgb(254, 226, 226);
+                        dgvProducts.Rows[idx].DefaultCellStyle.ForeColor = Color.FromArgb(153, 27, 27);
+                    }
                 }
+            }
+            finally
+            {
+                _suppressFgCheckboxEvents = false;
             }
 
             if (selectedId.HasValue)
@@ -547,6 +836,7 @@ namespace Stock_Managemnet
             }
 
             RefreshHeader();
+            UpdateSelectAllHeaderState();
             UpdateActionButtons();
         }
 
@@ -724,8 +1014,26 @@ namespace Stock_Managemnet
 
         private Product GetSelectedProduct()
         {
-            if (dgvProducts.SelectedRows.Count == 0) return null;
+            if (dgvProducts.SelectedRows.Count == 0)
+                return null;
+
             return dgvProducts.SelectedRows[0].Tag as Product;
+        }
+
+        private List<Product> GetCheckedProducts()
+        {
+            return GetFgCartProducts();
+        }
+
+        private List<Product> GetSelectedProducts()
+        {
+            if (IsFgInventoryTab)
+                return GetFgCartProducts();
+
+            var product = GetSelectedProduct();
+            return product != null
+                ? new List<Product> { product }
+                : new List<Product>();
         }
 
         private Customer GetSelectedCustomer()
@@ -748,11 +1056,16 @@ namespace Stock_Managemnet
 
         private void UpdateActionButtons()
         {
-            var hasSelection = GetSelectedProduct() != null;
-            btnEdit.Enabled = hasSelection;
-            btnDelete.Enabled = hasSelection;
-            btnStockIn.Enabled = hasSelection;
-            btnStockOut.Enabled = hasSelection;
+            var isFg = IsFgInventoryTab;
+            var rowProduct = GetSelectedProduct();
+            var cartCount = isFg ? GetFgCartProducts().Count : 0;
+
+            btnEdit.Enabled = rowProduct != null;
+            btnDelete.Enabled = rowProduct != null;
+            btnStockIn.Visible = !isFg;
+            btnStockOut.Visible = isFg;
+            btnStockIn.Enabled = !isFg && rowProduct != null;
+            btnStockOut.Enabled = isFg && cartCount > 0;
         }
 
         private void UpdateCustomerButtons()
@@ -909,7 +1222,7 @@ namespace Stock_Managemnet
 
         private void BtnAdd_Click(object sender, EventArgs e)
         {
-            using (var form = new ProductEditForm(_repository))
+            using (var form = new ProductEditForm(_repository, null, GetActiveInventoryProductType()))
             {
                 if (form.ShowDialog(this) == DialogResult.OK)
                     RefreshAll();
@@ -947,6 +1260,7 @@ namespace Stock_Managemnet
             if (confirm != DialogResult.Yes) return;
 
             _repository.DeleteProduct(product.Id);
+            _fgSelectedProductIds.Remove(product.Id);
             RefreshAll();
         }
 
@@ -964,6 +1278,29 @@ namespace Stock_Managemnet
             {
                 if (form.ShowDialog(this) == DialogResult.OK)
                     RefreshAll();
+            }
+        }
+
+        private void OpenStockOut()
+        {
+            var products = GetSelectedProducts();
+            if (products.Count == 0)
+            {
+                MessageBox.Show("Select at least one product.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var latest = products
+                .Select(p => _repository.GetProduct(p.Id) ?? p)
+                .ToList();
+
+            using (var form = new MultiStockOutForm(_repository, latest))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                {
+                    ClearFgProductSelection();
+                    RefreshAll();
+                }
             }
         }
 

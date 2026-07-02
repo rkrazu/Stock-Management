@@ -9,6 +9,8 @@ namespace Stock_Managemnet
         private System.Windows.Forms.TextBox txtName;
         private System.Windows.Forms.Label lblCategory;
         private System.Windows.Forms.TextBox txtCategory;
+        private System.Windows.Forms.Label lblType;
+        private System.Windows.Forms.ComboBox cmbType;
         private System.Windows.Forms.Label lblPrice;
         private System.Windows.Forms.NumericUpDown numPrice;
         private System.Windows.Forms.Label lblQuantity;
@@ -33,6 +35,8 @@ namespace Stock_Managemnet
             this.txtName = new System.Windows.Forms.TextBox();
             this.lblCategory = new System.Windows.Forms.Label();
             this.txtCategory = new System.Windows.Forms.TextBox();
+            this.lblType = new System.Windows.Forms.Label();
+            this.cmbType = new System.Windows.Forms.ComboBox();
             this.lblPrice = new System.Windows.Forms.Label();
             this.numPrice = new System.Windows.Forms.NumericUpDown();
             this.lblQuantity = new System.Windows.Forms.Label();
@@ -84,46 +88,61 @@ namespace Stock_Managemnet
             this.txtCategory.MaxLength = 100;
             this.txtCategory.Size = new System.Drawing.Size(460, 23);
             //
+            // lblType
+            //
+            this.lblType.AutoSize = true;
+            this.lblType.Location = new System.Drawing.Point(20, 125);
+            this.lblType.Text = "Type:";
+            //
+            // cmbType
+            //
+            this.cmbType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbType.Location = new System.Drawing.Point(120, 122);
+            this.cmbType.Size = new System.Drawing.Size(200, 23);
+            this.cmbType.Items.AddRange(new object[] {
+            "FG",
+            "Raw Material"});
+            //
             // lblPrice
             //
             this.lblPrice.AutoSize = true;
-            this.lblPrice.Location = new System.Drawing.Point(20, 125);
+            this.lblPrice.Location = new System.Drawing.Point(20, 160);
             this.lblPrice.Text = "Unit price:";
             //
             // numPrice
             //
             this.numPrice.DecimalPlaces = 2;
-            this.numPrice.Location = new System.Drawing.Point(120, 122);
+            this.numPrice.Location = new System.Drawing.Point(120, 157);
             this.numPrice.Maximum = new decimal(new int[] { 9999999, 0, 0, 0 });
             this.numPrice.Size = new System.Drawing.Size(120, 23);
             //
             // lblQuantity
             //
             this.lblQuantity.AutoSize = true;
-            this.lblQuantity.Location = new System.Drawing.Point(20, 160);
+            this.lblQuantity.Location = new System.Drawing.Point(20, 195);
             this.lblQuantity.Text = "Initial qty:";
             //
             // numQuantity
             //
-            this.numQuantity.Location = new System.Drawing.Point(120, 157);
+            this.numQuantity.Location = new System.Drawing.Point(120, 192);
             this.numQuantity.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
             this.numQuantity.Size = new System.Drawing.Size(120, 23);
             //
             // lblReorder
             //
             this.lblReorder.AutoSize = true;
-            this.lblReorder.Location = new System.Drawing.Point(20, 195);
+            this.lblReorder.Location = new System.Drawing.Point(20, 230);
             this.lblReorder.Text = "Reorder at:";
             //
             // numReorder
             //
-            this.numReorder.Location = new System.Drawing.Point(120, 192);
+            this.numReorder.Location = new System.Drawing.Point(120, 227);
             this.numReorder.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
             this.numReorder.Size = new System.Drawing.Size(120, 23);
             //
             // btnSave
             //
-            this.btnSave.Location = new System.Drawing.Point(424, 240);
+            this.btnSave.Location = new System.Drawing.Point(424, 275);
             this.btnSave.Size = new System.Drawing.Size(75, 28);
             this.btnSave.Text = "Save";
             this.btnSave.UseVisualStyleBackColor = true;
@@ -132,7 +151,7 @@ namespace Stock_Managemnet
             // btnCancel
             //
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(505, 240);
+            this.btnCancel.Location = new System.Drawing.Point(505, 275);
             this.btnCancel.Size = new System.Drawing.Size(75, 28);
             this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
@@ -144,7 +163,7 @@ namespace Stock_Managemnet
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
-            this.ClientSize = new System.Drawing.Size(600, 285);
+            this.ClientSize = new System.Drawing.Size(600, 320);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.numReorder);
@@ -153,6 +172,8 @@ namespace Stock_Managemnet
             this.Controls.Add(this.lblQuantity);
             this.Controls.Add(this.numPrice);
             this.Controls.Add(this.lblPrice);
+            this.Controls.Add(this.cmbType);
+            this.Controls.Add(this.lblType);
             this.Controls.Add(this.txtCategory);
             this.Controls.Add(this.lblCategory);
             this.Controls.Add(this.txtName);

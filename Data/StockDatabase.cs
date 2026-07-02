@@ -90,7 +90,7 @@ namespace Stock_Managemnet.Data
             var products = new List<Product>();
             using (var command = connection.CreateCommand())
             {
-                command.CommandText = "SELECT Id, Sku, Name, Category, UnitPrice, Quantity, ReorderLevel, LastUpdated FROM Products";
+                command.CommandText = "SELECT Id, Sku, Name, Category, ProductType, UnitPrice, Quantity, ReorderLevel, LastUpdated FROM Products";
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -101,10 +101,11 @@ namespace Stock_Managemnet.Data
                             Sku = reader.GetString(1),
                             Name = reader.GetString(2),
                             Category = reader.IsDBNull(3) ? null : reader.GetString(3),
-                            UnitPrice = reader.GetDecimal(4),
-                            Quantity = reader.GetInt32(5),
-                            ReorderLevel = reader.GetInt32(6),
-                            LastUpdated = reader.GetDateTime(7)
+                            ProductType = (ProductType)reader.GetInt32(4),
+                            UnitPrice = reader.GetDecimal(5),
+                            Quantity = reader.GetInt32(6),
+                            ReorderLevel = reader.GetInt32(7),
+                            LastUpdated = reader.GetDateTime(8)
                         });
                     }
                 }
@@ -221,7 +222,7 @@ FROM Invoices";
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = @"
-SELECT InvoiceId, ProductId, ProductSku, ProductName, Quantity, UnitPrice, LineTotal
+SELECT InvoiceId, ProductId, ProductSku, ProductName, ProductCategory, Quantity, UnitPrice, LineTotal
 FROM InvoiceLineItems";
                 using (var reader = command.ExecuteReader())
                 {
@@ -236,9 +237,10 @@ FROM InvoiceLineItems";
                             ProductId = reader.GetGuid(1),
                             ProductSku = reader.GetString(2),
                             ProductName = reader.GetString(3),
-                            Quantity = reader.GetInt32(4),
-                            UnitPrice = reader.GetDecimal(5),
-                            LineTotal = reader.GetDecimal(6)
+                            ProductCategory = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                            Quantity = reader.GetInt32(5),
+                            UnitPrice = reader.GetDecimal(6),
+                            LineTotal = reader.GetDecimal(7)
                         });
                     }
                 }
@@ -430,12 +432,13 @@ DELETE FROM AppSettings;";
                 {
                     command.Transaction = transaction;
                     command.CommandText = @"
-INSERT INTO Products (Id, Sku, Name, Category, UnitPrice, Quantity, ReorderLevel, LastUpdated)
-VALUES (@Id, @Sku, @Name, @Category, @UnitPrice, @Quantity, @ReorderLevel, @LastUpdated)";
+INSERT INTO Products (Id, Sku, Name, Category, ProductType, UnitPrice, Quantity, ReorderLevel, LastUpdated)
+VALUES (@Id, @Sku, @Name, @Category, @ProductType, @UnitPrice, @Quantity, @ReorderLevel, @LastUpdated)";
                     command.Parameters.AddWithValue("@Id", product.Id);
                     command.Parameters.AddWithValue("@Sku", (object)product.Sku ?? DBNull.Value);
                     command.Parameters.AddWithValue("@Name", (object)product.Name ?? DBNull.Value);
                     command.Parameters.AddWithValue("@Category", (object)product.Category ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ProductType", (int)product.ProductType);
                     command.Parameters.AddWithValue("@UnitPrice", product.UnitPrice);
                     command.Parameters.AddWithValue("@Quantity", product.Quantity);
                     command.Parameters.AddWithValue("@ReorderLevel", product.ReorderLevel);
@@ -533,14 +536,15 @@ VALUES
                         command.Transaction = transaction;
                         command.CommandText = @"
 INSERT INTO InvoiceLineItems
-    (Id, InvoiceId, ProductId, ProductSku, ProductName, Quantity, UnitPrice, LineTotal)
+    (Id, InvoiceId, ProductId, ProductSku, ProductName, ProductCategory, Quantity, UnitPrice, LineTotal)
 VALUES
-    (@Id, @InvoiceId, @ProductId, @ProductSku, @ProductName, @Quantity, @UnitPrice, @LineTotal)";
+    (@Id, @InvoiceId, @ProductId, @ProductSku, @ProductName, @ProductCategory, @Quantity, @UnitPrice, @LineTotal)";
                         command.Parameters.AddWithValue("@Id", Guid.NewGuid());
                         command.Parameters.AddWithValue("@InvoiceId", invoice.Id);
                         command.Parameters.AddWithValue("@ProductId", item.ProductId);
                         command.Parameters.AddWithValue("@ProductSku", (object)item.ProductSku ?? DBNull.Value);
                         command.Parameters.AddWithValue("@ProductName", (object)item.ProductName ?? DBNull.Value);
+                        command.Parameters.AddWithValue("@ProductCategory", (object)item.ProductCategory ?? DBNull.Value);
                         command.Parameters.AddWithValue("@Quantity", item.Quantity);
                         command.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
                         command.Parameters.AddWithValue("@LineTotal", item.LineTotal);

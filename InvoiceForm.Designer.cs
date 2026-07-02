@@ -3,8 +3,10 @@ namespace Stock_Managemnet
     partial class InvoiceForm
     {
         private System.ComponentModel.IContainer components = null;
-        private System.Windows.Forms.TextBox txtInvoice;
+        private System.Windows.Forms.Panel panelPreview;
+        private Stock_Managemnet.Controls.InvoicePreviewControl invoicePreview;
         private System.Windows.Forms.Panel panelButtons;
+        private System.Windows.Forms.FlowLayoutPanel flowButtons;
         private System.Windows.Forms.Button btnSubmit;
         private System.Windows.Forms.Button btnPrint;
         private System.Windows.Forms.Button btnClose;
@@ -18,57 +20,67 @@ namespace Stock_Managemnet
 
         private void InitializeComponent()
         {
-            this.txtInvoice = new System.Windows.Forms.TextBox();
+            this.panelPreview = new System.Windows.Forms.Panel();
+            this.invoicePreview = new Stock_Managemnet.Controls.InvoicePreviewControl();
             this.panelButtons = new System.Windows.Forms.Panel();
+            this.flowButtons = new System.Windows.Forms.FlowLayoutPanel();
             this.btnSubmit = new System.Windows.Forms.Button();
             this.btnPrint = new System.Windows.Forms.Button();
             this.btnClose = new System.Windows.Forms.Button();
             this.panelButtons.SuspendLayout();
+            this.flowButtons.SuspendLayout();
             this.SuspendLayout();
             //
-            // txtInvoice
+            // panelPreview
             //
-            this.txtInvoice.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtInvoice.Font = new System.Drawing.Font("Consolas", 10F);
-            this.txtInvoice.Location = new System.Drawing.Point(12, 12);
-            this.txtInvoice.Margin = new System.Windows.Forms.Padding(12);
-            this.txtInvoice.Multiline = true;
-            this.txtInvoice.ReadOnly = true;
-            this.txtInvoice.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.txtInvoice.TabStop = false;
-            this.txtInvoice.WordWrap = false;
+            this.panelPreview.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelPreview.Padding = new System.Windows.Forms.Padding(0);
+            this.panelPreview.Controls.Add(this.invoicePreview);
+            //
+            // invoicePreview
+            //
+            this.invoicePreview.Dock = System.Windows.Forms.DockStyle.Fill;
             //
             // panelButtons
             //
-            this.panelButtons.Controls.Add(this.btnSubmit);
-            this.panelButtons.Controls.Add(this.btnPrint);
-            this.panelButtons.Controls.Add(this.btnClose);
+            this.panelButtons.Controls.Add(this.flowButtons);
             this.panelButtons.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panelButtons.Height = 48;
-            this.panelButtons.Padding = new System.Windows.Forms.Padding(0, 8, 16, 8);
+            this.panelButtons.Height = 50;
+            this.panelButtons.Padding = new System.Windows.Forms.Padding(12, 8, 12, 8);
+            //
+            // flowButtons
+            //
+            this.flowButtons.AutoSize = true;
+            this.flowButtons.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowButtons.Controls.Add(this.btnClose);
+            this.flowButtons.Controls.Add(this.btnPrint);
+            this.flowButtons.Controls.Add(this.btnSubmit);
+            this.flowButtons.Dock = System.Windows.Forms.DockStyle.Right;
+            this.flowButtons.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
+            this.flowButtons.WrapContents = false;
             //
             // btnSubmit
             //
-            this.btnSubmit.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSubmit.Location = new System.Drawing.Point(498, 10);
-            this.btnSubmit.Size = new System.Drawing.Size(110, 28);
+            this.btnSubmit.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
+            this.btnSubmit.Size = new System.Drawing.Size(120, 30);
             this.btnSubmit.Text = "Submit Invoice";
+            this.btnSubmit.UseVisualStyleBackColor = true;
             this.btnSubmit.Click += new System.EventHandler(this.BtnSubmit_Click);
             //
             // btnPrint
             //
-            this.btnPrint.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnPrint.Location = new System.Drawing.Point(614, 10);
-            this.btnPrint.Size = new System.Drawing.Size(95, 28);
+            this.btnPrint.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
+            this.btnPrint.Size = new System.Drawing.Size(90, 30);
             this.btnPrint.Text = "Print";
+            this.btnPrint.UseVisualStyleBackColor = true;
             this.btnPrint.Click += new System.EventHandler(this.BtnPrint_Click);
             //
             // btnClose
             //
-            this.btnClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnClose.Location = new System.Drawing.Point(715, 10);
-            this.btnClose.Size = new System.Drawing.Size(75, 28);
-            this.btnClose.Text = "Close";
+            this.btnClose.Margin = new System.Windows.Forms.Padding(0);
+            this.btnClose.Size = new System.Drawing.Size(85, 30);
+            this.btnClose.Text = "Cancel";
+            this.btnClose.UseVisualStyleBackColor = true;
             this.btnClose.Click += new System.EventHandler(this.BtnClose_Click);
             //
             // InvoiceForm
@@ -76,16 +88,21 @@ namespace Stock_Managemnet
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnClose;
-            this.ClientSize = new System.Drawing.Size(820, 520);
-            this.Controls.Add(this.txtInvoice);
+            this.ClientSize = new System.Drawing.Size(900, 640);
+            this.Controls.Add(this.panelPreview);
             this.Controls.Add(this.panelButtons);
+            this.Font = new System.Drawing.Font("Segoe UI", 11F);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = false;
             this.MinimumSize = new System.Drawing.Size(640, 420);
             this.Padding = new System.Windows.Forms.Padding(12);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            this.Text = "Invoice";
             this.panelButtons.ResumeLayout(false);
+            this.panelButtons.PerformLayout();
+            this.flowButtons.ResumeLayout(false);
+            this.flowButtons.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
         }

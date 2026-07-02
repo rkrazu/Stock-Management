@@ -65,8 +65,10 @@
   <ItemGroup>
     <Compile Include="Models\Invoice.cs" />
     <Compile Include="Models\InvoiceLineItem.cs" />
+    <Compile Include="Models\StockOutLineItem.cs" />
     <Compile Include="Models\StockOutRequest.cs" />
     <Compile Include="Models\Customer.cs" />
+    <Compile Include="Models\ProductType.cs" />
     <Compile Include="Models\Product.cs" />
     <Compile Include="Models\ProductionMaterial.cs" />
     <Compile Include="Models\ProductionRecipe.cs" />
@@ -116,6 +118,12 @@
     <Compile Include="StockAdjustForm.Designer.cs">
       <DependentUpon>StockAdjustForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="MultiStockOutForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MultiStockOutForm.Designer.cs">
+      <DependentUpon>MultiStockOutForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="InvoiceForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -128,6 +136,9 @@
     </Compile>
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\InvoicePreviewControl.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Controls\PasswordFieldControl.cs">
       <SubType>UserControl</SubType>
@@ -167,6 +178,9 @@
     <None Include="App.config" />
     <None Include="Database\Schema.sql" />
     <Content Include="Assets\rk-razu.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\watermark.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

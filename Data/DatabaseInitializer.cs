@@ -99,6 +99,7 @@ BEGIN
         Sku NVARCHAR(50) NOT NULL,
         Name NVARCHAR(200) NOT NULL,
         Category NVARCHAR(100) NULL,
+        ProductType INT NOT NULL CONSTRAINT DF_Products_ProductType DEFAULT (0),
         UnitPrice DECIMAL(18, 2) NOT NULL,
         Quantity INT NOT NULL,
         ReorderLevel INT NOT NULL,
@@ -167,6 +168,7 @@ BEGIN
         ProductId UNIQUEIDENTIFIER NOT NULL,
         ProductSku NVARCHAR(50) NOT NULL,
         ProductName NVARCHAR(200) NOT NULL,
+        ProductCategory NVARCHAR(100) NULL,
         Quantity INT NOT NULL,
         UnitPrice DECIMAL(18, 2) NOT NULL,
         LineTotal DECIMAL(18, 2) NOT NULL
@@ -227,6 +229,16 @@ BEGIN
         QuantityPerUnit INT NOT NULL
     );
     CREATE INDEX IX_ProductionOrderMaterials_OrderId ON dbo.ProductionOrderMaterials (ProductionOrderId);
+END;",
+
+            @"IF COL_LENGTH('dbo.Products', 'ProductType') IS NULL
+BEGIN
+    ALTER TABLE dbo.Products ADD ProductType INT NOT NULL CONSTRAINT DF_Products_ProductType DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.InvoiceLineItems', 'ProductCategory') IS NULL
+BEGIN
+    ALTER TABLE dbo.InvoiceLineItems ADD ProductCategory NVARCHAR(100) NULL;
 END;"
         };
     }

@@ -113,10 +113,16 @@ namespace Stock_Managemnet
 
             var request = new StockOutRequest
             {
-                ProductId = _product.Id,
-                Quantity = qty,
                 CustomerId = customerSelect.SelectedCustomer?.Id,
-                Notes = txtNotes.Text.Trim()
+                Notes = txtNotes.Text.Trim(),
+                Lines = new System.Collections.Generic.List<StockOutLineItem>
+                {
+                    new StockOutLineItem
+                    {
+                        ProductId = _product.Id,
+                        Quantity = qty
+                    }
+                }
             };
 
             var validationError = _repository.ValidateStockOut(request);

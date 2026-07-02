@@ -23,6 +23,8 @@ namespace Stock_Managemnet
             Text = "Stock Out Invoice";
             btnSubmit.Visible = true;
             btnSubmit.Text = "Submit Invoice";
+            btnClose.Text = "Cancel";
+            btnPrint.Visible = true;
             RenderInvoice();
         }
 
@@ -35,12 +37,13 @@ namespace Stock_Managemnet
             UiStyles.Apply(this);
             Text = $"Invoice {invoice.InvoiceNumber}";
             btnSubmit.Visible = false;
+            btnClose.Text = "Close";
             RenderInvoice();
         }
 
         private void RenderInvoice()
         {
-            txtInvoice.Text = InvoiceDocumentBuilder.BuildText(_invoice, _isDraft);
+            invoicePreview.SetInvoice(_invoice, _isDraft);
         }
 
         private void BtnSubmit_Click(object sender, EventArgs e)
