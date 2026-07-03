@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
+using Stock_Managemnet.Controls;
 using Stock_Managemnet.Models;
 using Stock_Managemnet.Services;
 
@@ -27,6 +28,7 @@ namespace Stock_Managemnet
 
             ConfigureProductSelectors();
             ConfigureMaterialGrid();
+            GridExportUi.Enable(dgvMaterials, "Recipe Materials");
 
             if (!_isNew)
             {

@@ -9,6 +9,7 @@ using System.Windows.Forms.VisualStyles;
 using Stock_Managemnet.Data;
 using Stock_Managemnet.Models;
 using Stock_Managemnet.Services;
+using Stock_Managemnet.Controls;
 
 namespace Stock_Managemnet
 {
@@ -34,6 +35,7 @@ namespace Stock_Managemnet
             ConfigureProductionGrids();
             ConfigureTransactionGrid();
             ConfigureTransactionFilters();
+            ConfigureGridExports();
             WireEvents();
             WireAccountsEvents();
             UiStyles.Apply(this);
@@ -588,6 +590,16 @@ namespace Stock_Managemnet
             dgvTransactions.Columns["Quantity"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvTransactions.Columns["TotalValue"].DefaultCellStyle.Format = "C2";
             dgvTransactions.Columns["TotalValue"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+        }
+
+        private void ConfigureGridExports()
+        {
+            GridExportUi.Enable(dgvProducts, "Products");
+            GridExportUi.Enable(dgvCustomers, "Customers");
+            GridExportUi.Enable(dgvInvoices, "Invoices");
+            GridExportUi.Enable(dgvRecipes, "Production Recipes");
+            GridExportUi.Enable(dgvProductionOrders, "Production History");
+            GridExportUi.Enable(dgvTransactions, "Transaction History");
         }
 
         private void ResetProductionFilters()

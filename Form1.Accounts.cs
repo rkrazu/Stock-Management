@@ -107,6 +107,7 @@ namespace Stock_Managemnet
             tabAccounts.Controls.Add(panelAccounts);
 
             ConfigureAccountsGrids();
+            ConfigureAccountsGridExports();
             lstAccountsNav.SelectedIndex = 0;
             ShowAccountsSection(0);
         }
@@ -539,6 +540,15 @@ namespace Stock_Managemnet
             {
                 e.Graphics.DrawLine(pen, 0, control.Height - 1, control.Width, control.Height - 1);
             }
+        }
+
+        private void ConfigureAccountsGridExports()
+        {
+            GridExportUi.Enable(dgvAccountsChart, "Chart of Accounts");
+            GridExportUi.Enable(dgvSalesProfit, "Sales Profit");
+            GridExportUi.Enable(dgvExpenses, "Expenses");
+            GridExportUi.Enable(dgvCustomerDue, "Customer Due");
+            GridExportUi.Enable(dgvCashLedger, "Cash Ledger");
         }
 
         private void ConfigureAccountsGrids()
