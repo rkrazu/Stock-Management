@@ -10,6 +10,7 @@ namespace Stock_Managemnet.Services
     public class StockRepository
     {
         private readonly StockDatabase _database = new StockDatabase();
+        private readonly AccountingService _accounting = new AccountingService();
 
         public StockData Data { get; private set; } = new StockData();
 
@@ -26,8 +27,18 @@ namespace Stock_Managemnet.Services
                 if (Data.ProductionRecipes == null) Data.ProductionRecipes = new List<ProductionRecipe>();
                 if (Data.ProductionOrders == null) Data.ProductionOrders = new List<ProductionOrder>();
                 if (Data.Invoices == null) Data.Invoices = new List<Invoice>();
+                if (Data.Accounts == null) Data.Accounts = new List<Account>();
+                if (Data.JournalEntries == null) Data.JournalEntries = new List<JournalEntry>();
+                if (Data.CustomerPayments == null) Data.CustomerPayments = new List<CustomerPayment>();
+                if (Data.BusinessExpenses == null) Data.BusinessExpenses = new List<BusinessExpense>();
                 if (Data.NextInvoiceNumber < 1) Data.NextInvoiceNumber = 1;
                 if (Data.NextProductionNumber < 1) Data.NextProductionNumber = 1;
+
+                var accountsBefore = Data.Accounts.Count;
+                var journalsBefore = Data.JournalEntries.Count;
+                _accounting.EnsureInitialized(Data);
+                if (Data.Accounts.Count > accountsBefore || Data.JournalEntries.Count > journalsBefore)
+                    Save();
 
                 EnsureInvoiceSequence();
                 EnsureProductionSequence();
@@ -119,7 +130,38 @@ namespace Stock_Managemnet.Services
             if (!request.CustomerId.HasValue)
                 return "Select a customer for sales stock out.";
 
+            var totalAmount = ComputeStockOutTotal(request);
+            if (request.AmountPaidAtSale < 0)
+                return "Paid amount cannot be negative.";
+
+            if (request.AmountPaidAtSale > totalAmount)
+                return $"Paid amount cannot exceed invoice total ({totalAmount:C2}).";
+
+            if (request.AmountPaidAtSale > 0)
+            {
+                if (!request.CashAccountId.HasValue)
+                    return "Select a cash or bank account for the payment received.";
+
+                var cashAccount = Data.Accounts.FirstOrDefault(a => a.Id == request.CashAccountId.Value);
+                if (cashAccount == null || (cashAccount.Id != SystemAccounts.CashId && cashAccount.Id != SystemAccounts.BankId))
+                    return "Select a valid cash or bank account.";
+            }
+
             return null;
+        }
+
+        private decimal ComputeStockOutTotal(StockOutRequest request)
+        {
+            decimal total = 0;
+            foreach (var line in request.Lines)
+            {
+                var product = GetProduct(line.ProductId);
+                if (product == null)
+                    continue;
+                total += product.UnitPrice * line.Quantity;
+            }
+
+            return total;
         }
 
         public Invoice BuildStockOutInvoicePreview(StockOutRequest request)
@@ -145,6 +187,7 @@ namespace Stock_Managemnet.Services
                     ProductCategory = product.Category ?? string.Empty,
                     Quantity = line.Quantity,
                     UnitPrice = unitPrice,
+                    UnitCost = AccountingService.ResolveProductSaleCost(Data, product),
                     LineTotal = lineTotal
                 });
             }
@@ -158,6 +201,7 @@ namespace Stock_Managemnet.Services
                 Notes = request.Notes ?? string.Empty,
                 CreatedAt = DateTime.Now,
                 TotalAmount = totalAmount,
+                AmountPaid = request.AmountPaidAtSale,
                 Items = items
             };
         }
@@ -213,11 +257,12 @@ namespace Stock_Managemnet.Services
                     ProductCategory = product.Category ?? string.Empty,
                     Quantity = line.Quantity,
                     UnitPrice = unitPrice,
+                    UnitCost = AccountingService.ResolveProductSaleCost(Data, product),
                     LineTotal = lineTotal
                 });
             }
 
-            Data.Invoices.Insert(0, new Invoice
+            var invoice = new Invoice
             {
                 InvoiceNumber = invoiceNumber,
                 CustomerId = customer?.Id,
@@ -226,14 +271,101 @@ namespace Stock_Managemnet.Services
                 CustomerAddress = customer?.Address ?? string.Empty,
                 Notes = request.Notes ?? string.Empty,
                 TotalAmount = totalAmount,
+                AmountPaid = request.AmountPaidAtSale,
                 TransactionId = firstTransactionId,
                 CreatedAt = DateTime.Now,
                 Items = items
-            });
+            };
+
+            Data.Invoices.Insert(0, invoice);
+            _accounting.PostSale(Data, invoice);
+
+            if (request.AmountPaidAtSale > 0)
+            {
+                var paymentError = _accounting.RecordPayment(Data, new CustomerPayment
+                {
+                    CustomerId = customer.Id,
+                    CustomerName = customer.Name,
+                    InvoiceId = invoice.Id,
+                    InvoiceNumber = invoice.InvoiceNumber,
+                    CashAccountId = request.CashAccountId.Value,
+                    Amount = request.AmountPaidAtSale,
+                    PaymentMethod = "At Sale",
+                    Reference = invoice.InvoiceNumber,
+                    Notes = "Payment received at sale",
+                    PaidAt = DateTime.Now
+                }, updateInvoiceAmounts: false);
+
+                if (paymentError != null)
+                    return paymentError;
+            }
 
             Save();
             return null;
         }
+
+        public string ReceivePayment(CustomerPayment payment)
+        {
+            var error = _accounting.ReceivePayment(Data, payment);
+            if (error != null)
+                return error;
+
+            Save();
+            return null;
+        }
+
+        public decimal GetCustomerBalance(Guid customerId) =>
+            _accounting.GetCustomerBalance(Data, customerId);
+
+        public decimal GetTotalOutstanding() =>
+            _accounting.GetTotalOutstanding(Data);
+
+        public IEnumerable<CustomerDueRow> GetCustomerDueReport(string term = null) =>
+            _accounting.GetCustomerDueReport(Data, term);
+
+        public IEnumerable<CashLedgerRow> GetCashLedger(Guid? accountId = null, DateTime? from = null, DateTime? to = null) =>
+            _accounting.GetCashLedger(Data, accountId, from, to);
+
+        public IEnumerable<Account> GetAccounts() =>
+            Data.Accounts.Where(a => a.IsActive).OrderBy(a => a.Code);
+
+        public IEnumerable<Invoice> GetOpenInvoices(Guid customerId) =>
+            _accounting.GetOpenInvoices(Data, customerId);
+
+        public IEnumerable<Account> GetCashAndBankAccounts() =>
+            _accounting.GetCashAndBankAccounts(Data);
+
+        public decimal GetAccountBalance(Guid accountId) =>
+            _accounting.GetAccountBalance(Data, accountId);
+
+        public SalesProfitSummary GetSalesProfitSummary(DateTime? from = null, DateTime? to = null, string term = null) =>
+            _accounting.GetSalesProfitSummary(Data, from, to, term);
+
+        public IEnumerable<SalesProfitLine> GetSalesProfitLines(DateTime? from = null, DateTime? to = null, string term = null) =>
+            _accounting.GetSalesProfitLines(Data, from, to, term);
+
+        public string RecordExpense(BusinessExpense expense)
+        {
+            var error = _accounting.RecordExpense(Data, expense);
+            if (error != null)
+                return error;
+
+            Save();
+            return null;
+        }
+
+        public IEnumerable<Account> GetExpenseAccounts() =>
+            _accounting.GetExpenseAccounts(Data);
+
+        public IEnumerable<BusinessExpense> GetBusinessExpenses(
+            DateTime? from = null,
+            DateTime? to = null,
+            string term = null,
+            Guid? expenseAccountId = null) =>
+            _accounting.GetBusinessExpenses(Data, from, to, term, expenseAccountId);
+
+        public decimal GetTotalExpenses(DateTime? from = null, DateTime? to = null) =>
+            _accounting.GetTotalExpenses(Data, from, to);
 
         public Invoice GetInvoice(Guid id) =>
             Data.Invoices.FirstOrDefault(i => i.Id == id);
@@ -680,6 +812,10 @@ namespace Stock_Managemnet.Services
             if (output == null)
                 return "Output product not found.";
 
+            var oldQuantity = output.Quantity;
+            var oldUnitCost = output.UnitCost;
+            decimal batchMaterialCost = 0;
+
             foreach (var material in recipe.Materials)
             {
                 if (material.QuantityPerUnit <= 0)
@@ -692,7 +828,11 @@ namespace Stock_Managemnet.Services
                 var required = material.QuantityPerUnit * batchQuantity;
                 if (product.Quantity < required)
                     return $"Insufficient '{product.Name}'. Required: {required}, Available: {product.Quantity}";
+
+                batchMaterialCost += product.UnitPrice * required;
             }
+
+            var batchUnitCost = batchQuantity > 0 ? batchMaterialCost / batchQuantity : 0;
 
             var productionNumber = GenerateProductionNumber();
             var notePrefix = $"Production {productionNumber}";
@@ -711,6 +851,13 @@ namespace Stock_Managemnet.Services
 
             output = GetProduct(output.Id);
             var unitPrice = output?.UnitPrice ?? 0;
+            if (output != null)
+            {
+                var newQuantity = output.Quantity;
+                output.UnitCost = newQuantity > 0
+                    ? ((oldQuantity * oldUnitCost) + (batchQuantity * batchUnitCost)) / newQuantity
+                    : batchUnitCost;
+            }
 
             Data.ProductionOrders.Insert(0, new ProductionOrder
             {

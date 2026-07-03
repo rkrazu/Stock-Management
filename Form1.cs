@@ -27,6 +27,7 @@ namespace Stock_Managemnet
         public Form1()
         {
             InitializeComponent();
+            InitializeAccountsUi();
             ConfigureProductGrid();
             ConfigureCustomerGrid();
             ConfigureInvoiceGrid();
@@ -34,6 +35,7 @@ namespace Stock_Managemnet
             ConfigureTransactionGrid();
             ConfigureTransactionFilters();
             WireEvents();
+            WireAccountsEvents();
             UiStyles.Apply(this);
             lblPasswordRules.Text = PasswordPolicy.RequirementsText;
             lstSettingsNav.SelectedIndex = 0;
@@ -61,6 +63,10 @@ namespace Stock_Managemnet
                 RefreshSettingsTab();
                 if (lstSettingsNav.SelectedIndex < 0)
                     lstSettingsNav.SelectedIndex = 0;
+            }
+            else if (tabMain.SelectedTab == tabAccounts)
+            {
+                RefreshAccountsTab();
             }
 
             ResetGridSelections();
@@ -525,11 +531,17 @@ namespace Stock_Managemnet
             dgvInvoices.Columns.Add("CustomerName", "Customer");
             dgvInvoices.Columns.Add("ProductSummary", "Product");
             dgvInvoices.Columns.Add("TotalAmount", "Total");
+            dgvInvoices.Columns.Add("AmountPaid", "Paid");
+            dgvInvoices.Columns.Add("BalanceDue", "Due");
             dgvInvoices.Columns.Add("Notes", "Notes");
 
             dgvInvoices.Columns["CreatedAt"].DefaultCellStyle.Format = "g";
             dgvInvoices.Columns["TotalAmount"].DefaultCellStyle.Format = "C2";
+            dgvInvoices.Columns["AmountPaid"].DefaultCellStyle.Format = "C2";
+            dgvInvoices.Columns["BalanceDue"].DefaultCellStyle.Format = "C2";
             dgvInvoices.Columns["TotalAmount"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvInvoices.Columns["AmountPaid"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvInvoices.Columns["BalanceDue"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
         }
 
         private void ConfigureProductionGrids()
@@ -753,6 +765,7 @@ namespace Stock_Managemnet
             RefreshProducts();
             RefreshCustomers();
             RefreshInvoices();
+            RefreshAccountsTab();
             RefreshProduction();
             RefreshTransactions();
             UpdateActionButtons();
@@ -889,6 +902,8 @@ namespace Stock_Managemnet
                     invoice.CustomerName ?? string.Empty,
                     FormatInvoiceProductSummary(invoice),
                     invoice.TotalAmount,
+                    invoice.AmountPaid,
+                    invoice.BalanceDue,
                     invoice.Notes ?? string.Empty);
                 dgvInvoices.Rows[idx].Tag = invoice;
             }

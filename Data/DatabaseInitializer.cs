@@ -101,6 +101,7 @@ BEGIN
         Category NVARCHAR(100) NULL,
         ProductType INT NOT NULL CONSTRAINT DF_Products_ProductType DEFAULT (0),
         UnitPrice DECIMAL(18, 2) NOT NULL,
+        UnitCost DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Products_UnitCost DEFAULT (0),
         Quantity INT NOT NULL,
         ReorderLevel INT NOT NULL,
         LastUpdated DATETIME2 NOT NULL
@@ -153,6 +154,7 @@ BEGIN
         CustomerPhone NVARCHAR(30) NULL,
         CustomerAddress NVARCHAR(300) NULL,
         TotalAmount DECIMAL(18, 2) NOT NULL,
+        AmountPaid DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Invoices_AmountPaid DEFAULT (0),
         Notes NVARCHAR(500) NULL,
         TransactionId UNIQUEIDENTIFIER NULL,
         CreatedAt DATETIME2 NOT NULL
@@ -171,9 +173,94 @@ BEGIN
         ProductCategory NVARCHAR(100) NULL,
         Quantity INT NOT NULL,
         UnitPrice DECIMAL(18, 2) NOT NULL,
-        LineTotal DECIMAL(18, 2) NOT NULL
+        LineTotal DECIMAL(18, 2) NOT NULL,
+        UnitCost DECIMAL(18, 2) NOT NULL CONSTRAINT DF_InvoiceLineItems_UnitCost DEFAULT (0)
     );
     CREATE INDEX IX_InvoiceLineItems_InvoiceId ON dbo.InvoiceLineItems (InvoiceId);
+END;",
+
+            @"IF OBJECT_ID(N'dbo.Accounts', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Accounts (
+        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        Code NVARCHAR(20) NOT NULL,
+        Name NVARCHAR(200) NOT NULL,
+        Type INT NOT NULL,
+        IsSystem BIT NOT NULL CONSTRAINT DF_Accounts_IsSystem DEFAULT (0),
+        IsActive BIT NOT NULL CONSTRAINT DF_Accounts_IsActive DEFAULT (1),
+        CreatedAt DATETIME2 NOT NULL
+    );
+    CREATE UNIQUE INDEX IX_Accounts_Code ON dbo.Accounts (Code);
+END;",
+
+            @"IF OBJECT_ID(N'dbo.JournalEntries', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.JournalEntries (
+        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        EntryDate DATETIME2 NOT NULL,
+        ReferenceType INT NOT NULL,
+        ReferenceId UNIQUEIDENTIFIER NULL,
+        ReferenceNumber NVARCHAR(50) NULL,
+        Description NVARCHAR(500) NULL,
+        CreatedAt DATETIME2 NOT NULL
+    );
+    CREATE INDEX IX_JournalEntries_EntryDate ON dbo.JournalEntries (EntryDate DESC);
+    CREATE INDEX IX_JournalEntries_Reference ON dbo.JournalEntries (ReferenceType, ReferenceId);
+END;",
+
+            @"IF OBJECT_ID(N'dbo.JournalLines', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.JournalLines (
+        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        JournalEntryId UNIQUEIDENTIFIER NOT NULL,
+        AccountId UNIQUEIDENTIFIER NOT NULL,
+        AccountCode NVARCHAR(20) NOT NULL,
+        AccountName NVARCHAR(200) NOT NULL,
+        CustomerId UNIQUEIDENTIFIER NULL,
+        CustomerName NVARCHAR(200) NULL,
+        Debit DECIMAL(18, 2) NOT NULL,
+        Credit DECIMAL(18, 2) NOT NULL
+    );
+    CREATE INDEX IX_JournalLines_JournalEntryId ON dbo.JournalLines (JournalEntryId);
+    CREATE INDEX IX_JournalLines_AccountId ON dbo.JournalLines (AccountId);
+    CREATE INDEX IX_JournalLines_CustomerId ON dbo.JournalLines (CustomerId);
+END;",
+
+            @"IF OBJECT_ID(N'dbo.CustomerPayments', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.CustomerPayments (
+        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        CustomerId UNIQUEIDENTIFIER NOT NULL,
+        CustomerName NVARCHAR(200) NOT NULL,
+        InvoiceId UNIQUEIDENTIFIER NULL,
+        InvoiceNumber NVARCHAR(20) NULL,
+        CashAccountId UNIQUEIDENTIFIER NOT NULL,
+        CashAccountName NVARCHAR(200) NOT NULL,
+        Amount DECIMAL(18, 2) NOT NULL,
+        PaymentMethod NVARCHAR(50) NULL,
+        Reference NVARCHAR(100) NULL,
+        Notes NVARCHAR(500) NULL,
+        PaidAt DATETIME2 NOT NULL
+    );
+    CREATE INDEX IX_CustomerPayments_CustomerId ON dbo.CustomerPayments (CustomerId);
+    CREATE INDEX IX_CustomerPayments_PaidAt ON dbo.CustomerPayments (PaidAt DESC);
+END;",
+
+            @"IF OBJECT_ID(N'dbo.BusinessExpenses', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.BusinessExpenses (
+        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        ExpenseAccountId UNIQUEIDENTIFIER NOT NULL,
+        ExpenseAccountName NVARCHAR(200) NOT NULL,
+        CashAccountId UNIQUEIDENTIFIER NOT NULL,
+        CashAccountName NVARCHAR(200) NOT NULL,
+        Amount DECIMAL(18, 2) NOT NULL,
+        Reference NVARCHAR(100) NULL,
+        Notes NVARCHAR(500) NULL,
+        PaidAt DATETIME2 NOT NULL
+    );
+    CREATE INDEX IX_BusinessExpenses_PaidAt ON dbo.BusinessExpenses (PaidAt DESC);
+    CREATE INDEX IX_BusinessExpenses_ExpenseAccountId ON dbo.BusinessExpenses (ExpenseAccountId);
 END;",
 
             @"IF OBJECT_ID(N'dbo.ProductionRecipes', N'U') IS NULL
@@ -239,6 +326,21 @@ END;",
             @"IF COL_LENGTH('dbo.InvoiceLineItems', 'ProductCategory') IS NULL
 BEGIN
     ALTER TABLE dbo.InvoiceLineItems ADD ProductCategory NVARCHAR(100) NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.Invoices', 'AmountPaid') IS NULL
+BEGIN
+    ALTER TABLE dbo.Invoices ADD AmountPaid DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Invoices_AmountPaid_Mig DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.Products', 'UnitCost') IS NULL
+BEGIN
+    ALTER TABLE dbo.Products ADD UnitCost DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Products_UnitCost_Mig DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.InvoiceLineItems', 'UnitCost') IS NULL
+BEGIN
+    ALTER TABLE dbo.InvoiceLineItems ADD UnitCost DECIMAL(18, 2) NOT NULL CONSTRAINT DF_InvoiceLineItems_UnitCost_Mig DEFAULT (0);
 END;"
         };
     }

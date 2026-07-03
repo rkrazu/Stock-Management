@@ -15,8 +15,11 @@ namespace Stock_Managemnet.Models
         [DataMember] public string CustomerAddress { get; set; }
         [DataMember] public List<InvoiceLineItem> Items { get; set; } = new List<InvoiceLineItem>();
         [DataMember] public decimal TotalAmount { get; set; }
+        [DataMember] public decimal AmountPaid { get; set; }
         [DataMember] public string Notes { get; set; }
         [DataMember] public Guid? TransactionId { get; set; }
         [DataMember] public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public decimal BalanceDue => Math.Max(0, TotalAmount - AmountPaid);
     }
 }

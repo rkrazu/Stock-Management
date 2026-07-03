@@ -10,6 +10,7 @@ namespace Stock_Managemnet
         private System.Windows.Forms.TabPage tabInventory;
         private System.Windows.Forms.TabPage tabCustomers;
         private System.Windows.Forms.TabPage tabInvoices;
+        private System.Windows.Forms.TabPage tabAccounts;
         private System.Windows.Forms.TabPage tabProduction;
         private System.Windows.Forms.TabPage tabTransactions;
         private System.Windows.Forms.TabPage tabSettings;
@@ -155,6 +156,7 @@ namespace Stock_Managemnet
             this.btnInvoiceReset = new System.Windows.Forms.Button();
             this.btnViewInvoice = new System.Windows.Forms.Button();
             this.btnPrintInvoice = new System.Windows.Forms.Button();
+            this.tabAccounts = new System.Windows.Forms.TabPage();
             this.tabProduction = new System.Windows.Forms.TabPage();
             this.tlpProduction = new System.Windows.Forms.TableLayoutPanel();
             this.panelProductionToolbar = new System.Windows.Forms.Panel();
@@ -277,6 +279,7 @@ namespace Stock_Managemnet
             this.tabMain.Controls.Add(this.tabInventory);
             this.tabMain.Controls.Add(this.tabCustomers);
             this.tabMain.Controls.Add(this.tabInvoices);
+            this.tabMain.Controls.Add(this.tabAccounts);
             this.tabMain.Controls.Add(this.tabProduction);
             this.tabMain.Controls.Add(this.tabTransactions);
             this.tabMain.Controls.Add(this.tabSettings);
@@ -595,6 +598,11 @@ namespace Stock_Managemnet
             this.dgvInvoices.ReadOnly = true;
             this.dgvInvoices.RowHeadersVisible = false;
             this.dgvInvoices.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            //
+            // tabAccounts
+            //
+            this.tabAccounts.Text = "Accounts";
+            this.tabAccounts.UseVisualStyleBackColor = true;
             //
             // tabProduction
             //

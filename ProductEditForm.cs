@@ -25,6 +25,9 @@ namespace Stock_Managemnet
             if (_isNew && defaultType.HasValue)
                 cmbType.SelectedItem = ProductTypeLabels.ToLabel(defaultType.Value);
 
+            cmbType.SelectedIndexChanged += (s, e) => UpdatePriceLabel();
+            UpdatePriceLabel();
+
             if (!_isNew)
             {
                 txtSku.Text = _product.Sku;
@@ -36,6 +39,13 @@ namespace Stock_Managemnet
                 numQuantity.Value = Math.Max(0, Math.Min(numQuantity.Maximum, _product.Quantity));
                 numQuantity.Enabled = _isNew;
             }
+        }
+
+        private void UpdatePriceLabel()
+        {
+            var isRawMaterial = cmbType.SelectedItem != null &&
+                ProductTypeLabels.FromLabel(cmbType.SelectedItem.ToString()) == ProductType.RawMaterial;
+            lblPrice.Text = isRawMaterial ? "Unit cost:" : "Sale price:";
         }
 
         private static decimal ClampDecimal(decimal value, decimal min, decimal max) =>

@@ -20,6 +20,10 @@ namespace Stock_Managemnet.Data
                 data.Customers = LoadCustomers(connection);
                 data.Transactions = LoadTransactions(connection);
                 data.Invoices = LoadInvoices(connection);
+                data.Accounts = LoadAccounts(connection);
+                data.JournalEntries = LoadJournalEntries(connection);
+                data.CustomerPayments = LoadCustomerPayments(connection);
+                data.BusinessExpenses = LoadBusinessExpenses(connection);
                 data.ProductionRecipes = LoadRecipes(connection);
                 data.ProductionOrders = LoadProductionOrders(connection);
             }
@@ -44,6 +48,10 @@ namespace Stock_Managemnet.Data
                         InsertCustomers(connection, transaction, data.Customers);
                         InsertTransactions(connection, transaction, data.Transactions);
                         InsertInvoices(connection, transaction, data.Invoices);
+                        InsertAccounts(connection, transaction, data.Accounts);
+                        InsertJournalEntries(connection, transaction, data.JournalEntries);
+                        InsertCustomerPayments(connection, transaction, data.CustomerPayments);
+                        InsertBusinessExpenses(connection, transaction, data.BusinessExpenses);
                         InsertRecipes(connection, transaction, data.ProductionRecipes);
                         InsertProductionOrders(connection, transaction, data.ProductionOrders);
                         transaction.Commit();
@@ -90,7 +98,7 @@ namespace Stock_Managemnet.Data
             var products = new List<Product>();
             using (var command = connection.CreateCommand())
             {
-                command.CommandText = "SELECT Id, Sku, Name, Category, ProductType, UnitPrice, Quantity, ReorderLevel, LastUpdated FROM Products";
+                command.CommandText = "SELECT Id, Sku, Name, Category, ProductType, UnitPrice, UnitCost, Quantity, ReorderLevel, LastUpdated FROM Products";
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -103,9 +111,10 @@ namespace Stock_Managemnet.Data
                             Category = reader.IsDBNull(3) ? null : reader.GetString(3),
                             ProductType = (ProductType)reader.GetInt32(4),
                             UnitPrice = reader.GetDecimal(5),
-                            Quantity = reader.GetInt32(6),
-                            ReorderLevel = reader.GetInt32(7),
-                            LastUpdated = reader.GetDateTime(8)
+                            UnitCost = reader.GetDecimal(6),
+                            Quantity = reader.GetInt32(7),
+                            ReorderLevel = reader.GetInt32(8),
+                            LastUpdated = reader.GetDateTime(9)
                         });
                     }
                 }
@@ -186,7 +195,7 @@ FROM StockTransactions";
             {
                 command.CommandText = @"
 SELECT Id, InvoiceNumber, CustomerId, CustomerName, CustomerPhone, CustomerAddress,
-       TotalAmount, Notes, TransactionId, CreatedAt
+       TotalAmount, AmountPaid, Notes, TransactionId, CreatedAt
 FROM Invoices";
                 using (var reader = command.ExecuteReader())
                 {
@@ -202,9 +211,10 @@ FROM Invoices";
                             CustomerPhone = reader.IsDBNull(4) ? null : reader.GetString(4),
                             CustomerAddress = reader.IsDBNull(5) ? null : reader.GetString(5),
                             TotalAmount = reader.GetDecimal(6),
-                            Notes = reader.IsDBNull(7) ? null : reader.GetString(7),
-                            TransactionId = reader.IsDBNull(8) ? (Guid?)null : reader.GetGuid(8),
-                            CreatedAt = reader.GetDateTime(9),
+                            AmountPaid = reader.GetDecimal(7),
+                            Notes = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            TransactionId = reader.IsDBNull(9) ? (Guid?)null : reader.GetGuid(9),
+                            CreatedAt = reader.GetDateTime(10),
                             Items = lineItems.ContainsKey(invoiceId)
                                 ? lineItems[invoiceId]
                                 : new List<InvoiceLineItem>()
@@ -222,7 +232,7 @@ FROM Invoices";
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = @"
-SELECT InvoiceId, ProductId, ProductSku, ProductName, ProductCategory, Quantity, UnitPrice, LineTotal
+SELECT InvoiceId, ProductId, ProductSku, ProductName, ProductCategory, Quantity, UnitPrice, LineTotal, UnitCost
 FROM InvoiceLineItems";
                 using (var reader = command.ExecuteReader())
                 {
@@ -240,13 +250,182 @@ FROM InvoiceLineItems";
                             ProductCategory = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
                             Quantity = reader.GetInt32(5),
                             UnitPrice = reader.GetDecimal(6),
-                            LineTotal = reader.GetDecimal(7)
+                            LineTotal = reader.GetDecimal(7),
+                            UnitCost = reader.GetDecimal(8)
                         });
                     }
                 }
             }
 
             return items;
+        }
+
+        private static List<Account> LoadAccounts(SqlConnection connection)
+        {
+            var accounts = new List<Account>();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT Id, Code, Name, Type, IsSystem, IsActive, CreatedAt
+FROM Accounts
+ORDER BY Code";
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        accounts.Add(new Account
+                        {
+                            Id = reader.GetGuid(0),
+                            Code = reader.GetString(1),
+                            Name = reader.GetString(2),
+                            Type = (AccountType)reader.GetInt32(3),
+                            IsSystem = reader.GetBoolean(4),
+                            IsActive = reader.GetBoolean(5),
+                            CreatedAt = reader.GetDateTime(6)
+                        });
+                    }
+                }
+            }
+
+            return accounts;
+        }
+
+        private static List<JournalEntry> LoadJournalEntries(SqlConnection connection)
+        {
+            var entries = new List<JournalEntry>();
+            var lines = LoadJournalLines(connection);
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT Id, EntryDate, ReferenceType, ReferenceId, ReferenceNumber, Description, CreatedAt
+FROM JournalEntries
+ORDER BY EntryDate DESC, CreatedAt DESC";
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var entryId = reader.GetGuid(0);
+                        entries.Add(new JournalEntry
+                        {
+                            Id = entryId,
+                            EntryDate = reader.GetDateTime(1),
+                            ReferenceType = (JournalReferenceType)reader.GetInt32(2),
+                            ReferenceId = reader.IsDBNull(3) ? (Guid?)null : reader.GetGuid(3),
+                            ReferenceNumber = reader.IsDBNull(4) ? null : reader.GetString(4),
+                            Description = reader.IsDBNull(5) ? null : reader.GetString(5),
+                            CreatedAt = reader.GetDateTime(6),
+                            Lines = lines.ContainsKey(entryId) ? lines[entryId] : new List<JournalLine>()
+                        });
+                    }
+                }
+            }
+
+            return entries;
+        }
+
+        private static Dictionary<Guid, List<JournalLine>> LoadJournalLines(SqlConnection connection)
+        {
+            var lines = new Dictionary<Guid, List<JournalLine>>();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT Id, JournalEntryId, AccountId, AccountCode, AccountName, CustomerId, CustomerName, Debit, Credit
+FROM JournalLines";
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var entryId = reader.GetGuid(1);
+                        if (!lines.ContainsKey(entryId))
+                            lines[entryId] = new List<JournalLine>();
+
+                        lines[entryId].Add(new JournalLine
+                        {
+                            Id = reader.GetGuid(0),
+                            JournalEntryId = entryId,
+                            AccountId = reader.GetGuid(2),
+                            AccountCode = reader.GetString(3),
+                            AccountName = reader.GetString(4),
+                            CustomerId = reader.IsDBNull(5) ? (Guid?)null : reader.GetGuid(5),
+                            CustomerName = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            Debit = reader.GetDecimal(7),
+                            Credit = reader.GetDecimal(8)
+                        });
+                    }
+                }
+            }
+
+            return lines;
+        }
+
+        private static List<CustomerPayment> LoadCustomerPayments(SqlConnection connection)
+        {
+            var payments = new List<CustomerPayment>();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT Id, CustomerId, CustomerName, InvoiceId, InvoiceNumber, CashAccountId, CashAccountName,
+       Amount, PaymentMethod, Reference, Notes, PaidAt
+FROM CustomerPayments
+ORDER BY PaidAt DESC";
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        payments.Add(new CustomerPayment
+                        {
+                            Id = reader.GetGuid(0),
+                            CustomerId = reader.GetGuid(1),
+                            CustomerName = reader.GetString(2),
+                            InvoiceId = reader.IsDBNull(3) ? (Guid?)null : reader.GetGuid(3),
+                            InvoiceNumber = reader.IsDBNull(4) ? null : reader.GetString(4),
+                            CashAccountId = reader.GetGuid(5),
+                            CashAccountName = reader.GetString(6),
+                            Amount = reader.GetDecimal(7),
+                            PaymentMethod = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            Reference = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            Notes = reader.IsDBNull(10) ? null : reader.GetString(10),
+                            PaidAt = reader.GetDateTime(11)
+                        });
+                    }
+                }
+            }
+
+            return payments;
+        }
+
+        private static List<BusinessExpense> LoadBusinessExpenses(SqlConnection connection)
+        {
+            var expenses = new List<BusinessExpense>();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT Id, ExpenseAccountId, ExpenseAccountName, CashAccountId, CashAccountName,
+       Amount, Reference, Notes, PaidAt
+FROM BusinessExpenses
+ORDER BY PaidAt DESC";
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        expenses.Add(new BusinessExpense
+                        {
+                            Id = reader.GetGuid(0),
+                            ExpenseAccountId = reader.GetGuid(1),
+                            ExpenseAccountName = reader.GetString(2),
+                            CashAccountId = reader.GetGuid(3),
+                            CashAccountName = reader.GetString(4),
+                            Amount = reader.GetDecimal(5),
+                            Reference = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            Notes = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            PaidAt = reader.GetDateTime(8)
+                        });
+                    }
+                }
+            }
+
+            return expenses;
         }
 
         private static List<ProductionRecipe> LoadRecipes(SqlConnection connection)
@@ -387,6 +566,11 @@ FROM ProductionOrderMaterials";
         private static void ClearTables(SqlConnection connection, SqlTransaction transaction)
         {
             const string sql = @"
+DELETE FROM JournalLines;
+DELETE FROM JournalEntries;
+DELETE FROM CustomerPayments;
+DELETE FROM BusinessExpenses;
+DELETE FROM Accounts;
 DELETE FROM InvoiceLineItems;
 DELETE FROM Invoices;
 DELETE FROM ProductionOrderMaterials;
@@ -432,14 +616,15 @@ DELETE FROM AppSettings;";
                 {
                     command.Transaction = transaction;
                     command.CommandText = @"
-INSERT INTO Products (Id, Sku, Name, Category, ProductType, UnitPrice, Quantity, ReorderLevel, LastUpdated)
-VALUES (@Id, @Sku, @Name, @Category, @ProductType, @UnitPrice, @Quantity, @ReorderLevel, @LastUpdated)";
+INSERT INTO Products (Id, Sku, Name, Category, ProductType, UnitPrice, UnitCost, Quantity, ReorderLevel, LastUpdated)
+VALUES (@Id, @Sku, @Name, @Category, @ProductType, @UnitPrice, @UnitCost, @Quantity, @ReorderLevel, @LastUpdated)";
                     command.Parameters.AddWithValue("@Id", product.Id);
                     command.Parameters.AddWithValue("@Sku", (object)product.Sku ?? DBNull.Value);
                     command.Parameters.AddWithValue("@Name", (object)product.Name ?? DBNull.Value);
                     command.Parameters.AddWithValue("@Category", (object)product.Category ?? DBNull.Value);
                     command.Parameters.AddWithValue("@ProductType", (int)product.ProductType);
                     command.Parameters.AddWithValue("@UnitPrice", product.UnitPrice);
+                    command.Parameters.AddWithValue("@UnitCost", product.UnitCost);
                     command.Parameters.AddWithValue("@Quantity", product.Quantity);
                     command.Parameters.AddWithValue("@ReorderLevel", product.ReorderLevel);
                     command.Parameters.AddWithValue("@LastUpdated", product.LastUpdated);
@@ -512,10 +697,10 @@ VALUES
                     command.CommandText = @"
 INSERT INTO Invoices
     (Id, InvoiceNumber, CustomerId, CustomerName, CustomerPhone, CustomerAddress,
-     TotalAmount, Notes, TransactionId, CreatedAt)
+     TotalAmount, AmountPaid, Notes, TransactionId, CreatedAt)
 VALUES
     (@Id, @InvoiceNumber, @CustomerId, @CustomerName, @CustomerPhone, @CustomerAddress,
-     @TotalAmount, @Notes, @TransactionId, @CreatedAt)";
+     @TotalAmount, @AmountPaid, @Notes, @TransactionId, @CreatedAt)";
                     command.Parameters.AddWithValue("@Id", invoice.Id);
                     command.Parameters.AddWithValue("@InvoiceNumber", (object)invoice.InvoiceNumber ?? DBNull.Value);
                     command.Parameters.AddWithValue("@CustomerId", (object)invoice.CustomerId ?? DBNull.Value);
@@ -523,6 +708,7 @@ VALUES
                     command.Parameters.AddWithValue("@CustomerPhone", (object)invoice.CustomerPhone ?? DBNull.Value);
                     command.Parameters.AddWithValue("@CustomerAddress", (object)invoice.CustomerAddress ?? DBNull.Value);
                     command.Parameters.AddWithValue("@TotalAmount", invoice.TotalAmount);
+                    command.Parameters.AddWithValue("@AmountPaid", invoice.AmountPaid);
                     command.Parameters.AddWithValue("@Notes", (object)invoice.Notes ?? DBNull.Value);
                     command.Parameters.AddWithValue("@TransactionId", (object)invoice.TransactionId ?? DBNull.Value);
                     command.Parameters.AddWithValue("@CreatedAt", invoice.CreatedAt);
@@ -536,9 +722,9 @@ VALUES
                         command.Transaction = transaction;
                         command.CommandText = @"
 INSERT INTO InvoiceLineItems
-    (Id, InvoiceId, ProductId, ProductSku, ProductName, ProductCategory, Quantity, UnitPrice, LineTotal)
+    (Id, InvoiceId, ProductId, ProductSku, ProductName, ProductCategory, Quantity, UnitPrice, LineTotal, UnitCost)
 VALUES
-    (@Id, @InvoiceId, @ProductId, @ProductSku, @ProductName, @ProductCategory, @Quantity, @UnitPrice, @LineTotal)";
+    (@Id, @InvoiceId, @ProductId, @ProductSku, @ProductName, @ProductCategory, @Quantity, @UnitPrice, @LineTotal, @UnitCost)";
                         command.Parameters.AddWithValue("@Id", Guid.NewGuid());
                         command.Parameters.AddWithValue("@InvoiceId", invoice.Id);
                         command.Parameters.AddWithValue("@ProductId", item.ProductId);
@@ -548,8 +734,138 @@ VALUES
                         command.Parameters.AddWithValue("@Quantity", item.Quantity);
                         command.Parameters.AddWithValue("@UnitPrice", item.UnitPrice);
                         command.Parameters.AddWithValue("@LineTotal", item.LineTotal);
+                        command.Parameters.AddWithValue("@UnitCost", item.UnitCost);
                         command.ExecuteNonQuery();
                     }
+                }
+            }
+        }
+
+        private static void InsertAccounts(SqlConnection connection, SqlTransaction transaction, IEnumerable<Account> accounts)
+        {
+            foreach (var account in accounts ?? Enumerable.Empty<Account>())
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    command.CommandText = @"
+INSERT INTO Accounts (Id, Code, Name, Type, IsSystem, IsActive, CreatedAt)
+VALUES (@Id, @Code, @Name, @Type, @IsSystem, @IsActive, @CreatedAt)";
+                    command.Parameters.AddWithValue("@Id", account.Id);
+                    command.Parameters.AddWithValue("@Code", account.Code);
+                    command.Parameters.AddWithValue("@Name", account.Name);
+                    command.Parameters.AddWithValue("@Type", (int)account.Type);
+                    command.Parameters.AddWithValue("@IsSystem", account.IsSystem);
+                    command.Parameters.AddWithValue("@IsActive", account.IsActive);
+                    command.Parameters.AddWithValue("@CreatedAt", account.CreatedAt);
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private static void InsertJournalEntries(SqlConnection connection, SqlTransaction transaction, IEnumerable<JournalEntry> entries)
+        {
+            foreach (var entry in entries ?? Enumerable.Empty<JournalEntry>())
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    command.CommandText = @"
+INSERT INTO JournalEntries
+    (Id, EntryDate, ReferenceType, ReferenceId, ReferenceNumber, Description, CreatedAt)
+VALUES
+    (@Id, @EntryDate, @ReferenceType, @ReferenceId, @ReferenceNumber, @Description, @CreatedAt)";
+                    command.Parameters.AddWithValue("@Id", entry.Id);
+                    command.Parameters.AddWithValue("@EntryDate", entry.EntryDate);
+                    command.Parameters.AddWithValue("@ReferenceType", (int)entry.ReferenceType);
+                    command.Parameters.AddWithValue("@ReferenceId", (object)entry.ReferenceId ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ReferenceNumber", (object)entry.ReferenceNumber ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Description", (object)entry.Description ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@CreatedAt", entry.CreatedAt);
+                    command.ExecuteNonQuery();
+                }
+
+                foreach (var line in entry.Lines ?? new List<JournalLine>())
+                {
+                    line.JournalEntryId = entry.Id;
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.Transaction = transaction;
+                        command.CommandText = @"
+INSERT INTO JournalLines
+    (Id, JournalEntryId, AccountId, AccountCode, AccountName, CustomerId, CustomerName, Debit, Credit)
+VALUES
+    (@Id, @JournalEntryId, @AccountId, @AccountCode, @AccountName, @CustomerId, @CustomerName, @Debit, @Credit)";
+                        command.Parameters.AddWithValue("@Id", line.Id);
+                        command.Parameters.AddWithValue("@JournalEntryId", line.JournalEntryId);
+                        command.Parameters.AddWithValue("@AccountId", line.AccountId);
+                        command.Parameters.AddWithValue("@AccountCode", line.AccountCode);
+                        command.Parameters.AddWithValue("@AccountName", line.AccountName);
+                        command.Parameters.AddWithValue("@CustomerId", (object)line.CustomerId ?? DBNull.Value);
+                        command.Parameters.AddWithValue("@CustomerName", (object)line.CustomerName ?? DBNull.Value);
+                        command.Parameters.AddWithValue("@Debit", line.Debit);
+                        command.Parameters.AddWithValue("@Credit", line.Credit);
+                        command.ExecuteNonQuery();
+                    }
+                }
+            }
+        }
+
+        private static void InsertCustomerPayments(SqlConnection connection, SqlTransaction transaction, IEnumerable<CustomerPayment> payments)
+        {
+            foreach (var payment in payments ?? Enumerable.Empty<CustomerPayment>())
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    command.CommandText = @"
+INSERT INTO CustomerPayments
+    (Id, CustomerId, CustomerName, InvoiceId, InvoiceNumber, CashAccountId, CashAccountName,
+     Amount, PaymentMethod, Reference, Notes, PaidAt)
+VALUES
+    (@Id, @CustomerId, @CustomerName, @InvoiceId, @InvoiceNumber, @CashAccountId, @CashAccountName,
+     @Amount, @PaymentMethod, @Reference, @Notes, @PaidAt)";
+                    command.Parameters.AddWithValue("@Id", payment.Id);
+                    command.Parameters.AddWithValue("@CustomerId", payment.CustomerId);
+                    command.Parameters.AddWithValue("@CustomerName", payment.CustomerName);
+                    command.Parameters.AddWithValue("@InvoiceId", (object)payment.InvoiceId ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@InvoiceNumber", (object)payment.InvoiceNumber ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@CashAccountId", payment.CashAccountId);
+                    command.Parameters.AddWithValue("@CashAccountName", payment.CashAccountName);
+                    command.Parameters.AddWithValue("@Amount", payment.Amount);
+                    command.Parameters.AddWithValue("@PaymentMethod", (object)payment.PaymentMethod ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Reference", (object)payment.Reference ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Notes", (object)payment.Notes ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@PaidAt", payment.PaidAt);
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private static void InsertBusinessExpenses(SqlConnection connection, SqlTransaction transaction, IEnumerable<BusinessExpense> expenses)
+        {
+            foreach (var expense in expenses ?? Enumerable.Empty<BusinessExpense>())
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    command.CommandText = @"
+INSERT INTO BusinessExpenses
+    (Id, ExpenseAccountId, ExpenseAccountName, CashAccountId, CashAccountName,
+     Amount, Reference, Notes, PaidAt)
+VALUES
+    (@Id, @ExpenseAccountId, @ExpenseAccountName, @CashAccountId, @CashAccountName,
+     @Amount, @Reference, @Notes, @PaidAt)";
+                    command.Parameters.AddWithValue("@Id", expense.Id);
+                    command.Parameters.AddWithValue("@ExpenseAccountId", expense.ExpenseAccountId);
+                    command.Parameters.AddWithValue("@ExpenseAccountName", expense.ExpenseAccountName);
+                    command.Parameters.AddWithValue("@CashAccountId", expense.CashAccountId);
+                    command.Parameters.AddWithValue("@CashAccountName", expense.CashAccountName);
+                    command.Parameters.AddWithValue("@Amount", expense.Amount);
+                    command.Parameters.AddWithValue("@Reference", (object)expense.Reference ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Notes", (object)expense.Notes ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@PaidAt", expense.PaidAt);
+                    command.ExecuteNonQuery();
                 }
             }
         }

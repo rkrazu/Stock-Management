@@ -12,6 +12,10 @@ namespace Stock_Managemnet.Models
         [DataMember] public string ProductCategory { get; set; }
         [DataMember] public int Quantity { get; set; }
         [DataMember] public decimal UnitPrice { get; set; }
+        [DataMember] public decimal UnitCost { get; set; }
         [DataMember] public decimal LineTotal { get; set; }
+
+        public decimal LineCost => UnitCost * Quantity;
+        public decimal LineProfit => LineTotal - LineCost;
     }
 }

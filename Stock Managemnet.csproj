@@ -65,6 +65,17 @@
   <ItemGroup>
     <Compile Include="Models\Invoice.cs" />
     <Compile Include="Models\InvoiceLineItem.cs" />
+    <Compile Include="Models\Account.cs" />
+    <Compile Include="Models\AccountType.cs" />
+    <Compile Include="Models\SystemAccounts.cs" />
+    <Compile Include="Models\JournalEntry.cs" />
+    <Compile Include="Models\JournalLine.cs" />
+    <Compile Include="Models\JournalReferenceType.cs" />
+    <Compile Include="Models\CustomerPayment.cs" />
+    <Compile Include="Models\BusinessExpense.cs" />
+    <Compile Include="Models\CustomerDueRow.cs" />
+    <Compile Include="Models\CashLedgerRow.cs" />
+    <Compile Include="Models\SalesProfitLine.cs" />
     <Compile Include="Models\StockOutLineItem.cs" />
     <Compile Include="Models\StockOutRequest.cs" />
     <Compile Include="Models\Customer.cs" />
@@ -82,6 +93,7 @@
     <Compile Include="Services\AuthenticationService.cs" />
     <Compile Include="Services\PasswordPolicy.cs" />
     <Compile Include="Services\StockRepository.cs" />
+    <Compile Include="Services\AccountingService.cs" />
     <Compile Include="LoginForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -130,9 +142,24 @@
     <Compile Include="InvoiceForm.Designer.cs">
       <DependentUpon>InvoiceForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="ReceivePaymentForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ReceivePaymentForm.Designer.cs">
+      <DependentUpon>ReceivePaymentForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RecordExpenseForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RecordExpenseForm.Designer.cs">
+      <DependentUpon>RecordExpenseForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="InvoiceDocumentBuilder.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.Accounts.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
