@@ -177,7 +177,7 @@ namespace Stock_Managemnet
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnClose;
-            this.ClientSize = new System.Drawing.Size(900, 640);
+            this.ClientSize = new System.Drawing.Size(980, 760);
             this.Controls.Add(this.panelPreview);
             this.Controls.Add(this.panelPayment);
             this.Controls.Add(this.panelButtons);
@@ -185,7 +185,7 @@ namespace Stock_Managemnet
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(640, 420);
+            this.MinimumSize = new System.Drawing.Size(720, 520);
             this.Padding = new System.Windows.Forms.Padding(12);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Invoice";

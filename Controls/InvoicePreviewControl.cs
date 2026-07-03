@@ -1,15 +1,16 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using Stock_Managemnet.Models;
+using Stock_Managemnet.Services;
 
 namespace Stock_Managemnet.Controls
 {
     public class InvoicePreviewControl : Panel
     {
-        private const int DocumentWidth = 820;
-        private const int VerticalPadding = 20;
-        private const int HorizontalPadding = 24;
+        private const int VerticalPadding = 12;
+        private const int HorizontalPadding = 12;
 
         private readonly Panel _documentSurface = new Panel();
         private Invoice _invoice;
@@ -37,6 +38,13 @@ namespace Stock_Managemnet.Controls
             LayoutDocument();
         }
 
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            if (Visible)
+                LayoutDocument();
+        }
+
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
@@ -54,9 +62,13 @@ namespace Stock_Managemnet.Controls
             if (_invoice == null)
                 return;
 
-            e.Graphics.Clear(Color.White);
+            var graphics = e.Graphics;
+            graphics.SmoothingMode = SmoothingMode.HighQuality;
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
             InvoiceDocumentBuilder.Paint(
-                e.Graphics,
+                graphics,
                 new Rectangle(0, 0, _documentSurface.Width, _documentSurface.Height),
                 _invoice,
                 _isDraft,
@@ -68,19 +80,16 @@ namespace Stock_Managemnet.Controls
             if (_invoice == null)
                 return;
 
-            var documentHeight = InvoiceDocumentBuilder.MeasureHeight(
-                _invoice,
-                DocumentWidth,
-                InvoiceDocumentBuilder.InvoiceRenderProfile.Screen);
+            var availableWidth = Math.Max(320, ClientSize.Width - (HorizontalPadding * 2));
+            var pageSize = InvoicePaperAssets.GetLogicalPageSize(availableWidth);
 
-            _documentSurface.Size = new Size(DocumentWidth, documentHeight);
-
-            var scrollWidth = Math.Max(ClientSize.Width, DocumentWidth + (HorizontalPadding * 2));
-            var scrollHeight = documentHeight + (VerticalPadding * 2);
-            AutoScrollMinSize = new Size(scrollWidth, scrollHeight);
-
-            _documentSurface.Left = Math.Max(HorizontalPadding, (scrollWidth - DocumentWidth) / 2);
+            _documentSurface.Size = pageSize;
+            _documentSurface.Left = Math.Max(0, (ClientSize.Width - pageSize.Width) / 2);
             _documentSurface.Top = VerticalPadding;
+
+            AutoScrollMinSize = new Size(
+                pageSize.Width + (HorizontalPadding * 2),
+                pageSize.Height + (VerticalPadding * 2));
         }
     }
 }

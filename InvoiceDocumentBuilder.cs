@@ -1,9 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.Drawing.Printing;
-using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Stock_Managemnet.Models;
@@ -19,31 +17,21 @@ namespace Stock_Managemnet
             Print
         }
 
-        public const int DefaultDocumentWidth = 820;
-
         private static readonly Color BorderColor = Color.FromArgb(160, 160, 160);
         private static readonly Color TitleBarColor = Color.FromArgb(220, 220, 220);
         private static readonly Color SectionBarColor = Color.FromArgb(232, 196, 196);
         private static readonly Color TotalRowColor = Color.FromArgb(255, 242, 153);
-        private static Image _watermarkImage;
 
-        private static Image GetWatermarkImage()
+        public static Size PageSize => InvoicePaperAssets.PageSize;
+
+        public static int MeasurePageHeight(InvoiceRenderProfile profile = InvoiceRenderProfile.Screen)
         {
-            if (_watermarkImage != null)
-                return _watermarkImage;
-
-            var logo = BrandAssets.LogoImage;
-            if (logo == null)
-                return null;
-
-            _watermarkImage = (Image)logo.Clone();
-            return _watermarkImage;
+            return PageSize.Height;
         }
 
         public static int MeasureHeight(Invoice invoice, int width, InvoiceRenderProfile profile = InvoiceRenderProfile.Screen)
         {
-            var layout = BuildLayout(invoice, width, profile);
-            return layout.TotalHeight;
+            return MeasurePageHeight(profile);
         }
 
         public static void Paint(
@@ -53,13 +41,19 @@ namespace Stock_Managemnet
             bool isDraft,
             InvoiceRenderProfile profile = InvoiceRenderProfile.Screen)
         {
-            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
             graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-            var layout = BuildLayout(invoice, bounds.Width, profile);
+            InvoicePaperAssets.DrawPageBackground(graphics, bounds);
+
+            var contentBounds = InvoicePaperAssets.GetContentBounds(bounds.Width, bounds.Height);
+            contentBounds.Offset(bounds.Left, bounds.Top);
+
+            var layout = BuildLayout(invoice, contentBounds.Width, profile);
             var state = graphics.Save();
-            graphics.TranslateTransform(bounds.Left, bounds.Top);
+            graphics.SetClip(contentBounds);
+            graphics.TranslateTransform(contentBounds.Left, contentBounds.Top);
             DrawDocument(graphics, layout, invoice, isDraft, profile);
             graphics.Restore(state);
         }
@@ -68,19 +62,23 @@ namespace Stock_Managemnet
         {
             var document = new PrintDocument();
             document.DocumentName = isDraft ? "Invoice Preview" : invoice.InvoiceNumber;
-            document.DefaultPageSettings.Margins = new Margins(60, 60, 60, 60);
+            document.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
+            document.DefaultPageSettings.Landscape = false;
+
+            foreach (PaperSize paperSize in document.PrinterSettings.PaperSizes)
+            {
+                if (paperSize.Kind == PaperKind.A4)
+                {
+                    document.DefaultPageSettings.PaperSize = paperSize;
+                    break;
+                }
+            }
 
             document.PrintPage += (sender, e) =>
             {
-                var page = e.MarginBounds;
-                var docWidth = Math.Min(DefaultDocumentWidth, page.Width);
-                var docHeight = MeasureHeight(invoice, docWidth, InvoiceRenderProfile.Print);
-                var x = page.Left + Math.Max(0, (page.Width - docWidth) / 2);
-                var y = page.Top;
-
                 Paint(
                     e.Graphics,
-                    new Rectangle(x, y, docWidth, docHeight),
+                    e.PageBounds,
                     invoice,
                     isDraft,
                     InvoiceRenderProfile.Print);
@@ -94,53 +92,6 @@ namespace Stock_Managemnet
                 preview.Height = 820;
                 preview.ShowDialog();
             }
-        }
-
-        private static void DrawWatermark(Graphics graphics, int width, int height, InvoiceRenderProfile profile)
-        {
-            var watermark = GetWatermarkImage();
-            if (watermark == null)
-                return;
-
-            var opacity = profile == InvoiceRenderProfile.Print ? 0.22f : 0.18f;
-            var maxSize = Math.Min(width, height) * 0.68f;
-            var scale = Math.Min(maxSize / watermark.Width, maxSize / watermark.Height);
-            var drawWidth = watermark.Width * scale;
-            var drawHeight = watermark.Height * scale;
-            var x = (width - drawWidth) / 2f;
-            var y = (height - drawHeight) / 2f;
-
-            var destRect = new Rectangle(
-                (int)Math.Round(x),
-                (int)Math.Round(y),
-                (int)Math.Round(drawWidth),
-                (int)Math.Round(drawHeight));
-            var state = graphics.Save();
-            graphics.CompositingMode = CompositingMode.SourceOver;
-
-            using (var attributes = new ImageAttributes())
-            {
-                var matrix = new ColorMatrix
-                {
-                    Matrix00 = 1f,
-                    Matrix11 = 1f,
-                    Matrix22 = 1f,
-                    Matrix33 = opacity,
-                    Matrix44 = 1f
-                };
-                attributes.SetColorMatrix(matrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
-                graphics.DrawImage(
-                    watermark,
-                    destRect,
-                    0,
-                    0,
-                    watermark.Width,
-                    watermark.Height,
-                    GraphicsUnit.Pixel,
-                    attributes);
-            }
-
-            graphics.Restore(state);
         }
 
         private static InvoiceFonts CreateFonts(InvoiceRenderProfile profile)
@@ -177,8 +128,6 @@ namespace Stock_Managemnet
             using (var fonts = CreateFonts(profile))
             using (var borderPen = new Pen(BorderColor))
             {
-                DrawWatermark(graphics, layout.Width, layout.TotalHeight, profile);
-
                 var y = 0;
                 var width = layout.Width;
                 var pad = layout.HorizontalPadding;
@@ -186,8 +135,11 @@ namespace Stock_Managemnet
                 var thirdWidth = contentWidth / 3;
                 var lastThirdWidth = contentWidth - (thirdWidth * 2);
 
-                BrandAssets.DrawCompanyHeader(graphics, new Rectangle(0, y, width, layout.CompanyHeaderHeight), fonts.Company);
-                y += layout.CompanyHeaderHeight + 4;
+                if (!InvoicePaperAssets.HasPad)
+                {
+                    BrandAssets.DrawCompanyHeader(graphics, new Rectangle(0, y, width, layout.CompanyHeaderHeight), fonts.Company);
+                    y += layout.CompanyHeaderHeight + 4;
+                }
 
                 FillBar(graphics, new Rectangle(0, y, width, layout.TitleBarHeight), TitleBarColor);
                 DrawCenteredText(
@@ -264,9 +216,10 @@ namespace Stock_Managemnet
 
         private static DocumentLayout BuildLayout(Invoice invoice, int width, InvoiceRenderProfile profile)
         {
-            width = Math.Max(720, width);
+            width = Math.Max(480, width);
             var itemCount = Math.Max(1, invoice?.Items?.Count ?? 0);
             var isPrint = profile == InvoiceRenderProfile.Print;
+            var useLetterhead = InvoicePaperAssets.HasPad;
 
             var layout = new DocumentLayout
             {
@@ -290,8 +243,10 @@ namespace Stock_Managemnet
                 AmountWidth = isPrint ? 112 : 104
             };
 
+            var headerOffset = useLetterhead ? 0 : layout.CompanyHeaderHeight + 4;
+
             layout.TableTop =
-                layout.CompanyHeaderHeight + 4 +
+                headerOffset +
                 layout.TitleBarHeight + layout.SectionGap +
                 layout.MetaRowHeight + layout.SectionGap +
                 layout.InfoRowHeight +
