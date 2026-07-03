@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Stock_Managemnet.Controls;
 using Stock_Managemnet.Models;
 
 namespace Stock_Managemnet
@@ -28,6 +29,10 @@ namespace Stock_Managemnet
         private DateTimePicker dtpCashLedgerFrom;
         private DateTimePicker dtpCashLedgerTo;
         private CheckBox chkCashLedgerDateRange;
+        private CustomerSelectControl cashLedgerCustomerSelect;
+        private ComboBox cmbCashLedgerExpense;
+        private Button btnCashLedgerSearch;
+        private Button btnCashLedgerReset;
         private DataGridView dgvCashLedger;
         private Label lblCashBalance;
         private Label lblSalesProfitSummary;
@@ -48,6 +53,13 @@ namespace Stock_Managemnet
         private CheckBox chkExpenseDateRange;
         private Button btnRecordExpense;
         private DataGridView dgvExpenses;
+
+        private const int AccountsControlHeight = 32;
+        private const int AccountsToolbarGap = 10;
+        private const int AccountsToolbarRowPadding = 6;
+        private static readonly Color AccountsToolbarBack = Color.FromArgb(249, 250, 251);
+        private static readonly Color AccountsToolbarBorder = Color.FromArgb(229, 231, 235);
+        private static readonly Color AccountsLabelText = Color.FromArgb(75, 85, 99);
 
         private void InitializeAccountsUi()
         {
@@ -102,87 +114,46 @@ namespace Stock_Managemnet
         private Panel CreateAccountsChartPanel()
         {
             var panel = new Panel { Dock = DockStyle.Fill, Visible = true };
-            lblAccountsSummary = new Label
-            {
-                AutoSize = true,
-                Dock = DockStyle.Top,
-                Height = 28,
-                Padding = new Padding(0, 4, 0, 8),
-                Text = "Accounts"
-            };
-            dgvAccountsChart = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.None,
-                MultiSelect = false,
-                ReadOnly = true,
-                RowHeadersVisible = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect
-            };
+            lblAccountsSummary = CreateAccountsSummaryLabel(Color.FromArgb(37, 99, 235));
+            var summaryBar = WrapAccountsSummary(lblAccountsSummary);
+            dgvAccountsChart = CreateAccountsGrid();
             panel.Controls.Add(dgvAccountsChart);
-            panel.Controls.Add(lblAccountsSummary);
+            panel.Controls.Add(summaryBar);
             return panel;
         }
 
         private Panel CreateSalesProfitPanel()
         {
             var panel = new Panel { Dock = DockStyle.Fill, Visible = false };
-            var toolbar = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(0, 4, 0, 8) };
 
-            txtProfitSearch = new TextBox { Location = new Point(0, 8), Width = 180 };
-            btnProfitSearch = new Button { Location = new Point(186, 6), Width = 65, Height = 27, Text = "Search" };
-            btnProfitReset = new Button { Location = new Point(257, 6), Width = 65, Height = 27, Text = "Reset" };
-            chkProfitDateRange = new CheckBox { AutoSize = true, Location = new Point(340, 9), Text = "Date range" };
-            dtpProfitFrom = new DateTimePicker
-            {
-                Enabled = false,
-                Format = DateTimePickerFormat.Short,
-                Location = new Point(450, 7),
-                Width = 110
-            };
-            dtpProfitTo = new DateTimePicker
-            {
-                Enabled = false,
-                Format = DateTimePickerFormat.Short,
-                Location = new Point(570, 7),
-                Width = 110
-            };
+            var toolbarRow = CreateToolbarFlow();
+            var lblSearch = CreateAccountsFieldLabel("Search:");
+            txtProfitSearch = new TextBox { Width = 200, Height = AccountsControlHeight };
+            btnProfitSearch = CreateAccountsButton("Search", 76);
+            btnProfitReset = CreateAccountsButton("Reset", 76);
+            chkProfitDateRange = CreateAccountsCheckBox("Date range");
+            var lblFrom = CreateAccountsFieldLabel("From:");
+            dtpProfitFrom = CreateAccountsDatePicker();
+            var lblTo = CreateAccountsFieldLabel("To:");
+            dtpProfitTo = CreateAccountsDatePicker();
+            AddToolbarItem(toolbarRow, lblSearch);
+            AddToolbarItem(toolbarRow, txtProfitSearch);
+            AddToolbarItem(toolbarRow, btnProfitSearch);
+            AddToolbarItem(toolbarRow, btnProfitReset);
+            AddToolbarItem(toolbarRow, chkProfitDateRange, AccountsToolbarGap * 2);
+            AddToolbarItem(toolbarRow, lblFrom);
+            AddToolbarItem(toolbarRow, dtpProfitFrom);
+            AddToolbarItem(toolbarRow, lblTo);
+            AddToolbarItem(toolbarRow, dtpProfitTo, 0);
 
-            toolbar.Controls.Add(txtProfitSearch);
-            toolbar.Controls.Add(btnProfitSearch);
-            toolbar.Controls.Add(btnProfitReset);
-            toolbar.Controls.Add(chkProfitDateRange);
-            toolbar.Controls.Add(dtpProfitFrom);
-            toolbar.Controls.Add(dtpProfitTo);
+            var toolbar = CreateToolbarSection(toolbarRow);
 
-            lblSalesProfitSummary = new Label
-            {
-                Dock = DockStyle.Top,
-                Height = 28,
-                Padding = new Padding(0, 4, 0, 8),
-                ForeColor = Color.FromArgb(22, 101, 52)
-            };
-
-            dgvSalesProfit = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.None,
-                MultiSelect = false,
-                ReadOnly = true,
-                RowHeadersVisible = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect
-            };
+            lblSalesProfitSummary = CreateAccountsSummaryLabel(Color.FromArgb(22, 101, 52));
+            var summaryBar = WrapAccountsSummary(lblSalesProfitSummary);
+            dgvSalesProfit = CreateAccountsGrid();
 
             panel.Controls.Add(dgvSalesProfit);
-            panel.Controls.Add(lblSalesProfitSummary);
+            panel.Controls.Add(summaryBar);
             panel.Controls.Add(toolbar);
             return panel;
         }
@@ -191,95 +162,42 @@ namespace Stock_Managemnet
         {
             var panel = new Panel { Dock = DockStyle.Fill, Visible = false };
 
-            var actionBar = new Panel { Dock = DockStyle.Top, Height = 48, Padding = new Padding(0, 8, 0, 4) };
-            btnRecordExpense = new Button
-            {
-                Dock = DockStyle.Left,
-                Width = 160,
-                Height = 32,
-                Text = "+ Add Expense",
-                BackColor = Color.FromArgb(22, 101, 52),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
-            };
-            btnRecordExpense.FlatAppearance.BorderSize = 0;
+            var filterRow = CreateToolbarFlow();
+            btnRecordExpense = CreateAccountsPrimaryButton("+ Add Expense", 150);
+            var lblCategory = CreateAccountsFieldLabel("Category:");
+            cmbExpenseCategory = CreateAccountsComboBox(190);
+            var lblSearch = CreateAccountsFieldLabel("Search:");
+            txtExpenseSearch = new TextBox { Width = 160, Height = AccountsControlHeight };
+            btnExpenseSearch = CreateAccountsButton("Search", 76);
+            btnExpenseReset = CreateAccountsButton("Reset", 76);
+            AddToolbarItem(filterRow, btnRecordExpense);
+            AddToolbarItem(filterRow, lblCategory, AccountsToolbarGap * 2);
+            AddToolbarItem(filterRow, cmbExpenseCategory);
+            AddToolbarItem(filterRow, lblSearch, AccountsToolbarGap * 2);
+            AddToolbarItem(filterRow, txtExpenseSearch);
+            AddToolbarItem(filterRow, btnExpenseSearch);
+            AddToolbarItem(filterRow, btnExpenseReset, 0);
 
-            var lblExpenseHint = new Label
-            {
-                AutoSize = true,
-                Dock = DockStyle.Left,
-                Padding = new Padding(12, 8, 0, 0),
-                ForeColor = Color.FromArgb(107, 114, 128),
-                Text = "Record rent, salary, snacks, transport, and other costs paid from cash or bank."
-            };
+            var dateRow = CreateToolbarFlow();
+            chkExpenseDateRange = CreateAccountsCheckBox("Date range");
+            var lblFrom = CreateAccountsFieldLabel("From:");
+            dtpExpenseFrom = CreateAccountsDatePicker();
+            var lblTo = CreateAccountsFieldLabel("To:");
+            dtpExpenseTo = CreateAccountsDatePicker();
+            AddToolbarItem(dateRow, chkExpenseDateRange);
+            AddToolbarItem(dateRow, lblFrom);
+            AddToolbarItem(dateRow, dtpExpenseFrom);
+            AddToolbarItem(dateRow, lblTo);
+            AddToolbarItem(dateRow, dtpExpenseTo, 0);
 
-            actionBar.Controls.Add(lblExpenseHint);
-            actionBar.Controls.Add(btnRecordExpense);
+            var actionBar = CreateToolbarSection(filterRow, dateRow);
 
-            var toolbar = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(0, 4, 0, 8) };
-
-            var lblCategory = new Label { AutoSize = true, Location = new Point(0, 10), Text = "Category:" };
-            cmbExpenseCategory = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Location = new Point(68, 7),
-                Width = 170
-            };
-
-            txtExpenseSearch = new TextBox { Location = new Point(250, 8), Width = 160 };
-            btnExpenseSearch = new Button { Location = new Point(416, 6), Width = 70, Height = 27, Text = "Search" };
-            btnExpenseReset = new Button { Location = new Point(492, 6), Width = 70, Height = 27, Text = "Reset" };
-            chkExpenseDateRange = new CheckBox { AutoSize = true, Location = new Point(572, 9), Text = "Date range" };
-            dtpExpenseFrom = new DateTimePicker
-            {
-                Enabled = false,
-                Format = DateTimePickerFormat.Short,
-                Location = new Point(670, 7),
-                Width = 110
-            };
-            dtpExpenseTo = new DateTimePicker
-            {
-                Enabled = false,
-                Format = DateTimePickerFormat.Short,
-                Location = new Point(786, 7),
-                Width = 110
-            };
-
-            toolbar.Controls.Add(lblCategory);
-            toolbar.Controls.Add(cmbExpenseCategory);
-            toolbar.Controls.Add(txtExpenseSearch);
-            toolbar.Controls.Add(btnExpenseSearch);
-            toolbar.Controls.Add(btnExpenseReset);
-            toolbar.Controls.Add(chkExpenseDateRange);
-            toolbar.Controls.Add(dtpExpenseFrom);
-            toolbar.Controls.Add(dtpExpenseTo);
-
-            lblExpensesSummary = new Label
-            {
-                AutoSize = true,
-                Dock = DockStyle.Top,
-                Height = 28,
-                Padding = new Padding(0, 4, 0, 8),
-                ForeColor = Color.FromArgb(153, 27, 27)
-            };
-
-            dgvExpenses = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.None,
-                MultiSelect = false,
-                ReadOnly = true,
-                RowHeadersVisible = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect
-            };
+            lblExpensesSummary = CreateAccountsSummaryLabel(Color.FromArgb(153, 27, 27));
+            var summaryBar = WrapAccountsSummary(lblExpensesSummary);
+            dgvExpenses = CreateAccountsGrid();
 
             panel.Controls.Add(dgvExpenses);
-            panel.Controls.Add(lblExpensesSummary);
-            panel.Controls.Add(toolbar);
+            panel.Controls.Add(summaryBar);
             panel.Controls.Add(actionBar);
             return panel;
         }
@@ -287,39 +205,21 @@ namespace Stock_Managemnet
         private Panel CreateCustomerDuePanel()
         {
             var panel = new Panel { Dock = DockStyle.Fill, Visible = false };
-            var toolbar = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(0, 4, 0, 8) };
 
-            txtAccountsSearch = new TextBox { Location = new Point(0, 8), Width = 200 };
-            btnAccountsSearch = new Button { Location = new Point(206, 6), Width = 70, Height = 27, Text = "Search" };
-            btnAccountsReset = new Button { Location = new Point(282, 6), Width = 70, Height = 27, Text = "Reset" };
-            btnReceivePayment = new Button
-            {
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(700, 6),
-                Width = 130,
-                Height = 27,
-                Text = "Receive Payment"
-            };
+            var searchRow = CreateToolbarFlow();
+            var lblSearch = CreateAccountsFieldLabel("Search:");
+            txtAccountsSearch = new TextBox { Width = 220, Height = AccountsControlHeight };
+            btnAccountsSearch = CreateAccountsButton("Search", 76);
+            btnAccountsReset = CreateAccountsButton("Reset", 76);
+            AddToolbarItem(searchRow, lblSearch);
+            AddToolbarItem(searchRow, txtAccountsSearch);
+            AddToolbarItem(searchRow, btnAccountsSearch);
+            AddToolbarItem(searchRow, btnAccountsReset, 0);
 
-            toolbar.Controls.Add(txtAccountsSearch);
-            toolbar.Controls.Add(btnAccountsSearch);
-            toolbar.Controls.Add(btnAccountsReset);
-            toolbar.Controls.Add(btnReceivePayment);
+            btnReceivePayment = CreateAccountsPrimaryButton("Receive Payment", 150);
+            var toolbar = CreateToolbarSplitSection(searchRow, btnReceivePayment);
 
-            dgvCustomerDue = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.None,
-                MultiSelect = false,
-                ReadOnly = true,
-                RowHeadersVisible = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect
-            };
-
+            dgvCustomerDue = CreateAccountsGrid();
             panel.Controls.Add(dgvCustomerDue);
             panel.Controls.Add(toolbar);
             return panel;
@@ -328,47 +228,58 @@ namespace Stock_Managemnet
         private Panel CreateCashLedgerPanel()
         {
             var panel = new Panel { Dock = DockStyle.Fill, Visible = false };
-            var toolbar = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(0, 4, 0, 8) };
 
-            var lblAccount = new Label { AutoSize = true, Location = new Point(0, 10), Text = "Account:" };
-            cmbCashLedgerAccount = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Location = new Point(62, 7),
-                Width = 140
-            };
-            chkCashLedgerDateRange = new CheckBox { AutoSize = true, Location = new Point(220, 9), Text = "Date range" };
-            dtpCashLedgerFrom = new DateTimePicker
-            {
-                Enabled = false,
-                Format = DateTimePickerFormat.Short,
-                Location = new Point(330, 7),
-                Width = 110
-            };
-            dtpCashLedgerTo = new DateTimePicker
-            {
-                Enabled = false,
-                Format = DateTimePickerFormat.Short,
-                Location = new Point(450, 7),
-                Width = 110
-            };
+            var customerRow = CreateToolbarFlow();
+            var lblCustomer = CreateAccountsFieldLabel("Customer:");
+            cashLedgerCustomerSelect = new CustomerSelectControl { Width = 240 };
+            var lblExpense = CreateAccountsFieldLabel("Expense:");
+            cmbCashLedgerExpense = CreateAccountsComboBox(200);
+            btnCashLedgerSearch = CreateAccountsButton("Search", 76);
+            btnCashLedgerReset = CreateAccountsButton("Reset", 76);
+            AddToolbarItem(customerRow, lblCustomer);
+            AddToolbarItem(customerRow, cashLedgerCustomerSelect);
+            AddToolbarItem(customerRow, lblExpense, AccountsToolbarGap * 2);
+            AddToolbarItem(customerRow, cmbCashLedgerExpense);
+            AddToolbarItem(customerRow, btnCashLedgerSearch, AccountsToolbarGap * 2);
+            AddToolbarItem(customerRow, btnCashLedgerReset, 0);
+
+            var accountRow = CreateToolbarFlow();
+            var lblAccount = CreateAccountsFieldLabel("Account:");
+            cmbCashLedgerAccount = CreateAccountsComboBox(150);
+            chkCashLedgerDateRange = CreateAccountsCheckBox("Date range");
+            var lblFrom = CreateAccountsFieldLabel("From:");
+            dtpCashLedgerFrom = CreateAccountsDatePicker();
+            var lblTo = CreateAccountsFieldLabel("To:");
+            dtpCashLedgerTo = CreateAccountsDatePicker();
+            AddToolbarItem(accountRow, lblAccount);
+            AddToolbarItem(accountRow, cmbCashLedgerAccount);
+            AddToolbarItem(accountRow, chkCashLedgerDateRange, AccountsToolbarGap * 2);
+            AddToolbarItem(accountRow, lblFrom);
+            AddToolbarItem(accountRow, dtpCashLedgerFrom);
+            AddToolbarItem(accountRow, lblTo);
+            AddToolbarItem(accountRow, dtpCashLedgerTo, 0);
+
             lblCashBalance = new Label
             {
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 AutoSize = true,
-                Location = new Point(700, 10),
                 ForeColor = Color.FromArgb(37, 99, 235),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                 Text = string.Empty
             };
 
-            toolbar.Controls.Add(lblAccount);
-            toolbar.Controls.Add(cmbCashLedgerAccount);
-            toolbar.Controls.Add(chkCashLedgerDateRange);
-            toolbar.Controls.Add(dtpCashLedgerFrom);
-            toolbar.Controls.Add(dtpCashLedgerTo);
-            toolbar.Controls.Add(lblCashBalance);
+            var filterBar = CreateToolbarSection(customerRow);
+            var accountBar = CreateToolbarSplitSection(accountRow, lblCashBalance);
 
-            dgvCashLedger = new DataGridView
+            dgvCashLedger = CreateAccountsGrid();
+            panel.Controls.Add(dgvCashLedger);
+            panel.Controls.Add(accountBar);
+            panel.Controls.Add(filterBar);
+            return panel;
+        }
+
+        private DataGridView CreateAccountsGrid()
+        {
+            return new DataGridView
             {
                 Dock = DockStyle.Fill,
                 AllowUserToAddRows = false,
@@ -379,12 +290,255 @@ namespace Stock_Managemnet
                 MultiSelect = false,
                 ReadOnly = true,
                 RowHeadersVisible = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                Margin = new Padding(0, 4, 0, 0)
             };
+        }
 
-            panel.Controls.Add(dgvCashLedger);
-            panel.Controls.Add(toolbar);
+        private FlowLayoutPanel CreateToolbarFlow()
+        {
+            return new FlowLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                BackColor = Color.Transparent,
+                Margin = Padding.Empty,
+                Padding = new Padding(14, AccountsToolbarRowPadding, 14, AccountsToolbarRowPadding)
+            };
+        }
+
+        private Panel CreateToolbarSection(params FlowLayoutPanel[] rows)
+        {
+            var section = CreateToolbarContainer();
+            for (var i = 0; i < rows.Length; i++)
+            {
+                PrepareToolbarRow(rows[i]);
+                section.Controls.Add(rows[i]);
+                if (i < rows.Length - 1)
+                    section.Controls.Add(CreateToolbarRowDivider());
+            }
+
+            section.Layout += (s, e) => LayoutStackedToolbar(section);
+            return section;
+        }
+
+        private Panel CreateToolbarSplitSection(FlowLayoutPanel left, Control rightControl)
+        {
+            var section = CreateToolbarContainer();
+            PrepareToolbarRow(left);
+            left.Padding = new Padding(14, AccountsToolbarRowPadding, 8, AccountsToolbarRowPadding);
+            rightControl.Margin = new Padding(0, AccountsToolbarRowPadding, 14, AccountsToolbarRowPadding);
+            rightControl.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+
+            section.Controls.Add(left);
+            section.Controls.Add(rightControl);
+            section.Layout += (s, e) => LayoutSplitToolbar(section, left, rightControl);
+            return section;
+        }
+
+        private static void PrepareToolbarRow(FlowLayoutPanel row)
+        {
+            row.AutoSize = true;
+            row.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            row.WrapContents = true;
+            row.Margin = Padding.Empty;
+        }
+
+        private static Panel CreateToolbarContainer()
+        {
+            var section = new Panel
+            {
+                Dock = DockStyle.Top,
+                BackColor = AccountsToolbarBack,
+                Margin = new Padding(0, 0, 0, 8),
+                Padding = Padding.Empty
+            };
+            section.Paint += PaintAccountsToolbarBorder;
+            section.Resize += (s, e) => section.PerformLayout();
+            return section;
+        }
+
+        private static int GetToolbarSectionWidth(Panel section)
+        {
+            if (section.ClientSize.Width > 0)
+                return section.ClientSize.Width;
+
+            return section.Parent?.ClientSize.Width > 0
+                ? section.Parent.ClientSize.Width - section.Parent.Padding.Horizontal
+                : 200;
+        }
+
+        private static void LayoutStackedToolbar(Panel section)
+        {
+            var width = GetToolbarSectionWidth(section);
+            var y = 0;
+
+            foreach (Control control in section.Controls)
+            {
+                if (control is FlowLayoutPanel flow)
+                {
+                    flow.Width = width;
+                    flow.Location = new Point(0, y);
+                    var height = flow.GetPreferredSize(new Size(width, 0)).Height;
+                    flow.Height = height;
+                    y += height;
+                }
+                else if (control.Height == 1)
+                {
+                    control.Width = width - 28;
+                    control.Location = new Point(14, y);
+                    y += 1;
+                }
+            }
+
+            if (section.Height != y)
+                section.Height = y;
+        }
+
+        private static void LayoutSplitToolbar(Panel section, FlowLayoutPanel left, Control rightControl)
+        {
+            var width = GetToolbarSectionWidth(section);
+            var rightWidth = rightControl.PreferredSize.Width + rightControl.Margin.Horizontal;
+            var leftWidth = Math.Max(120, width - rightWidth);
+
+            left.Width = leftWidth;
+            left.Location = new Point(0, 0);
+            var leftHeight = left.GetPreferredSize(new Size(leftWidth, 0)).Height;
+            left.Height = leftHeight;
+
+            rightControl.Location = new Point(width - rightWidth, rightControl.Margin.Top);
+            var rowHeight = Math.Max(leftHeight, rightControl.Height + rightControl.Margin.Vertical);
+
+            if (section.Height != rowHeight)
+                section.Height = rowHeight;
+        }
+
+        private static Panel CreateToolbarRowDivider()
+        {
+            return new Panel
+            {
+                Height = 1,
+                BackColor = AccountsToolbarBorder
+            };
+        }
+
+        private static Panel WrapAccountsSummary(Label label)
+        {
+            var panel = new Panel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                Padding = new Padding(14, 6, 14, 8),
+                BackColor = Color.White,
+                Margin = new Padding(0, 0, 0, 8)
+            };
+            label.Dock = DockStyle.Top;
+            label.Margin = Padding.Empty;
+            panel.Controls.Add(label);
             return panel;
+        }
+
+        private static Label CreateAccountsSummaryLabel(Color color)
+        {
+            return new Label
+            {
+                AutoSize = true,
+                ForeColor = color,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                Text = string.Empty
+            };
+        }
+
+        private static Label CreateAccountsFieldLabel(string text)
+        {
+            return new Label
+            {
+                AutoSize = true,
+                Text = text,
+                ForeColor = AccountsLabelText,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold)
+            };
+        }
+
+        private CheckBox CreateAccountsCheckBox(string text)
+        {
+            return new CheckBox
+            {
+                AutoSize = true,
+                Text = text,
+                Font = new Font("Segoe UI", 10F)
+            };
+        }
+
+        private ComboBox CreateAccountsComboBox(int width)
+        {
+            return new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = width,
+                Height = AccountsControlHeight
+            };
+        }
+
+        private DateTimePicker CreateAccountsDatePicker()
+        {
+            return new DateTimePicker
+            {
+                Enabled = false,
+                Format = DateTimePickerFormat.Short,
+                Width = 120,
+                Height = AccountsControlHeight
+            };
+        }
+
+        private Button CreateAccountsButton(string text, int width)
+        {
+            return new Button
+            {
+                Text = text,
+                Width = width,
+                Height = AccountsControlHeight,
+                FlatStyle = FlatStyle.Standard,
+                UseVisualStyleBackColor = true
+            };
+        }
+
+        private Button CreateAccountsPrimaryButton(string text, int width)
+        {
+            var button = new Button
+            {
+                Text = text,
+                Width = width,
+                Height = AccountsControlHeight,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(22, 101, 52),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand
+            };
+            button.FlatAppearance.BorderSize = 0;
+            return button;
+        }
+
+        private static void AddToolbarItem(FlowLayoutPanel flow, Control control, int rightGap = -1, int topGap = 2)
+        {
+            if (rightGap < 0)
+                rightGap = AccountsToolbarGap;
+
+            control.Margin = new Padding(0, topGap, rightGap, topGap);
+            flow.Controls.Add(control);
+        }
+
+        private static void PaintAccountsToolbarBorder(object sender, PaintEventArgs e)
+        {
+            if (!(sender is Control control))
+                return;
+
+            using (var pen = new Pen(AccountsToolbarBorder))
+            {
+                e.Graphics.DrawLine(pen, 0, control.Height - 1, control.Width, control.Height - 1);
+            }
         }
 
         private void ConfigureAccountsGrids()
@@ -488,6 +642,10 @@ namespace Stock_Managemnet
                 }
             };
             cmbCashLedgerAccount.SelectedIndexChanged += (s, e) => RefreshCashLedger();
+            cashLedgerCustomerSelect.BindSearch(
+                term => _repository.SearchCustomers(term),
+                (customer, term) => _repository.CustomerMatchesSearchTerm(customer, term));
+            cashLedgerCustomerSelect.SelectedCustomerChanged += (s, e) => RefreshCashLedger();
             chkCashLedgerDateRange.CheckedChanged += (s, e) =>
             {
                 dtpCashLedgerFrom.Enabled = chkCashLedgerDateRange.Checked;
@@ -496,6 +654,9 @@ namespace Stock_Managemnet
             };
             dtpCashLedgerFrom.ValueChanged += (s, e) => { if (chkCashLedgerDateRange.Checked) RefreshCashLedger(); };
             dtpCashLedgerTo.ValueChanged += (s, e) => { if (chkCashLedgerDateRange.Checked) RefreshCashLedger(); };
+            btnCashLedgerSearch.Click += (s, e) => RefreshCashLedger();
+            btnCashLedgerReset.Click += (s, e) => ResetCashLedgerFilters();
+            cmbCashLedgerExpense.SelectedIndexChanged += (s, e) => RefreshCashLedger();
             dgvCustomerDue.CellDoubleClick += (s, e) => BtnReceivePayment_Click(s, e);
             btnProfitSearch.Click += (s, e) => RefreshSalesProfit();
             btnProfitReset.Click += (s, e) => ResetSalesProfitFilters();
@@ -552,6 +713,32 @@ namespace Stock_Managemnet
             else if (index == 2) RefreshExpenses();
             else if (index == 3) RefreshCustomerDue();
             else RefreshCashLedger();
+
+            RelayoutAccountsToolbars(GetVisibleAccountsPanel(index));
+        }
+
+        private Panel GetVisibleAccountsPanel(int index)
+        {
+            switch (index)
+            {
+                case 0: return panelAccountsChart;
+                case 1: return panelAccountsSalesProfit;
+                case 2: return panelAccountsExpenses;
+                case 3: return panelAccountsCustomerDue;
+                default: return panelAccountsCashLedger;
+            }
+        }
+
+        private static void RelayoutAccountsToolbars(Control root)
+        {
+            if (root == null)
+                return;
+
+            foreach (Control child in root.Controls)
+            {
+                if (child is Panel panel && panel.BackColor == AccountsToolbarBack)
+                    panel.PerformLayout();
+            }
         }
 
         private void RefreshAccountsTab()
@@ -722,12 +909,34 @@ namespace Stock_Managemnet
                 dtpCashLedgerFrom.Value = DateTime.Today.AddMonths(-1);
             }
 
+            if (cmbCashLedgerExpense.Items.Count == 0)
+            {
+                var expenseItems = new System.Collections.Generic.List<object>
+                {
+                    new { Id = Guid.Empty, Name = "All expense types" }
+                };
+                expenseItems.AddRange(_repository.GetExpenseAccounts().Select(a => new { a.Id, a.Name }));
+                cmbCashLedgerExpense.DisplayMember = "Name";
+                cmbCashLedgerExpense.ValueMember = "Id";
+                cmbCashLedgerExpense.DataSource = expenseItems;
+            }
+
             dgvCashLedger.Rows.Clear();
             Guid? accountId = cmbCashLedgerAccount.SelectedValue as Guid?;
             DateTime? from = chkCashLedgerDateRange.Checked ? dtpCashLedgerFrom.Value.Date : (DateTime?)null;
             DateTime? to = chkCashLedgerDateRange.Checked ? dtpCashLedgerTo.Value.Date : (DateTime?)null;
+            Guid? expenseAccountId = null;
+            if (cmbCashLedgerExpense.SelectedValue is Guid selectedExpenseId && selectedExpenseId != Guid.Empty)
+                expenseAccountId = selectedExpenseId;
 
-            foreach (var row in _repository.GetCashLedger(accountId, from, to))
+            Guid? customerId = cashLedgerCustomerSelect.SelectedCustomer?.Id;
+
+            foreach (var row in _repository.GetCashLedger(
+                accountId,
+                from,
+                to,
+                customerId,
+                expenseAccountId))
             {
                 dgvCashLedger.Rows.Add(
                     row.Date,
@@ -743,6 +952,19 @@ namespace Stock_Managemnet
                 lblCashBalance.Text = $"Balance: {_repository.GetAccountBalance(accountId.Value):C2}";
             else
                 lblCashBalance.Text = string.Empty;
+        }
+
+        private void ResetCashLedgerFilters()
+        {
+            cashLedgerCustomerSelect.ClearSelection();
+            if (cmbCashLedgerExpense.Items.Count > 0)
+                cmbCashLedgerExpense.SelectedIndex = 0;
+            chkCashLedgerDateRange.Checked = false;
+            dtpCashLedgerTo.Value = DateTime.Today;
+            dtpCashLedgerFrom.Value = DateTime.Today.AddMonths(-1);
+            dtpCashLedgerFrom.Enabled = false;
+            dtpCashLedgerTo.Enabled = false;
+            RefreshCashLedger();
         }
 
         private CustomerDueRow GetSelectedCustomerDueRow()

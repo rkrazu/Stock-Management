@@ -337,11 +337,20 @@ namespace Stock_Managemnet.Services
             return rows.OrderByDescending(r => r.BalanceDue).ThenBy(r => r.CustomerName);
         }
 
-        public IEnumerable<CashLedgerRow> GetCashLedger(StockData data, Guid? accountId = null, DateTime? from = null, DateTime? to = null)
+        public IEnumerable<CashLedgerRow> GetCashLedger(
+            StockData data,
+            Guid? accountId = null,
+            DateTime? from = null,
+            DateTime? to = null,
+            Guid? customerId = null,
+            Guid? expenseAccountId = null)
         {
             var cashAccountIds = new HashSet<Guid> { SystemAccounts.CashId, SystemAccounts.BankId };
             if (accountId.HasValue)
                 cashAccountIds = new HashSet<Guid> { accountId.Value };
+
+            var expenseAccountIds = new HashSet<Guid>(
+                data.Accounts.Where(a => a.IsActive && a.Type == AccountType.Expense).Select(a => a.Id));
 
             var rows = new List<CashLedgerRow>();
             foreach (var entry in data.JournalEntries.OrderBy(e => e.EntryDate).ThenBy(e => e.CreatedAt))
@@ -350,6 +359,20 @@ namespace Stock_Managemnet.Services
                     continue;
                 if (to.HasValue && entry.EntryDate.Date > to.Value.Date)
                     continue;
+
+                if (customerId.HasValue)
+                {
+                    var entryCustomerId = ResolveLedgerCustomerId(entry);
+                    if (!entryCustomerId.HasValue || entryCustomerId.Value != customerId.Value)
+                        continue;
+                }
+
+                var expenseLine = entry.Lines?.FirstOrDefault(l => expenseAccountIds.Contains(l.AccountId));
+                if (expenseAccountId.HasValue && expenseAccountId.Value != Guid.Empty)
+                {
+                    if (expenseLine == null || expenseLine.AccountId != expenseAccountId.Value)
+                        continue;
+                }
 
                 foreach (var line in entry.Lines.Where(l => cashAccountIds.Contains(l.AccountId)))
                 {
@@ -374,6 +397,9 @@ namespace Stock_Managemnet.Services
 
             return rows.OrderBy(r => r.Date);
         }
+
+        private static Guid? ResolveLedgerCustomerId(JournalEntry entry) =>
+            entry?.Lines?.FirstOrDefault(l => l.CustomerId.HasValue)?.CustomerId;
 
         public IEnumerable<Account> GetCashAndBankAccounts(StockData data) =>
             data.Accounts.Where(a => a.IsActive && (a.Id == SystemAccounts.CashId || a.Id == SystemAccounts.BankId));

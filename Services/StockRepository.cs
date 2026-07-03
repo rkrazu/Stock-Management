@@ -323,8 +323,13 @@ namespace Stock_Managemnet.Services
         public IEnumerable<CustomerDueRow> GetCustomerDueReport(string term = null) =>
             _accounting.GetCustomerDueReport(Data, term);
 
-        public IEnumerable<CashLedgerRow> GetCashLedger(Guid? accountId = null, DateTime? from = null, DateTime? to = null) =>
-            _accounting.GetCashLedger(Data, accountId, from, to);
+        public IEnumerable<CashLedgerRow> GetCashLedger(
+            Guid? accountId = null,
+            DateTime? from = null,
+            DateTime? to = null,
+            Guid? customerId = null,
+            Guid? expenseAccountId = null) =>
+            _accounting.GetCashLedger(Data, accountId, from, to, customerId, expenseAccountId);
 
         public IEnumerable<Account> GetAccounts() =>
             Data.Accounts.Where(a => a.IsActive).OrderBy(a => a.Code);
