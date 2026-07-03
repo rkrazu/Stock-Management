@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Windows.Forms;
+using Stock_Managemnet.Services;
 
 namespace Stock_Managemnet
 {
@@ -15,6 +16,7 @@ namespace Stock_Managemnet
         public static void Apply(Form form)
         {
             form.Font = DefaultFont;
+            BrandAssets.ApplyFormIcon(form);
             ApplyControls(form.Controls);
         }
 

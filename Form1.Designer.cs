@@ -3,9 +3,6 @@ namespace Stock_Managemnet
     partial class Form1
     {
         private System.ComponentModel.IContainer components = null;
-        private System.Windows.Forms.Panel panelHeader;
-        private System.Windows.Forms.Label lblTitle;
-        private System.Windows.Forms.Label lblStats;
         private System.Windows.Forms.TabControl tabMain;
         private System.Windows.Forms.TabPage tabInventory;
         private System.Windows.Forms.TabPage tabCustomers;
@@ -100,9 +97,6 @@ namespace Stock_Managemnet
         private System.Windows.Forms.DateTimePicker dtpTxnTo;
         private System.Windows.Forms.CheckBox chkTxnDateRange;
         private System.Windows.Forms.DataGridView dgvTransactions;
-        private System.Windows.Forms.StatusStrip statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel statusFooterSpacer;
-        private System.Windows.Forms.ToolStripStatusLabel statusFooter;
 
         protected override void Dispose(bool disposing)
         {
@@ -113,9 +107,6 @@ namespace Stock_Managemnet
 
         private void InitializeComponent()
         {
-            this.panelHeader = new System.Windows.Forms.Panel();
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.lblStats = new System.Windows.Forms.Label();
             this.tabMain = new System.Windows.Forms.TabControl();
             this.tabInventory = new System.Windows.Forms.TabPage();
             this.tlpInventory = new System.Windows.Forms.TableLayoutPanel();
@@ -210,10 +201,6 @@ namespace Stock_Managemnet
             this.txtConfirmPassword = new Stock_Managemnet.Controls.PasswordFieldControl();
             this.lblPasswordRules = new System.Windows.Forms.Label();
             this.btnChangePassword = new System.Windows.Forms.Button();
-            this.statusStrip = new System.Windows.Forms.StatusStrip();
-            this.statusFooterSpacer = new System.Windows.Forms.ToolStripStatusLabel();
-            this.statusFooter = new System.Windows.Forms.ToolStripStatusLabel();
-            this.panelHeader.SuspendLayout();
             this.tabMain.SuspendLayout();
             this.tabInventory.SuspendLayout();
             this.tlpInventory.SuspendLayout();
@@ -248,31 +235,7 @@ namespace Stock_Managemnet
             this.tlpTransactions.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvTransactions)).BeginInit();
             this.panelTransactionToolbar.SuspendLayout();
-            this.statusStrip.SuspendLayout();
             this.SuspendLayout();
-            //
-            // panelHeader
-            //
-            this.panelHeader.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
-            this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelHeader.Height = 72;
-            this.panelHeader.Controls.Add(this.lblStats);
-            this.panelHeader.Controls.Add(this.lblTitle);
-            //
-            // lblTitle
-            //
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.ForeColor = System.Drawing.Color.White;
-            this.lblTitle.Location = new System.Drawing.Point(16, 12);
-            this.lblTitle.Text = "Stock Management";
-            //
-            // lblStats
-            //
-            this.lblStats.AutoSize = true;
-            this.lblStats.ForeColor = System.Drawing.Color.FromArgb(219, 234, 254);
-            this.lblStats.Location = new System.Drawing.Point(18, 44);
-            this.lblStats.Text = "Loading...";
             //
             // tabMain
             //
@@ -1026,43 +989,17 @@ namespace Stock_Managemnet
             this.btnChangePassword.Text = "Change Password";
             this.btnChangePassword.UseVisualStyleBackColor = true;
             //
-            // statusStrip
-            //
-            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.statusFooterSpacer,
-            this.statusFooter});
-            this.statusStrip.Padding = new System.Windows.Forms.Padding(8, 4, 12, 4);
-            this.statusStrip.Size = new System.Drawing.Size(1060, 50);
-            //
-            // statusFooterSpacer
-            //
-            this.statusFooterSpacer.Name = "statusFooterSpacer";
-            this.statusFooterSpacer.Spring = true;
-            //
-            // statusFooter
-            //
-            this.statusFooter.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
-            this.statusFooter.ImageAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.statusFooter.Name = "statusFooter";
-            this.statusFooter.Text = "Software developed by RK Razu";
-            this.statusFooter.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.statusFooter.TextImageRelation = System.Windows.Forms.TextImageRelation.TextBeforeImage;
-            //
             // Form1
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1060, 620);
             this.Controls.Add(this.tabMain);
-            this.Controls.Add(this.statusStrip);
-            this.Controls.Add(this.panelHeader);
             this.Font = new System.Drawing.Font("Segoe UI", 11F);
             this.MinimumSize = new System.Drawing.Size(900, 500);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
-            this.Text = "Stock Management";
-            this.panelHeader.ResumeLayout(false);
-            this.panelHeader.PerformLayout();
+            this.Text = "ELECTRONICS";
             this.tabMain.ResumeLayout(false);
             this.tabInventory.ResumeLayout(false);
             this.tlpInventory.ResumeLayout(false);
@@ -1107,8 +1044,6 @@ namespace Stock_Managemnet
             ((System.ComponentModel.ISupportInitialize)(this.dgvTransactions)).EndInit();
             this.panelTransactionToolbar.ResumeLayout(false);
             this.panelTransactionToolbar.PerformLayout();
-            this.statusStrip.ResumeLayout(false);
-            this.statusStrip.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
         }

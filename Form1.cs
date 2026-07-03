@@ -45,7 +45,6 @@ namespace Stock_Managemnet
             _repository.Load();
             _allowGridSelection = false;
             ConfigureProductFilters();
-            ConfigureFooter();
             RefreshAll();
             Shown += Form1_Shown;
         }
@@ -772,7 +771,6 @@ namespace Stock_Managemnet
 
         private void RefreshAll()
         {
-            RefreshHeader();
             RefreshProductCategoryFilter();
             RefreshProducts();
             RefreshCustomers();
@@ -784,15 +782,6 @@ namespace Stock_Managemnet
             UpdateCustomerButtons();
             UpdateInvoiceButtons();
             UpdateProductionButtons();
-        }
-
-        private void RefreshHeader()
-        {
-            var count = _repository.ProductCount;
-            var low = _repository.LowStockCount;
-            var value = _repository.TotalInventoryValue;
-            lblStats.Text =
-                $"{count} product(s)  |  {low} low stock  |  Total value: {value:C2}";
         }
 
         private void RefreshProducts(bool preserveRowSelection = true)
@@ -860,7 +849,6 @@ namespace Stock_Managemnet
                 ApplyNoSelection(dgvProducts);
             }
 
-            RefreshHeader();
             UpdateSelectAllHeaderState();
             UpdateActionButtons();
         }
@@ -1331,53 +1319,6 @@ namespace Stock_Managemnet
             }
         }
 
-        private void ConfigureFooter()
-        {
-            var imagePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "rk-razu.png");
-            if (!File.Exists(imagePath))
-                return;
-
-            try
-            {
-                const int avatarSize = 42;
-                using (var source = Image.FromFile(imagePath))
-                    statusFooter.Image = CreateFooterAvatar(source, avatarSize);
-
-                statusStrip.ImageScalingSize = new Size(avatarSize, avatarSize);
-            }
-            catch
-            {
-                // Keep copyright text if the image cannot be loaded.
-            }
-        }
-
-        private static Image CreateFooterAvatar(Image source, int size)
-        {
-            var avatar = new Bitmap(size, size);
-            using (var graphics = Graphics.FromImage(avatar))
-            {
-                graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                graphics.CompositingQuality = CompositingQuality.HighQuality;
-
-                var cropSize = Math.Min(source.Width, source.Height);
-                var cropX = (source.Width - cropSize) / 2;
-                var cropY = (source.Height - cropSize) / 2;
-                var sourceRect = new Rectangle(cropX, cropY, cropSize, cropSize);
-                var destRect = new Rectangle(0, 0, size, size);
-
-                using (var path = new GraphicsPath())
-                {
-                    path.AddEllipse(1, 1, size - 2, size - 2);
-                    graphics.SetClip(path);
-                    graphics.DrawImage(source, destRect, sourceRect, GraphicsUnit.Pixel);
-                }
-            }
-
-            return avatar;
-        }
-
         private void RefreshSettingsTab()
         {
             try
@@ -1396,7 +1337,7 @@ namespace Stock_Managemnet
         {
             var defaultFolder = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "StockManagement Backups");
+                "Electronics Backups");
 
             using (var dialog = new SaveFileDialog())
             {

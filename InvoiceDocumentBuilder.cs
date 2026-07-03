@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Stock_Managemnet.Models;
+using Stock_Managemnet.Services;
 
 namespace Stock_Managemnet
 {
@@ -31,19 +32,12 @@ namespace Stock_Managemnet
             if (_watermarkImage != null)
                 return _watermarkImage;
 
-            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "watermark.png");
-            if (!File.Exists(path))
+            var logo = BrandAssets.LogoImage;
+            if (logo == null)
                 return null;
 
-            try
-            {
-                _watermarkImage = Image.FromFile(path);
-                return _watermarkImage;
-            }
-            catch (IOException)
-            {
-                return null;
-            }
+            _watermarkImage = (Image)logo.Clone();
+            return _watermarkImage;
         }
 
         public static int MeasureHeight(Invoice invoice, int width, InvoiceRenderProfile profile = InvoiceRenderProfile.Screen)
@@ -192,7 +186,7 @@ namespace Stock_Managemnet
                 var thirdWidth = contentWidth / 3;
                 var lastThirdWidth = contentWidth - (thirdWidth * 2);
 
-                DrawCenteredText(graphics, "STOCK MANAGEMENT", fonts.Company, Brushes.Black, new Rectangle(0, y, width, layout.CompanyHeaderHeight));
+                BrandAssets.DrawCompanyHeader(graphics, new Rectangle(0, y, width, layout.CompanyHeaderHeight), fonts.Company);
                 y += layout.CompanyHeaderHeight + 4;
 
                 FillBar(graphics, new Rectangle(0, y, width, layout.TitleBarHeight), TitleBarColor);

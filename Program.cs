@@ -22,7 +22,7 @@ namespace Stock_Managemnet
             {
                 MessageBox.Show(
                     "Could not initialize the database.\r\n\r\n" + ex.Message,
-                    "Stock Management",
+                    BrandAssets.AppDisplayName,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 return;

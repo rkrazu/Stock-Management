@@ -49,7 +49,7 @@ namespace Stock_Managemnet.Services
                 MessageBox.Show(
                     "Could not connect to SQL Server or load data.\r\n\r\n" + ex.Message +
                     "\r\n\r\nCheck App.config connection string and ensure SQL Server is running.",
-                    "Stock Management",
+                    BrandAssets.AppDisplayName,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
             }

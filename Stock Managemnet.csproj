@@ -12,6 +12,7 @@
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -138,6 +139,7 @@
     <Compile Include="Services\PasswordPolicy.cs" />
     <Compile Include="Services\StockRepository.cs" />
     <Compile Include="Services\AccountingService.cs" />
+    <Compile Include="Services\BrandAssets.cs" />
     <Compile Include="Services\DataGridViewExcelExporter.cs" />
     <Compile Include="LoginForm.cs">
       <SubType>Form</SubType>
@@ -251,10 +253,10 @@
     <None Include="packages.config" />
     <None Include="App.config" />
     <None Include="Database\Schema.sql" />
-    <Content Include="Assets\rk-razu.png">
+    <Content Include="Assets\SS logo.jpeg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\watermark.png">
+    <Content Include="Assets\app-icon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

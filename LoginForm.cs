@@ -10,6 +10,8 @@ namespace Stock_Managemnet
         {
             InitializeComponent();
             UiStyles.Apply(this);
+            BrandAssets.ApplyLoginBranding(pbLogo, lblTitle);
+            Text = BrandAssets.AppDisplayName;
         }
 
         private void BtnLogin_Click(object sender, EventArgs e)
