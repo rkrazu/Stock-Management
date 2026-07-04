@@ -2,6 +2,7 @@
 using System.Windows.Forms;
 using Stock_Managemnet.Data;
 using Stock_Managemnet.Services;
+using Stock_Managemnet.Services.Licensing;
 
 namespace Stock_Managemnet
 {
@@ -12,6 +13,15 @@ namespace Stock_Managemnet
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            if (!LicenseService.IsActivated())
+            {
+                using (var activation = new ActivationForm())
+                {
+                    if (activation.ShowDialog() != DialogResult.OK)
+                        return;
+                }
+            }
 
             try
             {

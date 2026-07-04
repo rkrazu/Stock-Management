@@ -19,6 +19,13 @@
 packages/
 *.nupkg
 
+# Licensing (developer private key — never ship to customers)
+Tools/LicenseKeyGenerator/keys/
+Tools/GenerateKeys.cs
+Tools/GenerateKeys.exe
+Tools/InitLicenseKeys.cs
+Tools/InitLicenseKeys.exe
+
 # Windows
 Thumbs.db
 Desktop.ini

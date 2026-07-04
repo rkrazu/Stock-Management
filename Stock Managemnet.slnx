@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="Stock Managemnet.csproj" Id="33ea5a15-83f0-4855-8a70-57eaaab2ac7c" />
+  <Project Path="Tools/LicenseKeyGenerator/LicenseKeyGenerator.csproj" Id="a8c5e2f1-4b3d-4e9a-9c1d-2f8e7a6b5c4d" />
 </Solution>
