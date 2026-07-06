@@ -85,6 +85,7 @@ namespace Stock_Managemnet
         {
             panelSettingsBackup.Visible = index == 0;
             panelSettingsPassword.Visible = index == 1;
+            panelSettingsSoftware.Visible = index == 2;
 
             if (index == 1)
                 ClearPasswordChangeFields();
@@ -1321,6 +1322,13 @@ namespace Stock_Managemnet
 
         private void RefreshSettingsTab()
         {
+            lblSoftwareProductValue.Text = AppVersion.ProductName;
+            lblSoftwareVersionValue.Text = AppVersion.DisplayVersion;
+            lblDeveloperNameValue.Text = DeveloperInfo.Name;
+            lblDeveloperEmailValue.Text = DeveloperInfo.Email;
+            lblDeveloperMobileValue.Text = DeveloperInfo.Mobile;
+            LoadDeveloperPhoto();
+
             try
             {
                 lblSettingsServerValue.Text = DatabaseBackupService.ServerName;
@@ -1331,6 +1339,13 @@ namespace Stock_Managemnet
                 lblSettingsServerValue.Text = "Unavailable";
                 lblSettingsDatabaseValue.Text = ex.Message;
             }
+        }
+
+        private void LoadDeveloperPhoto()
+        {
+            var previous = pbDeveloperPhoto.Image;
+            pbDeveloperPhoto.Image = DeveloperInfo.LoadPhoto();
+            previous?.Dispose();
         }
 
         private void BtnBackupDatabase_Click(object sender, EventArgs e)

@@ -17,6 +17,20 @@ namespace Stock_Managemnet
         private System.Windows.Forms.Panel panelSettingsContent;
         private System.Windows.Forms.Panel panelSettingsBackup;
         private System.Windows.Forms.Panel panelSettingsPassword;
+        private System.Windows.Forms.Panel panelSettingsSoftware;
+        private System.Windows.Forms.GroupBox grpSoftwareInfo;
+        private System.Windows.Forms.Label lblSoftwareProductCaption;
+        private System.Windows.Forms.Label lblSoftwareProductValue;
+        private System.Windows.Forms.Label lblSoftwareVersionCaption;
+        private System.Windows.Forms.Label lblSoftwareVersionValue;
+        private System.Windows.Forms.GroupBox grpDeveloperInfo;
+        private System.Windows.Forms.PictureBox pbDeveloperPhoto;
+        private System.Windows.Forms.Label lblDeveloperNameCaption;
+        private System.Windows.Forms.Label lblDeveloperNameValue;
+        private System.Windows.Forms.Label lblDeveloperEmailCaption;
+        private System.Windows.Forms.Label lblDeveloperEmailValue;
+        private System.Windows.Forms.Label lblDeveloperMobileCaption;
+        private System.Windows.Forms.Label lblDeveloperMobileValue;
         private System.Windows.Forms.GroupBox grpDatabaseInfo;
         private System.Windows.Forms.Label lblSettingsServerCaption;
         private System.Windows.Forms.Label lblSettingsServerValue;
@@ -183,6 +197,20 @@ namespace Stock_Managemnet
             this.panelSettingsContent = new System.Windows.Forms.Panel();
             this.panelSettingsBackup = new System.Windows.Forms.Panel();
             this.panelSettingsPassword = new System.Windows.Forms.Panel();
+            this.panelSettingsSoftware = new System.Windows.Forms.Panel();
+            this.grpSoftwareInfo = new System.Windows.Forms.GroupBox();
+            this.lblSoftwareProductCaption = new System.Windows.Forms.Label();
+            this.lblSoftwareProductValue = new System.Windows.Forms.Label();
+            this.lblSoftwareVersionCaption = new System.Windows.Forms.Label();
+            this.lblSoftwareVersionValue = new System.Windows.Forms.Label();
+            this.grpDeveloperInfo = new System.Windows.Forms.GroupBox();
+            this.pbDeveloperPhoto = new System.Windows.Forms.PictureBox();
+            this.lblDeveloperNameCaption = new System.Windows.Forms.Label();
+            this.lblDeveloperNameValue = new System.Windows.Forms.Label();
+            this.lblDeveloperEmailCaption = new System.Windows.Forms.Label();
+            this.lblDeveloperEmailValue = new System.Windows.Forms.Label();
+            this.lblDeveloperMobileCaption = new System.Windows.Forms.Label();
+            this.lblDeveloperMobileValue = new System.Windows.Forms.Label();
             this.grpDatabaseInfo = new System.Windows.Forms.GroupBox();
             this.lblSettingsServerCaption = new System.Windows.Forms.Label();
             this.lblSettingsServerValue = new System.Windows.Forms.Label();
@@ -229,6 +257,10 @@ namespace Stock_Managemnet
             this.panelSettingsContent.SuspendLayout();
             this.panelSettingsBackup.SuspendLayout();
             this.panelSettingsPassword.SuspendLayout();
+            this.panelSettingsSoftware.SuspendLayout();
+            this.grpSoftwareInfo.SuspendLayout();
+            this.grpDeveloperInfo.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pbDeveloperPhoto)).BeginInit();
             this.grpDatabaseInfo.SuspendLayout();
             this.grpBackupRestore.SuspendLayout();
             this.grpPasswordChange.SuspendLayout();
@@ -831,12 +863,14 @@ namespace Stock_Managemnet
             this.lstSettingsNav.ItemHeight = 34;
             this.lstSettingsNav.Items.AddRange(new object[] {
             "Backup & Restore",
-            "Password"});
+            "Password",
+            "Software Information"});
             //
             // panelSettingsContent
             //
             this.panelSettingsContent.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panelSettingsContent.Padding = new System.Windows.Forms.Padding(24);
+            this.panelSettingsContent.Controls.Add(this.panelSettingsSoftware);
             this.panelSettingsContent.Controls.Add(this.panelSettingsPassword);
             this.panelSettingsContent.Controls.Add(this.panelSettingsBackup);
             //
@@ -853,6 +887,113 @@ namespace Stock_Managemnet
             this.panelSettingsPassword.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panelSettingsPassword.Visible = false;
             this.panelSettingsPassword.Controls.Add(this.grpPasswordChange);
+            //
+            // panelSettingsSoftware
+            //
+            this.panelSettingsSoftware.AutoScroll = true;
+            this.panelSettingsSoftware.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelSettingsSoftware.Visible = false;
+            this.panelSettingsSoftware.Controls.Add(this.grpDeveloperInfo);
+            this.panelSettingsSoftware.Controls.Add(this.grpSoftwareInfo);
+            //
+            // grpSoftwareInfo
+            //
+            this.grpSoftwareInfo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpSoftwareInfo.Location = new System.Drawing.Point(0, 0);
+            this.grpSoftwareInfo.Size = new System.Drawing.Size(760, 110);
+            this.grpSoftwareInfo.Text = "Software Information";
+            this.grpSoftwareInfo.Controls.Add(this.lblSoftwareProductCaption);
+            this.grpSoftwareInfo.Controls.Add(this.lblSoftwareProductValue);
+            this.grpSoftwareInfo.Controls.Add(this.lblSoftwareVersionCaption);
+            this.grpSoftwareInfo.Controls.Add(this.lblSoftwareVersionValue);
+            //
+            // lblSoftwareProductCaption
+            //
+            this.lblSoftwareProductCaption.AutoSize = true;
+            this.lblSoftwareProductCaption.Location = new System.Drawing.Point(20, 34);
+            this.lblSoftwareProductCaption.Text = "Product:";
+            //
+            // lblSoftwareProductValue
+            //
+            this.lblSoftwareProductValue.AutoSize = true;
+            this.lblSoftwareProductValue.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
+            this.lblSoftwareProductValue.Location = new System.Drawing.Point(120, 34);
+            this.lblSoftwareProductValue.Text = "ELECTRONICS";
+            //
+            // lblSoftwareVersionCaption
+            //
+            this.lblSoftwareVersionCaption.AutoSize = true;
+            this.lblSoftwareVersionCaption.Location = new System.Drawing.Point(20, 68);
+            this.lblSoftwareVersionCaption.Text = "Version:";
+            //
+            // lblSoftwareVersionValue
+            //
+            this.lblSoftwareVersionValue.AutoSize = true;
+            this.lblSoftwareVersionValue.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
+            this.lblSoftwareVersionValue.Location = new System.Drawing.Point(120, 68);
+            this.lblSoftwareVersionValue.Text = "0.0.2";
+            //
+            // grpDeveloperInfo
+            //
+            this.grpDeveloperInfo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpDeveloperInfo.Location = new System.Drawing.Point(0, 126);
+            this.grpDeveloperInfo.Margin = new System.Windows.Forms.Padding(0, 16, 0, 0);
+            this.grpDeveloperInfo.Size = new System.Drawing.Size(760, 170);
+            this.grpDeveloperInfo.Text = "Developer";
+            this.grpDeveloperInfo.Controls.Add(this.pbDeveloperPhoto);
+            this.grpDeveloperInfo.Controls.Add(this.lblDeveloperNameCaption);
+            this.grpDeveloperInfo.Controls.Add(this.lblDeveloperNameValue);
+            this.grpDeveloperInfo.Controls.Add(this.lblDeveloperEmailCaption);
+            this.grpDeveloperInfo.Controls.Add(this.lblDeveloperEmailValue);
+            this.grpDeveloperInfo.Controls.Add(this.lblDeveloperMobileCaption);
+            this.grpDeveloperInfo.Controls.Add(this.lblDeveloperMobileValue);
+            //
+            // pbDeveloperPhoto
+            //
+            this.pbDeveloperPhoto.Location = new System.Drawing.Point(20, 30);
+            this.pbDeveloperPhoto.Size = new System.Drawing.Size(110, 110);
+            this.pbDeveloperPhoto.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pbDeveloperPhoto.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pbDeveloperPhoto.TabStop = false;
+            //
+            // lblDeveloperNameCaption
+            //
+            this.lblDeveloperNameCaption.AutoSize = true;
+            this.lblDeveloperNameCaption.Location = new System.Drawing.Point(145, 38);
+            this.lblDeveloperNameCaption.Text = "Name:";
+            //
+            // lblDeveloperNameValue
+            //
+            this.lblDeveloperNameValue.AutoSize = true;
+            this.lblDeveloperNameValue.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
+            this.lblDeveloperNameValue.Location = new System.Drawing.Point(210, 36);
+            this.lblDeveloperNameValue.Text = "Md Razaul Karim Razu";
+            //
+            // lblDeveloperEmailCaption
+            //
+            this.lblDeveloperEmailCaption.AutoSize = true;
+            this.lblDeveloperEmailCaption.Location = new System.Drawing.Point(145, 72);
+            this.lblDeveloperEmailCaption.Text = "Email:";
+            //
+            // lblDeveloperEmailValue
+            //
+            this.lblDeveloperEmailValue.AutoSize = true;
+            this.lblDeveloperEmailValue.Location = new System.Drawing.Point(210, 72);
+            this.lblDeveloperEmailValue.Text = "rkrazu2012@gmail.com";
+            //
+            // lblDeveloperMobileCaption
+            //
+            this.lblDeveloperMobileCaption.AutoSize = true;
+            this.lblDeveloperMobileCaption.Location = new System.Drawing.Point(145, 106);
+            this.lblDeveloperMobileCaption.Text = "Mobile:";
+            //
+            // lblDeveloperMobileValue
+            //
+            this.lblDeveloperMobileValue.AutoSize = true;
+            this.lblDeveloperMobileValue.Location = new System.Drawing.Point(210, 106);
+            this.lblDeveloperMobileValue.Text = "01301630201";
             //
             // grpDatabaseInfo
             //
@@ -1035,6 +1176,12 @@ namespace Stock_Managemnet
             this.panelSettingsContent.ResumeLayout(false);
             this.panelSettingsBackup.ResumeLayout(false);
             this.panelSettingsPassword.ResumeLayout(false);
+            this.panelSettingsSoftware.ResumeLayout(false);
+            this.grpSoftwareInfo.ResumeLayout(false);
+            this.grpSoftwareInfo.PerformLayout();
+            this.grpDeveloperInfo.ResumeLayout(false);
+            this.grpDeveloperInfo.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pbDeveloperPhoto)).EndInit();
             this.grpDatabaseInfo.ResumeLayout(false);
             this.grpDatabaseInfo.PerformLayout();
             this.grpBackupRestore.ResumeLayout(false);
