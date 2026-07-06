@@ -23,12 +23,12 @@ namespace Stock_Managemnet
             InitializeComponent();
             UiStyles.Apply(this);
 
-            Text = _isNew ? "Add Production Recipe" : "Edit Production Recipe";
+            Text = _isNew ? "Add Production" : "Edit Production";
             btnSave.Text = _isNew ? "Add" : "Save";
 
             ConfigureProductSelectors();
             ConfigureMaterialGrid();
-            GridExportUi.Enable(dgvMaterials, "Recipe Materials");
+            GridExportUi.Enable(dgvMaterials, "Production Materials");
 
             if (!_isNew)
             {
@@ -60,11 +60,11 @@ namespace Stock_Managemnet
         private void ConfigureProductSelectors()
         {
             outputProductSelect.BindSearch(
-                term => _repository.SearchProducts(term),
+                term => _repository.SearchProducts(term, ProductType.FG),
                 (product, term) => _repository.ProductMatchesSearchTerm(product, term));
 
             materialProductSelect.BindSearch(
-                term => _repository.SearchProducts(term),
+                term => _repository.SearchProducts(term, ProductType.RawMaterial),
                 (product, term) => _repository.ProductMatchesSearchTerm(product, term));
         }
 
@@ -147,7 +147,7 @@ namespace Stock_Managemnet
 
             if (string.IsNullOrEmpty(name))
             {
-                MessageBox.Show("Recipe name is required.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Production name is required.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtName.Focus();
                 return;
             }

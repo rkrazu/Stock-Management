@@ -43,26 +43,29 @@ namespace Stock_Managemnet
             ((System.ComponentModel.ISupportInitialize)(this.dgvMaterials)).BeginInit();
             this.SuspendLayout();
             //
-            this.lblName.AutoSize = true;
+            this.lblName.AutoSize = false;
             this.lblName.Location = new System.Drawing.Point(20, 20);
-            this.lblName.Text = "Recipe name:";
+            this.lblName.Size = new System.Drawing.Size(125, 23);
+            this.lblName.Text = "Production name:";
             //
-            this.txtName.Location = new System.Drawing.Point(120, 17);
-            this.txtName.Size = new System.Drawing.Size(520, 23);
+            this.txtName.Location = new System.Drawing.Point(150, 17);
+            this.txtName.Size = new System.Drawing.Size(490, 23);
             //
-            this.lblOutput.AutoSize = true;
+            this.lblOutput.AutoSize = false;
             this.lblOutput.Location = new System.Drawing.Point(20, 55);
+            this.lblOutput.Size = new System.Drawing.Size(125, 23);
             this.lblOutput.Text = "Output product:";
             //
-            this.outputProductSelect.Location = new System.Drawing.Point(120, 52);
-            this.outputProductSelect.Size = new System.Drawing.Size(520, 30);
+            this.outputProductSelect.Location = new System.Drawing.Point(150, 52);
+            this.outputProductSelect.Size = new System.Drawing.Size(490, 30);
             //
-            this.lblMaterial.AutoSize = true;
+            this.lblMaterial.AutoSize = false;
             this.lblMaterial.Location = new System.Drawing.Point(20, 90);
+            this.lblMaterial.Size = new System.Drawing.Size(125, 23);
             this.lblMaterial.Text = "Material:";
             //
-            this.materialProductSelect.Location = new System.Drawing.Point(120, 87);
-            this.materialProductSelect.Size = new System.Drawing.Size(380, 30);
+            this.materialProductSelect.Location = new System.Drawing.Point(150, 87);
+            this.materialProductSelect.Size = new System.Drawing.Size(350, 30);
             //
             this.lblMaterialQty.AutoSize = true;
             this.lblMaterialQty.Location = new System.Drawing.Point(510, 90);
@@ -74,12 +77,12 @@ namespace Stock_Managemnet
             this.numMaterialQty.Value = new decimal(new int[] { 1, 0, 0, 0 });
             this.numMaterialQty.Size = new System.Drawing.Size(70, 23);
             //
-            this.btnAddMaterial.Location = new System.Drawing.Point(120, 125);
+            this.btnAddMaterial.Location = new System.Drawing.Point(150, 125);
             this.btnAddMaterial.Size = new System.Drawing.Size(90, 27);
             this.btnAddMaterial.Text = "Add Material";
             this.btnAddMaterial.Click += new System.EventHandler(this.BtnAddMaterial_Click);
             //
-            this.btnRemoveMaterial.Location = new System.Drawing.Point(216, 125);
+            this.btnRemoveMaterial.Location = new System.Drawing.Point(246, 125);
             this.btnRemoveMaterial.Size = new System.Drawing.Size(100, 27);
             this.btnRemoveMaterial.Text = "Remove Material";
             this.btnRemoveMaterial.Click += new System.EventHandler(this.BtnRemoveMaterial_Click);

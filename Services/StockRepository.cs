@@ -805,13 +805,13 @@ namespace Stock_Managemnet.Services
         public string RunProduction(ProductionRecipe recipe, int batchQuantity, string notes)
         {
             if (recipe == null)
-                return "Recipe not found.";
+                return "Production not found.";
 
             if (batchQuantity <= 0)
                 return "Quantity must be greater than zero.";
 
             if (recipe.Materials == null || recipe.Materials.Count == 0)
-                return "Recipe has no materials.";
+                return "Production has no materials.";
 
             var output = GetProduct(recipe.OutputProductId);
             if (output == null)

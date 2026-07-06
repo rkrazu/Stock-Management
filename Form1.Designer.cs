@@ -625,7 +625,7 @@ namespace Stock_Managemnet
             //
             this.btnAddRecipe.Location = new System.Drawing.Point(390, 10);
             this.btnAddRecipe.Size = new System.Drawing.Size(95, 27);
-            this.btnAddRecipe.Text = "+ Add Recipe";
+            this.btnAddRecipe.Text = "+ Add Production";
             this.btnAddRecipe.UseVisualStyleBackColor = true;
             //
             // btnEditRecipe
@@ -654,7 +654,7 @@ namespace Stock_Managemnet
             this.lblRecipes.AutoSize = true;
             this.lblRecipes.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblRecipes.Padding = new System.Windows.Forms.Padding(8, 4, 0, 0);
-            this.lblRecipes.Text = "Recipes";
+            this.lblRecipes.Text = "Productions";
             //
             // dgvRecipes
             //

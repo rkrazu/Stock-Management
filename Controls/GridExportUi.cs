@@ -21,6 +21,9 @@ namespace Stock_Managemnet.Controls
             var parent = grid.Parent;
             var dock = grid.Dock;
             var margin = grid.Margin;
+            var location = grid.Location;
+            var size = grid.Size;
+            var anchor = grid.Anchor;
             var childIndex = parent.Controls.GetChildIndex(grid);
 
             parent.Controls.Remove(grid);
@@ -28,7 +31,10 @@ namespace Stock_Managemnet.Controls
             var host = new Panel
             {
                 Dock = dock,
-                Margin = margin
+                Margin = margin,
+                Location = location,
+                Size = size,
+                Anchor = anchor
             };
 
             grid.Dock = DockStyle.Fill;

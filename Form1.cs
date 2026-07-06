@@ -549,7 +549,7 @@ namespace Stock_Managemnet
         {
             dgvRecipes.AutoGenerateColumns = false;
             dgvRecipes.Columns.Clear();
-            dgvRecipes.Columns.Add("Name", "Recipe");
+            dgvRecipes.Columns.Add("Name", "Production Name");
             dgvRecipes.Columns.Add("OutputSku", "Output SKU");
             dgvRecipes.Columns.Add("OutputName", "Output Product");
             dgvRecipes.Columns.Add("MaterialCount", "Materials");
@@ -558,7 +558,7 @@ namespace Stock_Managemnet
             dgvProductionOrders.Columns.Clear();
             dgvProductionOrders.Columns.Add("Timestamp", "Date/Time");
             dgvProductionOrders.Columns.Add("ProductionNumber", "Production #");
-            dgvProductionOrders.Columns.Add("RecipeName", "Recipe");
+            dgvProductionOrders.Columns.Add("RecipeName", "Production Name");
             dgvProductionOrders.Columns.Add("OutputSku", "Output SKU");
             dgvProductionOrders.Columns.Add("OutputName", "Output Product");
             dgvProductionOrders.Columns.Add("QuantityProduced", "Qty");
@@ -596,7 +596,7 @@ namespace Stock_Managemnet
             GridExportUi.Enable(dgvProducts, "Products");
             GridExportUi.Enable(dgvCustomers, "Customers");
             GridExportUi.Enable(dgvInvoices, "Invoices");
-            GridExportUi.Enable(dgvRecipes, "Production Recipes");
+            GridExportUi.Enable(dgvRecipes, "Productions");
             GridExportUi.Enable(dgvProductionOrders, "Production History");
             GridExportUi.Enable(dgvTransactions, "Transaction History");
         }
@@ -1119,7 +1119,7 @@ namespace Stock_Managemnet
             var recipe = GetSelectedRecipe();
             if (recipe == null)
             {
-                MessageBox.Show("Select a recipe first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Select a production first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1137,7 +1137,7 @@ namespace Stock_Managemnet
             if (recipe == null) return;
 
             var confirm = MessageBox.Show(
-                $"Delete recipe \"{recipe.Name}\"?",
+                $"Delete production \"{recipe.Name}\"?",
                 "Confirm Delete",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
@@ -1153,7 +1153,7 @@ namespace Stock_Managemnet
             var recipe = GetSelectedRecipe();
             if (recipe == null)
             {
-                MessageBox.Show("Select a recipe first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Select a production first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
