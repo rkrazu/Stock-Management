@@ -20,5 +20,13 @@ namespace Stock_Managemnet.Models
         [DataMember] public List<ProductionMaterial> MaterialsUsed { get; set; } = new List<ProductionMaterial>();
         [DataMember] public string Notes { get; set; }
         [DataMember] public DateTime Timestamp { get; set; } = DateTime.Now;
+        [DataMember] public OperationalStatus Status { get; set; } = OperationalStatus.Active;
+        [DataMember] public DateTime? VoidedAt { get; set; }
+        [DataMember] public string VoidReason { get; set; }
+        [DataMember] public int PriorOutputQuantity { get; set; }
+        [DataMember] public decimal PriorOutputUnitCost { get; set; }
+        [DataMember] public decimal BatchUnitCost { get; set; }
+
+        public bool IsActive => Status == OperationalStatus.Active;
     }
 }

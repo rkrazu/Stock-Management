@@ -216,6 +216,9 @@ namespace Stock_Managemnet
             btnInvoiceReset.Click += (s, e) => ResetInvoiceFilters();
             btnViewInvoice.Click += BtnViewInvoice_Click;
             btnPrintInvoice.Click += BtnPrintInvoice_Click;
+            btnVoidInvoice.Click += BtnVoidInvoice_Click;
+            btnRestoreSale.Click += BtnRestoreSale_Click;
+            btnCorrectionGuide.Click += BtnCorrectionGuide_Click;
             dgvInvoices.SelectionChanged += (s, e) =>
             {
                 GuardGridSelection(dgvInvoices);
@@ -237,6 +240,13 @@ namespace Stock_Managemnet
             btnEditRecipe.Click += BtnEditRecipe_Click;
             btnDeleteRecipe.Click += BtnDeleteRecipe_Click;
             btnRunProduction.Click += BtnRunProduction_Click;
+            btnReverseProduction.Click += BtnReverseProduction_Click;
+            btnRestoreProduction.Click += BtnRestoreProduction_Click;
+            dgvProductionOrders.SelectionChanged += (s, e) =>
+            {
+                GuardGridSelection(dgvProductionOrders);
+                UpdateProductionHistoryButtons();
+            };
             dgvRecipes.SelectionChanged += (s, e) =>
             {
                 GuardGridSelection(dgvRecipes);
@@ -316,7 +326,7 @@ namespace Stock_Managemnet
             dgvProducts.Columns.Add("Quantity", "Qty");
             dgvProducts.Columns.Add("ReorderLevel", "Reorder");
             dgvProducts.Columns.Add("UnitPrice", "Unit Price");
-            dgvProducts.Columns.Add("StockValue", "Value");
+            dgvProducts.Columns.Add("StockValue", "Total Value");
             dgvProducts.Columns.Add("Status", "Status");
 
             foreach (DataGridViewColumn column in dgvProducts.Columns)
@@ -327,6 +337,7 @@ namespace Stock_Managemnet
 
             dgvProducts.Columns["UnitPrice"].DefaultCellStyle.Format = "C2";
             dgvProducts.Columns["StockValue"].DefaultCellStyle.Format = "C2";
+            dgvProducts.Columns["StockValue"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvProducts.Columns["Quantity"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvProducts.Columns["ReorderLevel"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvProducts.Columns["Select"].Visible = false;
@@ -535,6 +546,7 @@ namespace Stock_Managemnet
             dgvInvoices.Columns.Add("TotalAmount", "Total");
             dgvInvoices.Columns.Add("AmountPaid", "Paid");
             dgvInvoices.Columns.Add("BalanceDue", "Due");
+            dgvInvoices.Columns.Add("Status", "Status");
             dgvInvoices.Columns.Add("Notes", "Notes");
 
             dgvInvoices.Columns["CreatedAt"].DefaultCellStyle.Format = "g";
@@ -564,6 +576,7 @@ namespace Stock_Managemnet
             dgvProductionOrders.Columns.Add("OutputName", "Output Product");
             dgvProductionOrders.Columns.Add("QuantityProduced", "Qty");
             dgvProductionOrders.Columns.Add("TotalOutputValue", "Value");
+            dgvProductionOrders.Columns.Add("Status", "Status");
             dgvProductionOrders.Columns.Add("Notes", "Notes");
 
             dgvProductionOrders.Columns["Timestamp"].DefaultCellStyle.Format = "g";
@@ -637,6 +650,7 @@ namespace Stock_Managemnet
             dgvProducts.Columns["Select"].Visible = isFg;
             btnStockIn.Visible = !isFg;
             btnStockOut.Visible = isFg;
+            RefreshProductCategoryFilter();
             RefreshProducts();
             UpdateActionButtons();
         }
@@ -647,7 +661,7 @@ namespace Stock_Managemnet
             _suppressCategoryFilterChange = true;
             cmbProductCategory.Items.Clear();
             cmbProductCategory.Items.Add("All categories");
-            foreach (var category in _repository.GetProductCategories())
+            foreach (var category in _repository.GetProductCategories(GetActiveInventoryProductType()))
                 cmbProductCategory.Items.Add(category);
 
             if (!string.IsNullOrEmpty(selected) && cmbProductCategory.Items.Contains(selected))
@@ -798,10 +812,13 @@ namespace Stock_Managemnet
             if (chkLowStockOnly.Checked)
                 products = products.Where(p => p.IsLowStock);
 
+            var productList = products.ToList();
+            lblInventoryTotalValue.Text = $"Total value: {productList.Sum(p => p.StockValue):C2}";
+
             _suppressFgCheckboxEvents = true;
             try
             {
-                foreach (var p in products)
+                foreach (var p in productList)
                 {
                     var idx = dgvProducts.Rows.Add(
                         _fgSelectedProductIds.Contains(p.Id),
@@ -905,6 +922,7 @@ namespace Stock_Managemnet
                     invoice.TotalAmount,
                     invoice.AmountPaid,
                     invoice.BalanceDue,
+                    invoice.IsActive ? "Active" : "Voided",
                     invoice.Notes ?? string.Empty);
                 dgvInvoices.Rows[idx].Tag = invoice;
             }
@@ -983,7 +1001,7 @@ namespace Stock_Managemnet
             dgvProductionOrders.Rows.Clear();
             foreach (var order in _repository.SearchProductionOrders(term))
             {
-                dgvProductionOrders.Rows.Add(
+                var idx = dgvProductionOrders.Rows.Add(
                     order.Timestamp,
                     order.ProductionNumber,
                     order.RecipeName,
@@ -991,10 +1009,13 @@ namespace Stock_Managemnet
                     order.OutputProductName,
                     order.QuantityProduced,
                     order.TotalOutputValue,
+                    order.IsActive ? "Active" : "Reversed",
                     order.Notes);
+                dgvProductionOrders.Rows[idx].Tag = order;
             }
 
             ApplyNoSelection(dgvProductionOrders);
+            UpdateProductionHistoryButtons();
             UpdateProductionButtons();
         }
 
@@ -1064,6 +1085,12 @@ namespace Stock_Managemnet
             return dgvInvoices.SelectedRows[0].Tag as Invoice;
         }
 
+        private ProductionOrder GetSelectedProductionOrder()
+        {
+            if (dgvProductionOrders.SelectedRows.Count == 0) return null;
+            return dgvProductionOrders.SelectedRows[0].Tag as ProductionOrder;
+        }
+
         private ProductionRecipe GetSelectedRecipe()
         {
             if (dgvRecipes.SelectedRows.Count == 0) return null;
@@ -1093,9 +1120,22 @@ namespace Stock_Managemnet
 
         private void UpdateInvoiceButtons()
         {
-            var hasSelection = GetSelectedInvoice() != null;
+            var invoice = GetSelectedInvoice();
+            var hasSelection = invoice != null;
+            var isActive = invoice?.IsActive ?? false;
             btnViewInvoice.Enabled = hasSelection;
             btnPrintInvoice.Enabled = hasSelection;
+            btnVoidInvoice.Enabled = hasSelection && isActive;
+            btnRestoreSale.Enabled = hasSelection && !isActive;
+        }
+
+        private void UpdateProductionHistoryButtons()
+        {
+            var order = GetSelectedProductionOrder();
+            var hasSelection = order != null;
+            var isActive = order?.IsActive ?? false;
+            btnReverseProduction.Enabled = hasSelection && isActive;
+            btnRestoreProduction.Enabled = hasSelection && !isActive;
         }
 
         private void UpdateProductionButtons()
@@ -1234,6 +1274,134 @@ namespace Stock_Managemnet
 
             var latest = _repository.GetInvoice(invoice.Id) ?? invoice;
             InvoiceDocumentBuilder.Print(latest, isDraft: false);
+        }
+
+        private void BtnVoidInvoice_Click(object sender, EventArgs e)
+        {
+            var invoice = GetSelectedInvoice();
+            if (invoice == null || !invoice.IsActive)
+                return;
+
+            var confirm = MessageBox.Show(
+                $"Void sale {invoice.InvoiceNumber}?\n\n" +
+                "This will:\n" +
+                "- Return sold stock to inventory\n" +
+                "- Reverse accounts (AR and Sales Revenue)\n" +
+                "- Reverse any payment recorded on this invoice\n\n" +
+                "After voiding, fix production/materials and sell again with a new invoice.",
+                "Void Sale",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var error = _repository.VoidInvoice(invoice.Id, "Correcting mistake");
+            if (error != null)
+            {
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            RefreshAll();
+            MessageBox.Show(
+                "Sale voided. Next: reverse the wrong production run, fix materials/recipe, then re-run production and sell again.",
+                Text,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        private void BtnRestoreSale_Click(object sender, EventArgs e)
+        {
+            var invoice = GetSelectedInvoice();
+            if (invoice == null || invoice.IsActive)
+                return;
+
+            var confirm = MessageBox.Show(
+                $"Restore voided sale {invoice.InvoiceNumber}?\n\n" +
+                "This will undo the void and put the sale back into stock, accounts, and reports.",
+                "Restore Sale",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var error = _repository.RestoreInvoice(invoice.Id, "Undo mistaken void");
+            if (error != null)
+            {
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            RefreshAll();
+        }
+
+        private void BtnReverseProduction_Click(object sender, EventArgs e)
+        {
+            var order = GetSelectedProductionOrder();
+            if (order == null || !order.IsActive)
+                return;
+
+            var confirm = MessageBox.Show(
+                $"Reverse {order.ProductionNumber}?\n\n" +
+                "This will:\n" +
+                "- Remove produced finished goods from stock\n" +
+                "- Return raw materials used in that run\n" +
+                "- Restore product unit cost from before that run\n\n" +
+                "If these goods were already sold, void the sale first.",
+                "Reverse Production",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var error = _repository.ReverseProduction(order.Id, "Correcting mistake");
+            if (error != null)
+            {
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            RefreshAll();
+            MessageBox.Show(
+                "Production reversed. Fix raw material price/recipe, then run production and sell again.",
+                Text,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        private void BtnRestoreProduction_Click(object sender, EventArgs e)
+        {
+            var order = GetSelectedProductionOrder();
+            if (order == null || order.IsActive)
+                return;
+
+            var confirm = MessageBox.Show(
+                $"Restore reversed production {order.ProductionNumber}?\n\n" +
+                "This will undo the reversal and put materials and finished goods back as they were.",
+                "Restore Production",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var error = _repository.RestoreProduction(order.Id, "Undo mistaken reversal");
+            if (error != null)
+            {
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            RefreshAll();
+        }
+
+        private void BtnCorrectionGuide_Click(object sender, EventArgs e)
+        {
+            using (var form = new CorrectionGuideForm())
+                form.ShowDialog(this);
         }
 
         private void BtnAdd_Click(object sender, EventArgs e)

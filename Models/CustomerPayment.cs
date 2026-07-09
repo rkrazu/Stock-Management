@@ -18,5 +18,9 @@ namespace Stock_Managemnet.Models
         [DataMember] public string Reference { get; set; }
         [DataMember] public string Notes { get; set; }
         [DataMember] public DateTime PaidAt { get; set; } = DateTime.Now;
+        [DataMember] public bool IsVoided { get; set; }
+        [DataMember] public DateTime? VoidedAt { get; set; }
+
+        public bool IsActive => !IsVoided;
     }
 }

@@ -66,7 +66,7 @@ namespace Stock_Managemnet.Services
 
         public void BackfillSalePostings(StockData data)
         {
-            foreach (var invoice in data.Invoices.Where(i => i.CustomerId.HasValue && i.TotalAmount > 0))
+            foreach (var invoice in data.Invoices.Where(i => i.IsActive && i.CustomerId.HasValue && i.TotalAmount > 0))
             {
                 if (HasJournalForReference(data, JournalReferenceType.Invoice, invoice.Id))
                     continue;
@@ -106,6 +106,163 @@ namespace Stock_Managemnet.Services
             data.JournalEntries.Insert(0, entry);
         }
 
+        public string VoidSale(StockData data, Invoice invoice, string reason)
+        {
+            if (invoice == null)
+                return "Invoice not found.";
+
+            if (!invoice.IsActive)
+                return "Invoice is already voided.";
+
+            if (!HasJournalForReference(data, JournalReferenceType.Invoice, invoice.Id))
+                return "Sale journal entry not found for this invoice.";
+
+            if (HasJournalForReference(data, JournalReferenceType.InvoiceVoid, invoice.Id))
+                return "Invoice has already been reversed in accounts.";
+
+            var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
+            var sales = GetAccount(data, SystemAccounts.SalesRevenueId);
+            if (ar == null || sales == null)
+                return "Required accounts are missing.";
+
+            var entry = new JournalEntry
+            {
+                EntryDate = DateTime.Now,
+                ReferenceType = JournalReferenceType.InvoiceVoid,
+                ReferenceId = invoice.Id,
+                ReferenceNumber = invoice.InvoiceNumber,
+                Description = $"Void sale - {invoice.InvoiceNumber}" + (string.IsNullOrWhiteSpace(reason) ? string.Empty : $" ({reason.Trim()})"),
+                CreatedAt = DateTime.Now,
+                Lines = new List<JournalLine>
+                {
+                    CreateLine(ar, invoice.CustomerId, invoice.CustomerName, 0, invoice.TotalAmount),
+                    CreateLine(sales, null, null, invoice.TotalAmount, 0)
+                }
+            };
+
+            data.JournalEntries.Insert(0, entry);
+            return null;
+        }
+
+        public string VoidPayment(StockData data, CustomerPayment payment, string reason)
+        {
+            if (payment == null)
+                return "Payment not found.";
+
+            if (!payment.IsActive)
+                return "Payment is already voided.";
+
+            if (HasJournalForReference(data, JournalReferenceType.PaymentVoid, payment.Id))
+                return "Payment has already been reversed in accounts.";
+
+            var cashAccount = GetAccount(data, payment.CashAccountId);
+            var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
+            if (cashAccount == null || ar == null)
+                return "Required accounts are missing.";
+
+            var entry = new JournalEntry
+            {
+                EntryDate = DateTime.Now,
+                ReferenceType = JournalReferenceType.PaymentVoid,
+                ReferenceId = payment.Id,
+                ReferenceNumber = payment.InvoiceNumber ?? payment.Reference,
+                Description = $"Void payment - {payment.CustomerName}" + (string.IsNullOrWhiteSpace(reason) ? string.Empty : $" ({reason.Trim()})"),
+                CreatedAt = DateTime.Now,
+                Lines = new List<JournalLine>
+                {
+                    CreateLine(cashAccount, null, null, 0, payment.Amount),
+                    CreateLine(ar, payment.CustomerId, payment.CustomerName, payment.Amount, 0)
+                }
+            };
+
+            data.JournalEntries.Insert(0, entry);
+            payment.IsVoided = true;
+            payment.VoidedAt = DateTime.Now;
+            return null;
+        }
+
+        public string ReinstateSale(StockData data, Invoice invoice, string reason)
+        {
+            if (invoice == null)
+                return "Invoice not found.";
+
+            if (invoice.IsActive)
+                return "Invoice is already active.";
+
+            if (!HasJournalForReference(data, JournalReferenceType.InvoiceVoid, invoice.Id))
+                return "This invoice was not voided through the system.";
+
+            if (HasJournalForReference(data, JournalReferenceType.InvoiceReinstate, invoice.Id))
+                return "This sale has already been restored.";
+
+            var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
+            var sales = GetAccount(data, SystemAccounts.SalesRevenueId);
+            if (ar == null || sales == null)
+                return "Required accounts are missing.";
+
+            var entry = new JournalEntry
+            {
+                EntryDate = DateTime.Now,
+                ReferenceType = JournalReferenceType.InvoiceReinstate,
+                ReferenceId = invoice.Id,
+                ReferenceNumber = invoice.InvoiceNumber,
+                Description = $"Restore sale - {invoice.InvoiceNumber}" + (string.IsNullOrWhiteSpace(reason) ? string.Empty : $" ({reason.Trim()})"),
+                CreatedAt = DateTime.Now,
+                Lines = new List<JournalLine>
+                {
+                    CreateLine(ar, invoice.CustomerId, invoice.CustomerName, invoice.TotalAmount, 0),
+                    CreateLine(sales, null, null, 0, invoice.TotalAmount)
+                }
+            };
+
+            data.JournalEntries.Insert(0, entry);
+            return null;
+        }
+
+        public string ReinstatePayment(StockData data, CustomerPayment payment, Invoice invoice, string reason)
+        {
+            if (payment == null)
+                return "Payment not found.";
+
+            if (payment.IsActive)
+                return "Payment is already active.";
+
+            if (!HasJournalForReference(data, JournalReferenceType.PaymentVoid, payment.Id))
+                return "This payment was not voided through the system.";
+
+            if (HasJournalForReference(data, JournalReferenceType.PaymentReinstate, payment.Id))
+                return "This payment has already been restored.";
+
+            var cashAccount = GetAccount(data, payment.CashAccountId);
+            var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
+            if (cashAccount == null || ar == null)
+                return "Required accounts are missing.";
+
+            var entry = new JournalEntry
+            {
+                EntryDate = DateTime.Now,
+                ReferenceType = JournalReferenceType.PaymentReinstate,
+                ReferenceId = payment.Id,
+                ReferenceNumber = payment.InvoiceNumber ?? payment.Reference,
+                Description = $"Restore payment - {payment.CustomerName}" + (string.IsNullOrWhiteSpace(reason) ? string.Empty : $" ({reason.Trim()})"),
+                CreatedAt = DateTime.Now,
+                Lines = new List<JournalLine>
+                {
+                    CreateLine(cashAccount, null, null, payment.Amount, 0),
+                    CreateLine(ar, payment.CustomerId, payment.CustomerName, 0, payment.Amount)
+                }
+            };
+
+            data.JournalEntries.Insert(0, entry);
+            payment.IsVoided = false;
+            payment.VoidedAt = null;
+
+            if (invoice != null)
+                invoice.AmountPaid += payment.Amount;
+
+            return null;
+        }
+
         public string ReceivePayment(StockData data, CustomerPayment payment) =>
             RecordPayment(data, payment, updateInvoiceAmounts: true);
 
@@ -135,6 +292,9 @@ namespace Stock_Managemnet.Services
                 invoice = data.Invoices.FirstOrDefault(i => i.Id == payment.InvoiceId.Value);
                 if (invoice == null)
                     return "Invoice not found.";
+
+                if (!invoice.IsActive)
+                    return "Cannot record payment against a voided invoice.";
 
                 if (invoice.CustomerId != payment.CustomerId)
                     return "Invoice does not belong to the selected customer.";
@@ -269,7 +429,7 @@ namespace Stock_Managemnet.Services
         {
             var remaining = payment.Amount;
             foreach (var invoice in data.Invoices
-                .Where(i => i.CustomerId == payment.CustomerId && i.BalanceDue > 0)
+                .Where(i => i.IsActive && i.CustomerId == payment.CustomerId && i.BalanceDue > 0)
                 .OrderBy(i => i.CreatedAt))
             {
                 if (remaining <= 0)
@@ -300,17 +460,17 @@ namespace Stock_Managemnet.Services
 
         public decimal GetCustomerBalance(StockData data, Guid customerId) =>
             data.Invoices
-                .Where(i => i.CustomerId == customerId)
+                .Where(i => i.IsActive && i.CustomerId == customerId)
                 .Sum(i => i.BalanceDue);
 
         public decimal GetTotalOutstanding(StockData data) =>
-            data.Invoices.Sum(i => i.BalanceDue);
+            data.Invoices.Where(i => i.IsActive).Sum(i => i.BalanceDue);
 
         public IEnumerable<CustomerDueRow> GetCustomerDueReport(StockData data, string term = null)
         {
             var rows = data.Customers.Select(customer =>
             {
-                var invoices = data.Invoices.Where(i => i.CustomerId == customer.Id).ToList();
+                var invoices = data.Invoices.Where(i => i.IsActive && i.CustomerId == customer.Id).ToList();
                 var totalInvoiced = invoices.Sum(i => i.TotalAmount);
                 var totalPaid = invoices.Sum(i => i.AmountPaid);
                 var balance = invoices.Sum(i => i.BalanceDue);
@@ -406,7 +566,7 @@ namespace Stock_Managemnet.Services
 
         public IEnumerable<Invoice> GetOpenInvoices(StockData data, Guid customerId) =>
             data.Invoices
-                .Where(i => i.CustomerId == customerId && i.BalanceDue > 0)
+                .Where(i => i.IsActive && i.CustomerId == customerId && i.BalanceDue > 0)
                 .OrderByDescending(i => i.CreatedAt);
 
         public SalesProfitSummary GetSalesProfitSummary(StockData data, DateTime? from = null, DateTime? to = null, string term = null)
@@ -430,7 +590,7 @@ namespace Stock_Managemnet.Services
             term = term?.Trim();
             var rows = new List<SalesProfitLine>();
 
-            foreach (var invoice in data.Invoices.OrderByDescending(i => i.CreatedAt))
+            foreach (var invoice in data.Invoices.Where(i => i.IsActive).OrderByDescending(i => i.CreatedAt))
             {
                 if (from.HasValue && invoice.CreatedAt.Date < from.Value.Date)
                     continue;

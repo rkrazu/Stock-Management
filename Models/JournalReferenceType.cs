@@ -6,6 +6,10 @@ namespace Stock_Managemnet.Models
         Invoice = 1,
         Payment = 2,
         CashIn = 3,
-        Expense = 4
+        Expense = 4,
+        InvoiceVoid = 5,
+        PaymentVoid = 6,
+        InvoiceReinstate = 7,
+        PaymentReinstate = 8
     }
 }

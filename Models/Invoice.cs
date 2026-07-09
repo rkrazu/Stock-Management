@@ -19,7 +19,11 @@ namespace Stock_Managemnet.Models
         [DataMember] public string Notes { get; set; }
         [DataMember] public Guid? TransactionId { get; set; }
         [DataMember] public DateTime CreatedAt { get; set; } = DateTime.Now;
+        [DataMember] public OperationalStatus Status { get; set; } = OperationalStatus.Active;
+        [DataMember] public DateTime? VoidedAt { get; set; }
+        [DataMember] public string VoidReason { get; set; }
 
-        public decimal BalanceDue => Math.Max(0, TotalAmount - AmountPaid);
+        public bool IsActive => Status == OperationalStatus.Active;
+        public decimal BalanceDue => IsActive ? Math.Max(0, TotalAmount - AmountPaid) : 0;
     }
 }

@@ -395,6 +395,24 @@ namespace Stock_Managemnet.Services
 
         public string AdjustStock(Guid productId, TransactionType type, int quantity, string notes, Guid? customerId = null)
         {
+            var error = ApplyStockChange(productId, type, quantity, notes, customerId: customerId);
+            if (error != null)
+                return error;
+
+            Save();
+            return null;
+        }
+
+        private string ApplyStockChange(
+            Guid productId,
+            TransactionType type,
+            int quantity,
+            string notes,
+            string invoiceNumber = null,
+            bool isSale = false,
+            Guid? customerId = null,
+            string customerName = null)
+        {
             if (quantity <= 0)
                 return "Quantity must be greater than zero.";
 
@@ -430,13 +448,13 @@ namespace Stock_Managemnet.Services
                 UnitPrice = product.UnitPrice,
                 TotalValue = product.UnitPrice * quantity,
                 Notes = notes ?? string.Empty,
-                CustomerId = customer?.Id,
-                CustomerName = customer?.Name,
-                IsSale = false,
+                InvoiceNumber = invoiceNumber,
+                IsSale = isSale,
+                CustomerId = customer?.Id ?? customerId,
+                CustomerName = customer?.Name ?? customerName,
                 Timestamp = DateTime.Now
             });
 
-            Save();
             return null;
         }
 
@@ -626,9 +644,13 @@ namespace Stock_Managemnet.Services
                 .OrderBy(p => p.Name);
         }
 
-        public IEnumerable<string> GetProductCategories()
+        public IEnumerable<string> GetProductCategories(ProductType? productType = null)
         {
-            return Data.Products
+            var products = Data.Products.AsEnumerable();
+            if (productType.HasValue)
+                products = products.Where(p => p.ProductType == productType.Value);
+
+            return products
                 .Select(p => p.Category)
                 .Where(c => !string.IsNullOrWhiteSpace(c))
                 .Select(c => c.Trim())
@@ -845,12 +867,12 @@ namespace Stock_Managemnet.Services
             foreach (var material in recipe.Materials)
             {
                 var required = material.QuantityPerUnit * batchQuantity;
-                var error = AdjustStock(material.ProductId, TransactionType.StockOut, required, notePrefix);
+                var error = ApplyStockChange(material.ProductId, TransactionType.StockOut, required, notePrefix);
                 if (error != null)
                     return error;
             }
 
-            var stockInError = AdjustStock(output.Id, TransactionType.StockIn, batchQuantity, notePrefix);
+            var stockInError = ApplyStockChange(output.Id, TransactionType.StockIn, batchQuantity, notePrefix);
             if (stockInError != null)
                 return stockInError;
 
@@ -875,6 +897,9 @@ namespace Stock_Managemnet.Services
                 QuantityProduced = batchQuantity,
                 OutputUnitPrice = unitPrice,
                 TotalOutputValue = unitPrice * batchQuantity,
+                PriorOutputQuantity = oldQuantity,
+                PriorOutputUnitCost = oldUnitCost,
+                BatchUnitCost = batchUnitCost,
                 MaterialsUsed = recipe.Materials.Select(m => new ProductionMaterial
                 {
                     ProductId = m.ProductId,
@@ -885,6 +910,242 @@ namespace Stock_Managemnet.Services
                 Notes = notes ?? string.Empty,
                 Timestamp = DateTime.Now
             });
+
+            Save();
+            return null;
+        }
+
+        public ProductionOrder GetProductionOrder(Guid id) =>
+            Data.ProductionOrders.FirstOrDefault(o => o.Id == id);
+
+        public string VoidInvoice(Guid invoiceId, string reason)
+        {
+            var invoice = GetInvoice(invoiceId);
+            if (invoice == null)
+                return "Invoice not found.";
+
+            if (!invoice.IsActive)
+                return "Invoice is already voided.";
+
+            var payments = Data.CustomerPayments
+                .Where(p => p.InvoiceId == invoice.Id && p.IsActive)
+                .ToList();
+
+            foreach (var payment in payments)
+            {
+                var paymentError = _accounting.VoidPayment(Data, payment, reason);
+                if (paymentError != null)
+                    return paymentError;
+
+                invoice.AmountPaid = Math.Max(0, invoice.AmountPaid - payment.Amount);
+            }
+
+            foreach (var line in invoice.Items ?? Enumerable.Empty<InvoiceLineItem>())
+            {
+                var note = $"Void sale {invoice.InvoiceNumber}";
+                var stockError = ApplyStockChange(
+                    line.ProductId,
+                    TransactionType.StockIn,
+                    line.Quantity,
+                    note,
+                    invoiceNumber: invoice.InvoiceNumber);
+                if (stockError != null)
+                    return stockError;
+            }
+
+            var accountingError = _accounting.VoidSale(Data, invoice, reason);
+            if (accountingError != null)
+                return accountingError;
+
+            invoice.Status = OperationalStatus.Voided;
+            invoice.VoidedAt = DateTime.Now;
+            invoice.VoidReason = reason?.Trim() ?? string.Empty;
+            invoice.AmountPaid = 0;
+
+            Save();
+            return null;
+        }
+
+        public string ReverseProduction(Guid productionOrderId, string reason)
+        {
+            var order = GetProductionOrder(productionOrderId);
+            if (order == null)
+                return "Production run not found.";
+
+            if (!order.IsActive)
+                return "Production run is already reversed.";
+
+            var output = GetProduct(order.OutputProductId);
+            if (output == null)
+                return "Output product not found.";
+
+            if (output.Quantity < order.QuantityProduced)
+            {
+                return $"Cannot reverse production: only {output.Quantity} of {order.QuantityProduced} produced units remain in stock. " +
+                       "Void the related sale first, then reverse production.";
+            }
+
+            var reversalNote = $"Reversal of {order.ProductionNumber}";
+            var outputError = ApplyStockChange(
+                output.Id,
+                TransactionType.StockOut,
+                order.QuantityProduced,
+                reversalNote);
+            if (outputError != null)
+                return outputError;
+
+            output.UnitCost = order.PriorOutputUnitCost;
+            output.LastUpdated = DateTime.Now;
+
+            foreach (var material in order.MaterialsUsed ?? Enumerable.Empty<ProductionMaterial>())
+            {
+                if (material.QuantityPerUnit <= 0)
+                    continue;
+
+                var materialError = ApplyStockChange(
+                    material.ProductId,
+                    TransactionType.StockIn,
+                    material.QuantityPerUnit,
+                    reversalNote);
+                if (materialError != null)
+                    return materialError;
+            }
+
+            order.Status = OperationalStatus.Voided;
+            order.VoidedAt = DateTime.Now;
+            order.VoidReason = reason?.Trim() ?? string.Empty;
+
+            Save();
+            return null;
+        }
+
+        public string RestoreInvoice(Guid invoiceId, string reason)
+        {
+            var invoice = GetInvoice(invoiceId);
+            if (invoice == null)
+                return "Invoice not found.";
+
+            if (invoice.IsActive)
+                return "Only voided invoices can be restored.";
+
+            foreach (var line in invoice.Items ?? Enumerable.Empty<InvoiceLineItem>())
+            {
+                var product = GetProduct(line.ProductId);
+                if (product == null)
+                    return $"Product not found for line '{line.ProductName}'.";
+
+                if (product.Quantity < line.Quantity)
+                {
+                    return $"Cannot restore sale: insufficient stock for {product.Name}. " +
+                           $"Required: {line.Quantity}, Available: {product.Quantity}.";
+                }
+            }
+
+            foreach (var line in invoice.Items ?? Enumerable.Empty<InvoiceLineItem>())
+            {
+                var note = $"Restore sale {invoice.InvoiceNumber}";
+                var stockError = ApplyStockChange(
+                    line.ProductId,
+                    TransactionType.StockOut,
+                    line.Quantity,
+                    note,
+                    invoiceNumber: invoice.InvoiceNumber,
+                    isSale: true,
+                    customerId: invoice.CustomerId,
+                    customerName: invoice.CustomerName);
+                if (stockError != null)
+                    return stockError;
+            }
+
+            var voidedPayments = Data.CustomerPayments
+                .Where(p => p.InvoiceId == invoice.Id && !p.IsActive)
+                .ToList();
+
+            foreach (var payment in voidedPayments)
+            {
+                var paymentError = _accounting.ReinstatePayment(Data, payment, invoice, reason);
+                if (paymentError != null)
+                    return paymentError;
+            }
+
+            var accountingError = _accounting.ReinstateSale(Data, invoice, reason);
+            if (accountingError != null)
+                return accountingError;
+
+            invoice.Status = OperationalStatus.Active;
+            invoice.VoidedAt = null;
+            invoice.VoidReason = null;
+
+            Save();
+            return null;
+        }
+
+        public string RestoreProduction(Guid productionOrderId, string reason)
+        {
+            var order = GetProductionOrder(productionOrderId);
+            if (order == null)
+                return "Production run not found.";
+
+            if (order.IsActive)
+                return "Only reversed production runs can be restored.";
+
+            var output = GetProduct(order.OutputProductId);
+            if (output == null)
+                return "Output product not found.";
+
+            foreach (var material in order.MaterialsUsed ?? Enumerable.Empty<ProductionMaterial>())
+            {
+                if (material.QuantityPerUnit <= 0)
+                    continue;
+
+                var product = GetProduct(material.ProductId);
+                if (product == null)
+                    return $"Material '{material.ProductName}' not found.";
+
+                if (product.Quantity < material.QuantityPerUnit)
+                {
+                    return $"Cannot restore production: insufficient '{product.Name}'. " +
+                           $"Required: {material.QuantityPerUnit}, Available: {product.Quantity}.";
+                }
+            }
+
+            var restoreNote = $"Restore {order.ProductionNumber}";
+            var oldQuantity = output.Quantity;
+            var oldUnitCost = output.UnitCost;
+            var batchQuantity = order.QuantityProduced;
+            var batchUnitCost = order.BatchUnitCost;
+
+            foreach (var material in order.MaterialsUsed ?? Enumerable.Empty<ProductionMaterial>())
+            {
+                if (material.QuantityPerUnit <= 0)
+                    continue;
+
+                var materialError = ApplyStockChange(
+                    material.ProductId,
+                    TransactionType.StockOut,
+                    material.QuantityPerUnit,
+                    restoreNote);
+                if (materialError != null)
+                    return materialError;
+            }
+
+            var outputError = ApplyStockChange(output.Id, TransactionType.StockIn, batchQuantity, restoreNote);
+            if (outputError != null)
+                return outputError;
+
+            output = GetProduct(output.Id);
+            if (output != null)
+            {
+                var newQuantity = output.Quantity;
+                output.UnitCost = newQuantity > 0 && batchUnitCost > 0
+                    ? ((oldQuantity * oldUnitCost) + (batchQuantity * batchUnitCost)) / newQuantity
+                    : batchUnitCost;
+                output.LastUpdated = DateTime.Now;
+            }
+
+            order.Status = OperationalStatus.Active;
+            order.VoidedAt = null;
+            order.VoidReason = null;
 
             Save();
             return null;

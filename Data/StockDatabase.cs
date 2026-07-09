@@ -195,7 +195,7 @@ FROM StockTransactions";
             {
                 command.CommandText = @"
 SELECT Id, InvoiceNumber, CustomerId, CustomerName, CustomerPhone, CustomerAddress,
-       TotalAmount, AmountPaid, Notes, TransactionId, CreatedAt
+       TotalAmount, AmountPaid, Notes, TransactionId, CreatedAt, Status, VoidedAt, VoidReason
 FROM Invoices";
                 using (var reader = command.ExecuteReader())
                 {
@@ -215,6 +215,11 @@ FROM Invoices";
                             Notes = reader.IsDBNull(8) ? null : reader.GetString(8),
                             TransactionId = reader.IsDBNull(9) ? (Guid?)null : reader.GetGuid(9),
                             CreatedAt = reader.GetDateTime(10),
+                            Status = reader.FieldCount > 11 && !reader.IsDBNull(11)
+                                ? (OperationalStatus)reader.GetInt32(11)
+                                : OperationalStatus.Active,
+                            VoidedAt = reader.FieldCount > 12 && !reader.IsDBNull(12) ? (DateTime?)reader.GetDateTime(12) : null,
+                            VoidReason = reader.FieldCount > 13 && !reader.IsDBNull(13) ? reader.GetString(13) : null,
                             Items = lineItems.ContainsKey(invoiceId)
                                 ? lineItems[invoiceId]
                                 : new List<InvoiceLineItem>()
@@ -366,7 +371,7 @@ FROM JournalLines";
             {
                 command.CommandText = @"
 SELECT Id, CustomerId, CustomerName, InvoiceId, InvoiceNumber, CashAccountId, CashAccountName,
-       Amount, PaymentMethod, Reference, Notes, PaidAt
+       Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt
 FROM CustomerPayments
 ORDER BY PaidAt DESC";
                 using (var reader = command.ExecuteReader())
@@ -386,7 +391,9 @@ ORDER BY PaidAt DESC";
                             PaymentMethod = reader.IsDBNull(8) ? null : reader.GetString(8),
                             Reference = reader.IsDBNull(9) ? null : reader.GetString(9),
                             Notes = reader.IsDBNull(10) ? null : reader.GetString(10),
-                            PaidAt = reader.GetDateTime(11)
+                            PaidAt = reader.GetDateTime(11),
+                            IsVoided = reader.FieldCount > 12 && !reader.IsDBNull(12) && reader.GetBoolean(12),
+                            VoidedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) ? (DateTime?)reader.GetDateTime(13) : null
                         });
                     }
                 }
@@ -501,7 +508,8 @@ FROM RecipeMaterials";
             {
                 command.CommandText = @"
 SELECT Id, ProductionNumber, RecipeId, RecipeName, OutputProductId, OutputProductSku,
-       OutputProductName, QuantityProduced, OutputUnitPrice, TotalOutputValue, Notes, Timestamp
+       OutputProductName, QuantityProduced, OutputUnitPrice, TotalOutputValue, Notes, Timestamp,
+       Status, VoidedAt, VoidReason, PriorOutputQuantity, PriorOutputUnitCost, BatchUnitCost
 FROM ProductionOrders";
                 using (var reader = command.ExecuteReader())
                 {
@@ -522,6 +530,14 @@ FROM ProductionOrders";
                             TotalOutputValue = reader.GetDecimal(9),
                             Notes = reader.IsDBNull(10) ? null : reader.GetString(10),
                             Timestamp = reader.GetDateTime(11),
+                            Status = reader.FieldCount > 12 && !reader.IsDBNull(12)
+                                ? (OperationalStatus)reader.GetInt32(12)
+                                : OperationalStatus.Active,
+                            VoidedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) ? (DateTime?)reader.GetDateTime(13) : null,
+                            VoidReason = reader.FieldCount > 14 && !reader.IsDBNull(14) ? reader.GetString(14) : null,
+                            PriorOutputQuantity = reader.FieldCount > 15 && !reader.IsDBNull(15) ? reader.GetInt32(15) : 0,
+                            PriorOutputUnitCost = reader.FieldCount > 16 && !reader.IsDBNull(16) ? reader.GetDecimal(16) : 0,
+                            BatchUnitCost = reader.FieldCount > 17 && !reader.IsDBNull(17) ? reader.GetDecimal(17) : 0,
                             MaterialsUsed = materials.ContainsKey(orderId)
                                 ? materials[orderId]
                                 : new List<ProductionMaterial>()
@@ -697,10 +713,10 @@ VALUES
                     command.CommandText = @"
 INSERT INTO Invoices
     (Id, InvoiceNumber, CustomerId, CustomerName, CustomerPhone, CustomerAddress,
-     TotalAmount, AmountPaid, Notes, TransactionId, CreatedAt)
+     TotalAmount, AmountPaid, Notes, TransactionId, CreatedAt, Status, VoidedAt, VoidReason)
 VALUES
     (@Id, @InvoiceNumber, @CustomerId, @CustomerName, @CustomerPhone, @CustomerAddress,
-     @TotalAmount, @AmountPaid, @Notes, @TransactionId, @CreatedAt)";
+     @TotalAmount, @AmountPaid, @Notes, @TransactionId, @CreatedAt, @Status, @VoidedAt, @VoidReason)";
                     command.Parameters.AddWithValue("@Id", invoice.Id);
                     command.Parameters.AddWithValue("@InvoiceNumber", (object)invoice.InvoiceNumber ?? DBNull.Value);
                     command.Parameters.AddWithValue("@CustomerId", (object)invoice.CustomerId ?? DBNull.Value);
@@ -712,6 +728,9 @@ VALUES
                     command.Parameters.AddWithValue("@Notes", (object)invoice.Notes ?? DBNull.Value);
                     command.Parameters.AddWithValue("@TransactionId", (object)invoice.TransactionId ?? DBNull.Value);
                     command.Parameters.AddWithValue("@CreatedAt", invoice.CreatedAt);
+                    command.Parameters.AddWithValue("@Status", (int)invoice.Status);
+                    command.Parameters.AddWithValue("@VoidedAt", (object)invoice.VoidedAt ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@VoidReason", (object)invoice.VoidReason ?? DBNull.Value);
                     command.ExecuteNonQuery();
                 }
 
@@ -821,10 +840,10 @@ VALUES
                     command.CommandText = @"
 INSERT INTO CustomerPayments
     (Id, CustomerId, CustomerName, InvoiceId, InvoiceNumber, CashAccountId, CashAccountName,
-     Amount, PaymentMethod, Reference, Notes, PaidAt)
+     Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt)
 VALUES
     (@Id, @CustomerId, @CustomerName, @InvoiceId, @InvoiceNumber, @CashAccountId, @CashAccountName,
-     @Amount, @PaymentMethod, @Reference, @Notes, @PaidAt)";
+     @Amount, @PaymentMethod, @Reference, @Notes, @PaidAt, @IsVoided, @VoidedAt)";
                     command.Parameters.AddWithValue("@Id", payment.Id);
                     command.Parameters.AddWithValue("@CustomerId", payment.CustomerId);
                     command.Parameters.AddWithValue("@CustomerName", payment.CustomerName);
@@ -837,6 +856,8 @@ VALUES
                     command.Parameters.AddWithValue("@Reference", (object)payment.Reference ?? DBNull.Value);
                     command.Parameters.AddWithValue("@Notes", (object)payment.Notes ?? DBNull.Value);
                     command.Parameters.AddWithValue("@PaidAt", payment.PaidAt);
+                    command.Parameters.AddWithValue("@IsVoided", payment.IsVoided);
+                    command.Parameters.AddWithValue("@VoidedAt", (object)payment.VoidedAt ?? DBNull.Value);
                     command.ExecuteNonQuery();
                 }
             }
@@ -923,10 +944,12 @@ VALUES
                     command.CommandText = @"
 INSERT INTO ProductionOrders
     (Id, ProductionNumber, RecipeId, RecipeName, OutputProductId, OutputProductSku, OutputProductName,
-     QuantityProduced, OutputUnitPrice, TotalOutputValue, Notes, Timestamp)
+     QuantityProduced, OutputUnitPrice, TotalOutputValue, Notes, Timestamp,
+     Status, VoidedAt, VoidReason, PriorOutputQuantity, PriorOutputUnitCost, BatchUnitCost)
 VALUES
     (@Id, @ProductionNumber, @RecipeId, @RecipeName, @OutputProductId, @OutputProductSku, @OutputProductName,
-     @QuantityProduced, @OutputUnitPrice, @TotalOutputValue, @Notes, @Timestamp)";
+     @QuantityProduced, @OutputUnitPrice, @TotalOutputValue, @Notes, @Timestamp,
+     @Status, @VoidedAt, @VoidReason, @PriorOutputQuantity, @PriorOutputUnitCost, @BatchUnitCost)";
                     command.Parameters.AddWithValue("@Id", order.Id);
                     command.Parameters.AddWithValue("@ProductionNumber", (object)order.ProductionNumber ?? DBNull.Value);
                     command.Parameters.AddWithValue("@RecipeId", (object)order.RecipeId ?? DBNull.Value);
@@ -939,6 +962,12 @@ VALUES
                     command.Parameters.AddWithValue("@TotalOutputValue", order.TotalOutputValue);
                     command.Parameters.AddWithValue("@Notes", (object)order.Notes ?? DBNull.Value);
                     command.Parameters.AddWithValue("@Timestamp", order.Timestamp);
+                    command.Parameters.AddWithValue("@Status", (int)order.Status);
+                    command.Parameters.AddWithValue("@VoidedAt", (object)order.VoidedAt ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@VoidReason", (object)order.VoidReason ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@PriorOutputQuantity", order.PriorOutputQuantity);
+                    command.Parameters.AddWithValue("@PriorOutputUnitCost", order.PriorOutputUnitCost);
+                    command.Parameters.AddWithValue("@BatchUnitCost", order.BatchUnitCost);
                     command.ExecuteNonQuery();
                 }
 

@@ -341,6 +341,61 @@ END;",
             @"IF COL_LENGTH('dbo.InvoiceLineItems', 'UnitCost') IS NULL
 BEGIN
     ALTER TABLE dbo.InvoiceLineItems ADD UnitCost DECIMAL(18, 2) NOT NULL CONSTRAINT DF_InvoiceLineItems_UnitCost_Mig DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.Invoices', 'Status') IS NULL
+BEGIN
+    ALTER TABLE dbo.Invoices ADD Status INT NOT NULL CONSTRAINT DF_Invoices_Status DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.Invoices', 'VoidedAt') IS NULL
+BEGIN
+    ALTER TABLE dbo.Invoices ADD VoidedAt DATETIME2 NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.Invoices', 'VoidReason') IS NULL
+BEGIN
+    ALTER TABLE dbo.Invoices ADD VoidReason NVARCHAR(500) NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.ProductionOrders', 'Status') IS NULL
+BEGIN
+    ALTER TABLE dbo.ProductionOrders ADD Status INT NOT NULL CONSTRAINT DF_ProductionOrders_Status DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.ProductionOrders', 'VoidedAt') IS NULL
+BEGIN
+    ALTER TABLE dbo.ProductionOrders ADD VoidedAt DATETIME2 NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.ProductionOrders', 'VoidReason') IS NULL
+BEGIN
+    ALTER TABLE dbo.ProductionOrders ADD VoidReason NVARCHAR(500) NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.ProductionOrders', 'PriorOutputQuantity') IS NULL
+BEGIN
+    ALTER TABLE dbo.ProductionOrders ADD PriorOutputQuantity INT NOT NULL CONSTRAINT DF_ProductionOrders_PriorQty DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.ProductionOrders', 'PriorOutputUnitCost') IS NULL
+BEGIN
+    ALTER TABLE dbo.ProductionOrders ADD PriorOutputUnitCost DECIMAL(18, 2) NOT NULL CONSTRAINT DF_ProductionOrders_PriorCost DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.ProductionOrders', 'BatchUnitCost') IS NULL
+BEGIN
+    ALTER TABLE dbo.ProductionOrders ADD BatchUnitCost DECIMAL(18, 2) NOT NULL CONSTRAINT DF_ProductionOrders_BatchCost DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.CustomerPayments', 'IsVoided') IS NULL
+BEGIN
+    ALTER TABLE dbo.CustomerPayments ADD IsVoided BIT NOT NULL CONSTRAINT DF_CustomerPayments_IsVoided DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.CustomerPayments', 'VoidedAt') IS NULL
+BEGIN
+    ALTER TABLE dbo.CustomerPayments ADD VoidedAt DATETIME2 NULL;
 END;"
         };
     }
