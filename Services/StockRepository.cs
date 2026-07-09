@@ -323,6 +323,9 @@ namespace Stock_Managemnet.Services
         public IEnumerable<CustomerDueRow> GetCustomerDueReport(string term = null) =>
             _accounting.GetCustomerDueReport(Data, term);
 
+        public IEnumerable<CustomerLedgerRow> GetCustomerLedger(Guid customerId) =>
+            _accounting.GetCustomerLedger(Data, customerId);
+
         public IEnumerable<CashLedgerRow> GetCashLedger(
             Guid? accountId = null,
             DateTime? from = null,
@@ -925,11 +928,22 @@ namespace Stock_Managemnet.Services
                 return "Invoice not found.";
 
             if (!invoice.IsActive)
-                return "Invoice is already voided.";
+                return "Invoice is already voided. Restore it first before voiding again.";
 
             var payments = Data.CustomerPayments
                 .Where(p => p.InvoiceId == invoice.Id && p.IsActive)
                 .ToList();
+
+            var accountingError = _accounting.ValidateVoidSale(Data, invoice);
+            if (accountingError != null)
+                return accountingError;
+
+            foreach (var payment in payments)
+            {
+                var paymentValidationError = _accounting.ValidateVoidPayment(Data, payment);
+                if (paymentValidationError != null)
+                    return paymentValidationError;
+            }
 
             foreach (var payment in payments)
             {
@@ -953,7 +967,7 @@ namespace Stock_Managemnet.Services
                     return stockError;
             }
 
-            var accountingError = _accounting.VoidSale(Data, invoice, reason);
+            accountingError = _accounting.VoidSale(Data, invoice, reason);
             if (accountingError != null)
                 return accountingError;
 
@@ -1028,6 +1042,10 @@ namespace Stock_Managemnet.Services
             if (invoice.IsActive)
                 return "Only voided invoices can be restored.";
 
+            var accountingError = _accounting.ValidateReinstateSale(Data, invoice);
+            if (accountingError != null)
+                return accountingError;
+
             foreach (var line in invoice.Items ?? Enumerable.Empty<InvoiceLineItem>())
             {
                 var product = GetProduct(line.ProductId);
@@ -1039,6 +1057,17 @@ namespace Stock_Managemnet.Services
                     return $"Cannot restore sale: insufficient stock for {product.Name}. " +
                            $"Required: {line.Quantity}, Available: {product.Quantity}.";
                 }
+            }
+
+            var voidedPayments = Data.CustomerPayments
+                .Where(p => p.InvoiceId == invoice.Id && !p.IsActive)
+                .ToList();
+
+            foreach (var payment in voidedPayments)
+            {
+                var paymentValidationError = _accounting.ValidateReinstatePayment(Data, payment);
+                if (paymentValidationError != null)
+                    return paymentValidationError;
             }
 
             foreach (var line in invoice.Items ?? Enumerable.Empty<InvoiceLineItem>())
@@ -1057,10 +1086,6 @@ namespace Stock_Managemnet.Services
                     return stockError;
             }
 
-            var voidedPayments = Data.CustomerPayments
-                .Where(p => p.InvoiceId == invoice.Id && !p.IsActive)
-                .ToList();
-
             foreach (var payment in voidedPayments)
             {
                 var paymentError = _accounting.ReinstatePayment(Data, payment, invoice, reason);
@@ -1068,7 +1093,7 @@ namespace Stock_Managemnet.Services
                     return paymentError;
             }
 
-            var accountingError = _accounting.ReinstateSale(Data, invoice, reason);
+            accountingError = _accounting.ReinstateSale(Data, invoice, reason);
             if (accountingError != null)
                 return accountingError;
 

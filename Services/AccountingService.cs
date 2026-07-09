@@ -106,7 +106,7 @@ namespace Stock_Managemnet.Services
             data.JournalEntries.Insert(0, entry);
         }
 
-        public string VoidSale(StockData data, Invoice invoice, string reason)
+        public string ValidateVoidSale(StockData data, Invoice invoice)
         {
             if (invoice == null)
                 return "Invoice not found.";
@@ -117,13 +117,25 @@ namespace Stock_Managemnet.Services
             if (!HasJournalForReference(data, JournalReferenceType.Invoice, invoice.Id))
                 return "Sale journal entry not found for this invoice.";
 
-            if (HasJournalForReference(data, JournalReferenceType.InvoiceVoid, invoice.Id))
+            if (HasUnsettledInvoiceVoid(data, invoice.Id))
                 return "Invoice has already been reversed in accounts.";
 
             var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
             var sales = GetAccount(data, SystemAccounts.SalesRevenueId);
             if (ar == null || sales == null)
                 return "Required accounts are missing.";
+
+            return null;
+        }
+
+        public string VoidSale(StockData data, Invoice invoice, string reason)
+        {
+            var validationError = ValidateVoidSale(data, invoice);
+            if (validationError != null)
+                return validationError;
+
+            var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
+            var sales = GetAccount(data, SystemAccounts.SalesRevenueId);
 
             var entry = new JournalEntry
             {
@@ -144,7 +156,7 @@ namespace Stock_Managemnet.Services
             return null;
         }
 
-        public string VoidPayment(StockData data, CustomerPayment payment, string reason)
+        public string ValidateVoidPayment(StockData data, CustomerPayment payment)
         {
             if (payment == null)
                 return "Payment not found.";
@@ -152,13 +164,25 @@ namespace Stock_Managemnet.Services
             if (!payment.IsActive)
                 return "Payment is already voided.";
 
-            if (HasJournalForReference(data, JournalReferenceType.PaymentVoid, payment.Id))
+            if (HasUnsettledPaymentVoid(data, payment.Id))
                 return "Payment has already been reversed in accounts.";
 
             var cashAccount = GetAccount(data, payment.CashAccountId);
             var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
             if (cashAccount == null || ar == null)
                 return "Required accounts are missing.";
+
+            return null;
+        }
+
+        public string VoidPayment(StockData data, CustomerPayment payment, string reason)
+        {
+            var validationError = ValidateVoidPayment(data, payment);
+            if (validationError != null)
+                return validationError;
+
+            var cashAccount = GetAccount(data, payment.CashAccountId);
+            var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
 
             var entry = new JournalEntry
             {
@@ -181,7 +205,7 @@ namespace Stock_Managemnet.Services
             return null;
         }
 
-        public string ReinstateSale(StockData data, Invoice invoice, string reason)
+        public string ValidateReinstateSale(StockData data, Invoice invoice)
         {
             if (invoice == null)
                 return "Invoice not found.";
@@ -189,16 +213,25 @@ namespace Stock_Managemnet.Services
             if (invoice.IsActive)
                 return "Invoice is already active.";
 
-            if (!HasJournalForReference(data, JournalReferenceType.InvoiceVoid, invoice.Id))
-                return "This invoice was not voided through the system.";
-
-            if (HasJournalForReference(data, JournalReferenceType.InvoiceReinstate, invoice.Id))
-                return "This sale has already been restored.";
+            if (!HasUnsettledInvoiceVoid(data, invoice.Id))
+                return "This invoice is not voided in accounts or has already been restored.";
 
             var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
             var sales = GetAccount(data, SystemAccounts.SalesRevenueId);
             if (ar == null || sales == null)
                 return "Required accounts are missing.";
+
+            return null;
+        }
+
+        public string ReinstateSale(StockData data, Invoice invoice, string reason)
+        {
+            var validationError = ValidateReinstateSale(data, invoice);
+            if (validationError != null)
+                return validationError;
+
+            var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
+            var sales = GetAccount(data, SystemAccounts.SalesRevenueId);
 
             var entry = new JournalEntry
             {
@@ -219,7 +252,7 @@ namespace Stock_Managemnet.Services
             return null;
         }
 
-        public string ReinstatePayment(StockData data, CustomerPayment payment, Invoice invoice, string reason)
+        public string ValidateReinstatePayment(StockData data, CustomerPayment payment)
         {
             if (payment == null)
                 return "Payment not found.";
@@ -227,16 +260,25 @@ namespace Stock_Managemnet.Services
             if (payment.IsActive)
                 return "Payment is already active.";
 
-            if (!HasJournalForReference(data, JournalReferenceType.PaymentVoid, payment.Id))
-                return "This payment was not voided through the system.";
-
-            if (HasJournalForReference(data, JournalReferenceType.PaymentReinstate, payment.Id))
-                return "This payment has already been restored.";
+            if (!HasUnsettledPaymentVoid(data, payment.Id))
+                return "This payment is not voided in accounts or has already been restored.";
 
             var cashAccount = GetAccount(data, payment.CashAccountId);
             var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
             if (cashAccount == null || ar == null)
                 return "Required accounts are missing.";
+
+            return null;
+        }
+
+        public string ReinstatePayment(StockData data, CustomerPayment payment, Invoice invoice, string reason)
+        {
+            var validationError = ValidateReinstatePayment(data, payment);
+            if (validationError != null)
+                return validationError;
+
+            var cashAccount = GetAccount(data, payment.CashAccountId);
+            var ar = GetAccount(data, SystemAccounts.AccountsReceivableId);
 
             var entry = new JournalEntry
             {
@@ -497,6 +539,80 @@ namespace Stock_Managemnet.Services
             return rows.OrderByDescending(r => r.BalanceDue).ThenBy(r => r.CustomerName);
         }
 
+        public IEnumerable<CustomerLedgerRow> GetCustomerLedger(StockData data, Guid customerId)
+        {
+            var entries = new List<(DateTime SortDate, int SortOrder, CustomerLedgerRow Row)>();
+
+            foreach (var invoice in data.Invoices.Where(i => i.CustomerId == customerId && i.IsActive))
+            {
+                entries.Add((invoice.CreatedAt, 0, new CustomerLedgerRow
+                {
+                    Date = invoice.CreatedAt,
+                    EntryType = "Debit",
+                    Description = BuildInvoiceDescription(invoice),
+                    Reference = invoice.InvoiceNumber ?? string.Empty,
+                    Debit = invoice.TotalAmount,
+                    Credit = 0
+                }));
+            }
+
+            foreach (var payment in data.CustomerPayments.Where(p => p.CustomerId == customerId && p.IsActive))
+            {
+                entries.Add((payment.PaidAt, 1, new CustomerLedgerRow
+                {
+                    Date = payment.PaidAt,
+                    EntryType = "Credit",
+                    Description = BuildPaymentDescription(payment),
+                    Reference = GetPaymentReference(payment),
+                    Debit = 0,
+                    Credit = payment.Amount
+                }));
+            }
+
+            decimal balance = 0;
+            foreach (var entry in entries.OrderBy(e => e.SortDate).ThenBy(e => e.SortOrder))
+            {
+                balance += entry.Row.Debit - entry.Row.Credit;
+                entry.Row.Balance = balance;
+                yield return entry.Row;
+            }
+        }
+
+        private static string BuildInvoiceDescription(Invoice invoice)
+        {
+            if (invoice?.Items == null || invoice.Items.Count == 0)
+                return "Sale invoice (due added)";
+
+            if (invoice.Items.Count == 1)
+            {
+                var item = invoice.Items[0];
+                var name = item.ProductName ?? item.ProductSku ?? "item";
+                return $"Sale: {name} x{item.Quantity}";
+            }
+
+            return $"Sale invoice ({invoice.Items.Count} items)";
+        }
+
+        private static string BuildPaymentDescription(CustomerPayment payment)
+        {
+            var method = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Payment" : payment.PaymentMethod;
+            if (!string.IsNullOrWhiteSpace(payment.InvoiceNumber))
+                return $"{method} received against {payment.InvoiceNumber}";
+
+            return $"{method} received";
+        }
+
+        private static string GetPaymentReference(CustomerPayment payment)
+        {
+            if (!string.IsNullOrWhiteSpace(payment.Reference))
+                return payment.Reference;
+
+            if (!string.IsNullOrWhiteSpace(payment.InvoiceNumber))
+                return payment.InvoiceNumber;
+
+            return payment.Id.ToString("N").Substring(0, 8).ToUpperInvariant();
+        }
+
         public IEnumerable<CashLedgerRow> GetCashLedger(
             StockData data,
             Guid? accountId = null,
@@ -679,6 +795,23 @@ namespace Stock_Managemnet.Services
 
         private static bool HasJournalForReference(StockData data, JournalReferenceType type, Guid referenceId) =>
             data.JournalEntries.Any(e => e.ReferenceType == type && e.ReferenceId == referenceId);
+
+        private static int CountJournalsForReference(StockData data, JournalReferenceType type, Guid referenceId) =>
+            data.JournalEntries.Count(e => e.ReferenceType == type && e.ReferenceId == referenceId);
+
+        private static bool HasUnsettledInvoiceVoid(StockData data, Guid invoiceId)
+        {
+            var voidCount = CountJournalsForReference(data, JournalReferenceType.InvoiceVoid, invoiceId);
+            var reinstateCount = CountJournalsForReference(data, JournalReferenceType.InvoiceReinstate, invoiceId);
+            return voidCount > reinstateCount;
+        }
+
+        private static bool HasUnsettledPaymentVoid(StockData data, Guid paymentId)
+        {
+            var voidCount = CountJournalsForReference(data, JournalReferenceType.PaymentVoid, paymentId);
+            var reinstateCount = CountJournalsForReference(data, JournalReferenceType.PaymentReinstate, paymentId);
+            return voidCount > reinstateCount;
+        }
 
         private static Account GetAccount(StockData data, Guid accountId) =>
             data.Accounts.FirstOrDefault(a => a.Id == accountId);

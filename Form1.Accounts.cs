@@ -24,6 +24,7 @@ namespace Stock_Managemnet
         private Button btnAccountsSearch;
         private Button btnAccountsReset;
         private Button btnReceivePayment;
+        private Button btnViewBalanceSheet;
         private DataGridView dgvCustomerDue;
         private ComboBox cmbCashLedgerAccount;
         private DateTimePicker dtpCashLedgerFrom;
@@ -218,7 +219,15 @@ namespace Stock_Managemnet
             AddToolbarItem(searchRow, btnAccountsReset, 0);
 
             btnReceivePayment = CreateAccountsPrimaryButton("Receive Payment", 150);
-            var toolbar = CreateToolbarSplitSection(searchRow, btnReceivePayment);
+            btnViewBalanceSheet = CreateAccountsButton("Balance Sheet", 140);
+            btnViewBalanceSheet.Margin = new Padding(0, AccountsToolbarRowPadding, 10, AccountsToolbarRowPadding);
+
+            var actionsPanel = CreateToolbarFlow();
+            actionsPanel.WrapContents = false;
+            actionsPanel.Controls.Add(btnViewBalanceSheet);
+            actionsPanel.Controls.Add(btnReceivePayment);
+
+            var toolbar = CreateToolbarSplitSection(searchRow, actionsPanel);
 
             dgvCustomerDue = CreateAccountsGrid();
             panel.Controls.Add(dgvCustomerDue);
@@ -642,6 +651,7 @@ namespace Stock_Managemnet
                 RefreshCustomerDue();
             };
             btnReceivePayment.Click += BtnReceivePayment_Click;
+            btnViewBalanceSheet.Click += BtnViewBalanceSheet_Click;
             txtAccountsSearch.KeyDown += (s, e) =>
             {
                 if (e.KeyCode == Keys.Enter)
@@ -667,7 +677,7 @@ namespace Stock_Managemnet
             btnCashLedgerSearch.Click += (s, e) => RefreshCashLedger();
             btnCashLedgerReset.Click += (s, e) => ResetCashLedgerFilters();
             cmbCashLedgerExpense.SelectedIndexChanged += (s, e) => RefreshCashLedger();
-            dgvCustomerDue.CellDoubleClick += (s, e) => BtnReceivePayment_Click(s, e);
+            dgvCustomerDue.CellDoubleClick += (s, e) => BtnViewBalanceSheet_Click(s, e);
             btnProfitSearch.Click += (s, e) => RefreshSalesProfit();
             btnProfitReset.Click += (s, e) => ResetSalesProfitFilters();
             txtProfitSearch.KeyDown += (s, e) =>
@@ -995,6 +1005,19 @@ namespace Stock_Managemnet
                 if (form.ShowDialog(this) == DialogResult.OK)
                     RefreshAll();
             }
+        }
+
+        private void BtnViewBalanceSheet_Click(object sender, EventArgs e)
+        {
+            var dueRow = GetSelectedCustomerDueRow();
+            if (dueRow == null)
+            {
+                MessageBox.Show("Select a customer first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var form = new CustomerBalanceSheetForm(_repository, dueRow))
+                form.ShowDialog(this);
         }
 
         private void BtnRecordExpense_Click(object sender, EventArgs e)

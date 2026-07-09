@@ -1279,11 +1279,23 @@ namespace Stock_Managemnet
         private void BtnVoidInvoice_Click(object sender, EventArgs e)
         {
             var invoice = GetSelectedInvoice();
-            if (invoice == null || !invoice.IsActive)
+            if (invoice == null)
                 return;
 
+            var latest = _repository.GetInvoice(invoice.Id) ?? invoice;
+            if (!latest.IsActive)
+            {
+                MessageBox.Show(
+                    "This sale is already voided. Use Restore Sale first if you need to undo the void.",
+                    Text,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                RefreshAll();
+                return;
+            }
+
             var confirm = MessageBox.Show(
-                $"Void sale {invoice.InvoiceNumber}?\n\n" +
+                $"Void sale {latest.InvoiceNumber}?\n\n" +
                 "This will:\n" +
                 "- Return sold stock to inventory\n" +
                 "- Reverse accounts (AR and Sales Revenue)\n" +
@@ -1296,7 +1308,7 @@ namespace Stock_Managemnet
             if (confirm != DialogResult.Yes)
                 return;
 
-            var error = _repository.VoidInvoice(invoice.Id, "Correcting mistake");
+            var error = _repository.VoidInvoice(latest.Id, "Correcting mistake");
             if (error != null)
             {
                 MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1314,11 +1326,23 @@ namespace Stock_Managemnet
         private void BtnRestoreSale_Click(object sender, EventArgs e)
         {
             var invoice = GetSelectedInvoice();
-            if (invoice == null || invoice.IsActive)
+            if (invoice == null)
                 return;
 
+            var latest = _repository.GetInvoice(invoice.Id) ?? invoice;
+            if (latest.IsActive)
+            {
+                MessageBox.Show(
+                    "This sale is already active. Only voided sales can be restored.",
+                    Text,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                RefreshAll();
+                return;
+            }
+
             var confirm = MessageBox.Show(
-                $"Restore voided sale {invoice.InvoiceNumber}?\n\n" +
+                $"Restore voided sale {latest.InvoiceNumber}?\n\n" +
                 "This will undo the void and put the sale back into stock, accounts, and reports.",
                 "Restore Sale",
                 MessageBoxButtons.YesNo,
@@ -1327,7 +1351,7 @@ namespace Stock_Managemnet
             if (confirm != DialogResult.Yes)
                 return;
 
-            var error = _repository.RestoreInvoice(invoice.Id, "Undo mistaken void");
+            var error = _repository.RestoreInvoice(latest.Id, "Undo mistaken void");
             if (error != null)
             {
                 MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
