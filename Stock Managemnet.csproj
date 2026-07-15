@@ -240,6 +240,9 @@
     <Compile Include="ChalanForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ChalanForm.Designer.cs">
+      <DependentUpon>ChalanForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="RecordExpenseForm.cs">
       <SubType>Form</SubType>
     </Compile>

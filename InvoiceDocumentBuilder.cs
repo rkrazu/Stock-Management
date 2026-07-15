@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -19,6 +20,12 @@ namespace Stock_Managemnet
         {
             Screen,
             Print
+        }
+
+        public enum DocumentKind
+        {
+            Invoice,
+            Chalan
         }
 
         private static readonly Color BorderColor = Color.FromArgb(160, 160, 160);
@@ -43,7 +50,8 @@ namespace Stock_Managemnet
             Rectangle bounds,
             Invoice invoice,
             bool isDraft,
-            InvoiceRenderProfile profile = InvoiceRenderProfile.Screen)
+            InvoiceRenderProfile profile = InvoiceRenderProfile.Screen,
+            DocumentKind kind = DocumentKind.Invoice)
         {
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
             graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
@@ -54,18 +62,20 @@ namespace Stock_Managemnet
             var contentBounds = InvoicePaperAssets.GetContentBounds(bounds.Width, bounds.Height);
             contentBounds.Offset(bounds.Left, bounds.Top);
 
-            var layout = BuildLayout(invoice, contentBounds.Width, profile);
+            var layout = BuildLayout(invoice, contentBounds.Width, profile, kind);
             var state = graphics.Save();
             graphics.SetClip(contentBounds);
             graphics.TranslateTransform(contentBounds.Left, contentBounds.Top);
-            DrawDocument(graphics, layout, invoice, isDraft, profile);
+            DrawDocument(graphics, layout, invoice, isDraft, profile, kind);
             graphics.Restore(state);
         }
 
-        public static void Print(Invoice invoice, bool isDraft)
+        public static void Print(Invoice invoice, bool isDraft, DocumentKind kind = DocumentKind.Invoice)
         {
             var document = new PrintDocument();
-            document.DocumentName = isDraft ? "Invoice Preview" : invoice.InvoiceNumber;
+            document.DocumentName = kind == DocumentKind.Chalan
+                ? (isDraft ? "Chalan Preview" : "Chalan " + (invoice?.InvoiceNumber ?? string.Empty))
+                : (isDraft ? "Invoice Preview" : invoice?.InvoiceNumber);
             document.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
             document.DefaultPageSettings.Landscape = false;
 
@@ -85,7 +95,8 @@ namespace Stock_Managemnet
                     e.PageBounds,
                     invoice,
                     isDraft,
-                    InvoiceRenderProfile.Print);
+                    InvoiceRenderProfile.Print,
+                    kind);
                 e.HasMorePages = false;
             };
 
@@ -98,7 +109,11 @@ namespace Stock_Managemnet
             }
         }
 
-        public static bool ExportPdf(Invoice invoice, bool isDraft, IWin32Window owner)
+        public static bool ExportPdf(
+            Invoice invoice,
+            bool isDraft,
+            IWin32Window owner,
+            DocumentKind kind = DocumentKind.Invoice)
         {
             if (invoice == null)
                 return false;
@@ -108,14 +123,14 @@ namespace Stock_Managemnet
                 dialog.Filter = "PDF (*.pdf)|*.pdf";
                 dialog.DefaultExt = "pdf";
                 dialog.AddExtension = true;
-                dialog.FileName = BuildPdfFileName(invoice, isDraft);
+                dialog.FileName = BuildPdfFileName(invoice, isDraft, kind);
 
                 if (dialog.ShowDialog(owner) != DialogResult.OK)
                     return false;
 
                 try
                 {
-                    SavePdf(invoice, isDraft, dialog.FileName);
+                    SavePdf(invoice, isDraft, dialog.FileName, kind);
                     MessageBox.Show(
                         owner,
                         "PDF saved successfully.",
@@ -137,7 +152,11 @@ namespace Stock_Managemnet
             }
         }
 
-        public static void SavePdf(Invoice invoice, bool isDraft, string filePath)
+        public static void SavePdf(
+            Invoice invoice,
+            bool isDraft,
+            string filePath,
+            DocumentKind kind = DocumentKind.Invoice)
         {
             if (invoice == null)
                 throw new ArgumentNullException(nameof(invoice));
@@ -162,15 +181,17 @@ namespace Stock_Managemnet
                     new Rectangle(0, 0, pageSize.Width, pageSize.Height),
                     invoice,
                     isDraft,
-                    InvoiceRenderProfile.Screen);
+                    InvoiceRenderProfile.Screen,
+                    kind);
 
                 var jpegBytes = EncodeJpeg(bitmap, quality: 92L);
                 WriteJpegPdf(filePath, jpegBytes, width, height);
             }
         }
 
-        private static string BuildPdfFileName(Invoice invoice, bool isDraft)
+        private static string BuildPdfFileName(Invoice invoice, bool isDraft, DocumentKind kind)
         {
+            var prefix = kind == DocumentKind.Chalan ? "Chalan" : "Invoice";
             var number = isDraft || string.IsNullOrWhiteSpace(invoice.InvoiceNumber)
                 ? "Preview"
                 : invoice.InvoiceNumber.Trim();
@@ -178,7 +199,7 @@ namespace Stock_Managemnet
             foreach (var invalid in Path.GetInvalidFileNameChars())
                 number = number.Replace(invalid, '_');
 
-            return $"Invoice_{number}.pdf";
+            return $"{prefix}_{number}.pdf";
         }
 
         private static byte[] EncodeJpeg(Image image, long quality)
@@ -297,7 +318,8 @@ namespace Stock_Managemnet
             DocumentLayout layout,
             Invoice invoice,
             bool isDraft,
-            InvoiceRenderProfile profile)
+            InvoiceRenderProfile profile,
+            DocumentKind kind)
         {
             using (var fonts = CreateFonts(profile))
             using (var borderPen = new Pen(BorderColor))
@@ -306,6 +328,7 @@ namespace Stock_Managemnet
                 var width = layout.Width;
                 var pad = layout.HorizontalPadding;
                 var contentWidth = width - (pad * 2);
+                var isChalan = kind == DocumentKind.Chalan;
 
                 if (!InvoicePaperAssets.HasPad)
                 {
@@ -314,9 +337,12 @@ namespace Stock_Managemnet
                 }
 
                 FillBar(graphics, new Rectangle(0, y, width, layout.TitleBarHeight), TitleBarColor);
+                var title = isChalan
+                    ? (isDraft ? "CHALAN PREVIEW" : "CHALAN")
+                    : (isDraft ? "INVOICE PREVIEW" : "INVOICE");
                 DrawCenteredText(
                     graphics,
-                    isDraft ? "INVOICE PREVIEW" : "INVOICE",
+                    title,
                     fonts.Title,
                     Brushes.Black,
                     new Rectangle(0, y, width, layout.TitleBarHeight));
@@ -336,9 +362,28 @@ namespace Stock_Managemnet
                 var customerName = string.IsNullOrWhiteSpace(invoice.CustomerName) ? "(No customer selected)" : invoice.CustomerName;
                 var customerWidth = (contentWidth * 2) / 3;
                 var mobileWidth = contentWidth - customerWidth;
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Customer:", customerName, pad, y, customerWidth, valueBold: true);
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Mobile:", invoice.CustomerPhone ?? string.Empty, pad + customerWidth, y, mobileWidth, rightAlign: true);
-                y += layout.InfoRowHeight;
+                DrawWrappedLabelValue(
+                    graphics,
+                    fonts.Label,
+                    fonts.Text,
+                    "Customer:",
+                    customerName,
+                    pad,
+                    y,
+                    customerWidth,
+                    layout.MultilineFieldHeight,
+                    valueBold: true);
+                DrawWrappedLabelValue(
+                    graphics,
+                    fonts.Label,
+                    fonts.Text,
+                    "Mobile:",
+                    FlattenSingleLine(invoice.CustomerPhone),
+                    pad + customerWidth,
+                    y,
+                    mobileWidth,
+                    layout.MultilineFieldHeight);
+                y += layout.MultilineFieldHeight;
 
                 DrawWrappedLabelValue(
                     graphics,
@@ -425,16 +470,22 @@ namespace Stock_Managemnet
             }
         }
 
-        private static DocumentLayout BuildLayout(Invoice invoice, int width, InvoiceRenderProfile profile)
+        private static DocumentLayout BuildLayout(
+            Invoice invoice,
+            int width,
+            InvoiceRenderProfile profile,
+            DocumentKind kind)
         {
             width = Math.Max(480, width);
             var itemCount = Math.Max(1, invoice?.Items?.Count ?? 0);
             var isPrint = profile == InvoiceRenderProfile.Print;
             var useLetterhead = InvoicePaperAssets.HasPad;
+            var showPrices = kind == DocumentKind.Invoice;
 
             var layout = new DocumentLayout
             {
                 Width = width,
+                ShowPrices = showPrices,
                 HorizontalPadding = isPrint ? 16 : 12,
                 CompanyHeaderHeight = isPrint ? 52 : 44,
                 TitleBarHeight = isPrint ? 44 : 38,
@@ -447,9 +498,9 @@ namespace Stock_Managemnet
                 RowHeight = isPrint ? 40 : 34,
                 SignatureHeight = isPrint ? 84 : 72,
                 SignatureGap = isPrint ? 16 : 12,
-                PriceWidth = isPrint ? 130 : 118,
-                QtyWidth = isPrint ? 64 : 58,
-                AmountWidth = isPrint ? 140 : 128
+                PriceWidth = showPrices ? (isPrint ? 130 : 118) : 0,
+                QtyWidth = showPrices ? (isPrint ? 64 : 58) : (isPrint ? 90 : 80),
+                AmountWidth = showPrices ? (isPrint ? 140 : 128) : 0
             };
 
             var headerOffset = useLetterhead ? 0 : layout.CompanyHeaderHeight + 4;
@@ -458,7 +509,7 @@ namespace Stock_Managemnet
                 headerOffset +
                 layout.TitleBarHeight + layout.SectionGap +
                 layout.MetaRowHeight + layout.SectionGap +
-                layout.InfoRowHeight +
+                layout.MultilineFieldHeight +
                 layout.MultilineFieldHeight +
                 layout.MultilineFieldHeight + 2 +
                 layout.SectionBarHeight;
@@ -483,11 +534,17 @@ namespace Stock_Managemnet
 
             DrawCellText(graphics, "Product Info", font, new Rectangle(x, y, layout.ProductInfoWidth, layout.RowHeight), true);
             x += layout.ProductInfoWidth;
-            DrawCellText(graphics, "Unit Price", font, new Rectangle(x, y, layout.PriceWidth, layout.RowHeight), true, rightAlign: true);
-            x += layout.PriceWidth;
+            if (layout.ShowPrices)
+            {
+                DrawCellText(graphics, "Unit Price", font, new Rectangle(x, y, layout.PriceWidth, layout.RowHeight), true, rightAlign: true);
+                x += layout.PriceWidth;
+            }
+
             DrawCellText(graphics, "Qty", font, new Rectangle(x, y, layout.QtyWidth, layout.RowHeight), true, rightAlign: true);
             x += layout.QtyWidth;
-            DrawCellText(graphics, "Amount", font, new Rectangle(x, y, layout.AmountWidth, layout.RowHeight), true, rightAlign: true);
+            if (layout.ShowPrices)
+                DrawCellText(graphics, "Amount", font, new Rectangle(x, y, layout.AmountWidth, layout.RowHeight), true, rightAlign: true);
+
             graphics.DrawLine(borderPen, 0, y + layout.RowHeight, layout.Width, y + layout.RowHeight);
         }
 
@@ -496,20 +553,32 @@ namespace Stock_Managemnet
             var x = 0;
             DrawCellText(graphics, FormatProductInfo(rowIndex, item), font, new Rectangle(x, y, layout.ProductInfoWidth, layout.RowHeight));
             x += layout.ProductInfoWidth;
-            DrawCellText(graphics, item.UnitPrice.ToString("C2"), font, new Rectangle(x, y, layout.PriceWidth, layout.RowHeight), false, rightAlign: true);
-            x += layout.PriceWidth;
+            if (layout.ShowPrices)
+            {
+                DrawCellText(graphics, item.UnitPrice.ToString("C2"), font, new Rectangle(x, y, layout.PriceWidth, layout.RowHeight), false, rightAlign: true);
+                x += layout.PriceWidth;
+            }
+
             DrawCellText(graphics, item.Quantity.ToString(), font, new Rectangle(x, y, layout.QtyWidth, layout.RowHeight), false, rightAlign: true);
             x += layout.QtyWidth;
-            DrawCellText(graphics, item.LineTotal.ToString("C2"), font, new Rectangle(x, y, layout.AmountWidth, layout.RowHeight), false, rightAlign: true);
+            if (layout.ShowPrices)
+                DrawCellText(graphics, item.LineTotal.ToString("C2"), font, new Rectangle(x, y, layout.AmountWidth, layout.RowHeight), false, rightAlign: true);
         }
 
         private static void DrawTotalRow(Graphics graphics, DocumentLayout layout, int y, Font fontBold, Font font, int totalQty, decimal totalAmount)
         {
             DrawCellText(graphics, "Total", fontBold, new Rectangle(0, y, layout.ProductInfoWidth, layout.RowHeight), true);
-            var priceX = layout.ProductInfoWidth;
-            DrawCellText(graphics, string.Empty, font, new Rectangle(priceX, y, layout.PriceWidth, layout.RowHeight));
-            DrawCellText(graphics, totalQty.ToString(), fontBold, new Rectangle(priceX + layout.PriceWidth, y, layout.QtyWidth, layout.RowHeight), true, rightAlign: true);
-            DrawCellText(graphics, totalAmount.ToString("C2"), fontBold, new Rectangle(priceX + layout.PriceWidth + layout.QtyWidth, y, layout.AmountWidth, layout.RowHeight), true, rightAlign: true);
+            var x = layout.ProductInfoWidth;
+            if (layout.ShowPrices)
+            {
+                DrawCellText(graphics, string.Empty, font, new Rectangle(x, y, layout.PriceWidth, layout.RowHeight));
+                x += layout.PriceWidth;
+            }
+
+            DrawCellText(graphics, totalQty.ToString(), fontBold, new Rectangle(x, y, layout.QtyWidth, layout.RowHeight), true, rightAlign: true);
+            x += layout.QtyWidth;
+            if (layout.ShowPrices)
+                DrawCellText(graphics, totalAmount.ToString("C2"), fontBold, new Rectangle(x, y, layout.AmountWidth, layout.RowHeight), true, rightAlign: true);
         }
 
         private static string FormatProductInfo(int rowIndex, InvoiceLineItem item)
@@ -625,6 +694,9 @@ namespace Stock_Managemnet
                 valueWidth = Math.Max(0, width - labelSize.Width);
             }
 
+            if (!singleLine)
+                safeValue = WrapTextToWidth(graphics, safeValue, valueFont, valueWidth);
+
             graphics.DrawString(labelText, fontLabel, Brushes.Black, new PointF(labelX, y));
             var valueRect = new RectangleF(valueX, y, valueWidth, Math.Max(1, height));
 
@@ -632,7 +704,7 @@ namespace Stock_Managemnet
             {
                 Alignment = StringAlignment.Near,
                 LineAlignment = StringAlignment.Near,
-                Trimming = singleLine ? StringTrimming.EllipsisCharacter : StringTrimming.EllipsisWord,
+                Trimming = StringTrimming.EllipsisCharacter,
                 FormatFlags = singleLine
                     ? StringFormatFlags.NoWrap | StringFormatFlags.LineLimit
                     : StringFormatFlags.LineLimit
@@ -641,6 +713,77 @@ namespace Stock_Managemnet
             graphics.DrawString(safeValue, valueFont, Brushes.Black, valueRect, format);
             if (valueBold)
                 valueFont.Dispose();
+        }
+
+        /// <summary>
+        /// Wraps text to width, including hard breaks for long runs with no spaces.
+        /// </summary>
+        private static string WrapTextToWidth(Graphics graphics, string text, Font font, float maxWidth)
+        {
+            if (string.IsNullOrEmpty(text) || maxWidth <= 1f)
+                return text ?? string.Empty;
+
+            var lines = new List<string>();
+            var current = new StringBuilder();
+
+            float Measure(string value) =>
+                graphics.MeasureString(value, font, int.MaxValue, StringFormat.GenericTypographic).Width;
+
+            void FlushLine()
+            {
+                if (current.Length == 0)
+                    return;
+                lines.Add(current.ToString());
+                current.Clear();
+            }
+
+            for (var i = 0; i < text.Length; i++)
+            {
+                var ch = text[i];
+                if (ch == '\r')
+                    continue;
+
+                if (ch == '\n')
+                {
+                    FlushLine();
+                    continue;
+                }
+
+                var probe = current.ToString() + ch;
+                if (current.Length == 0 || Measure(probe) <= maxWidth)
+                {
+                    current.Append(ch);
+                    continue;
+                }
+
+                // Overflow: break at last space when possible, otherwise hard-break.
+                var currentText = current.ToString();
+                var lastSpace = currentText.LastIndexOf(' ');
+                if (lastSpace >= 0)
+                {
+                    lines.Add(currentText.Substring(0, lastSpace));
+                    var remainder = currentText.Substring(lastSpace + 1);
+                    current.Clear();
+                    current.Append(remainder);
+                    current.Append(ch);
+
+                    if (Measure(current.ToString()) > maxWidth && current.Length > 1)
+                    {
+                        current.Length = remainder.Length;
+                        if (current.Length > 0)
+                            FlushLine();
+                        current.Append(ch);
+                    }
+                }
+                else
+                {
+                    FlushLine();
+                    current.Append(ch);
+                }
+            }
+
+            FlushLine();
+            return string.Join("\n", lines);
         }
 
         private static void DrawCellText(
@@ -652,15 +795,17 @@ namespace Stock_Managemnet
             bool rightAlign = false)
         {
             var cellFont = bold ? new Font(font, FontStyle.Bold) : font;
+            var rect = new Rectangle(bounds.Left + 4, bounds.Top, Math.Max(1, bounds.Width - 8), bounds.Height);
+            var displayText = WrapTextToWidth(graphics, text ?? string.Empty, cellFont, rect.Width);
+
             var format = new StringFormat
             {
                 Alignment = rightAlign ? StringAlignment.Far : StringAlignment.Near,
                 LineAlignment = StringAlignment.Center,
                 Trimming = StringTrimming.EllipsisCharacter,
-                FormatFlags = StringFormatFlags.NoWrap
+                FormatFlags = StringFormatFlags.LineLimit
             };
-            var rect = new Rectangle(bounds.Left + 4, bounds.Top, bounds.Width - 8, bounds.Height);
-            graphics.DrawString(text ?? string.Empty, cellFont, Brushes.Black, rect, format);
+            graphics.DrawString(displayText, cellFont, Brushes.Black, rect, format);
             if (bold)
                 cellFont.Dispose();
         }
@@ -702,6 +847,7 @@ namespace Stock_Managemnet
             public int SignatureGap { get; set; }
             public int TableTop { get; set; }
             public int TotalHeight { get; set; }
+            public bool ShowPrices { get; set; } = true;
             public int PriceWidth { get; set; }
             public int QtyWidth { get; set; }
             public int AmountWidth { get; set; }

@@ -15,6 +15,7 @@ namespace Stock_Managemnet.Controls
         private readonly Panel _documentSurface = new Panel();
         private Invoice _invoice;
         private bool _isDraft;
+        private InvoiceDocumentBuilder.DocumentKind _kind = InvoiceDocumentBuilder.DocumentKind.Invoice;
 
         public InvoicePreviewControl()
         {
@@ -31,11 +32,16 @@ namespace Stock_Managemnet.Controls
             Controls.Add(_documentSurface);
         }
 
-        public void SetInvoice(Invoice invoice, bool isDraft)
+        public void SetInvoice(
+            Invoice invoice,
+            bool isDraft,
+            InvoiceDocumentBuilder.DocumentKind kind = InvoiceDocumentBuilder.DocumentKind.Invoice)
         {
             _invoice = invoice;
             _isDraft = isDraft;
+            _kind = kind;
             LayoutDocument();
+            _documentSurface.Invalidate();
         }
 
         protected override void OnVisibleChanged(EventArgs e)
@@ -72,7 +78,8 @@ namespace Stock_Managemnet.Controls
                 new Rectangle(0, 0, _documentSurface.Width, _documentSurface.Height),
                 _invoice,
                 _isDraft,
-                InvoiceDocumentBuilder.InvoiceRenderProfile.Screen);
+                InvoiceDocumentBuilder.InvoiceRenderProfile.Screen,
+                _kind);
         }
 
         private void LayoutDocument()
