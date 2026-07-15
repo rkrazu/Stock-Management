@@ -4,7 +4,7 @@ namespace Stock_Managemnet.Services
 {
     public static class AppVersion
     {
-        public const string DisplayVersion = "0.0.4";
+        public const string DisplayVersion = "1.5";
 
         public static string ProductName => BrandAssets.AppDisplayName;
 

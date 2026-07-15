@@ -123,6 +123,19 @@ BEGIN
     CREATE INDEX IX_Customers_Name ON dbo.Customers (Name);
 END;",
 
+            @"IF OBJECT_ID(N'dbo.Suppliers', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Suppliers (
+        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        Name NVARCHAR(200) NOT NULL,
+        Address NVARCHAR(300) NULL,
+        Phone NVARCHAR(30) NULL,
+        Email NVARCHAR(200) NULL,
+        CreatedAt DATETIME2 NOT NULL
+    );
+    CREATE INDEX IX_Suppliers_Name ON dbo.Suppliers (Name);
+END;",
+
             @"IF OBJECT_ID(N'dbo.StockTransactions', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.StockTransactions (
@@ -396,6 +409,34 @@ END;",
             @"IF COL_LENGTH('dbo.CustomerPayments', 'VoidedAt') IS NULL
 BEGIN
     ALTER TABLE dbo.CustomerPayments ADD VoidedAt DATETIME2 NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.StockTransactions', 'SupplierId') IS NULL
+BEGIN
+    ALTER TABLE dbo.StockTransactions ADD SupplierId UNIQUEIDENTIFIER NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.StockTransactions', 'SupplierName') IS NULL
+BEGIN
+    ALTER TABLE dbo.StockTransactions ADD SupplierName NVARCHAR(200) NULL;
+END;",
+
+            @"IF OBJECT_ID(N'dbo.SupplierPayments', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.SupplierPayments (
+        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        SupplierId UNIQUEIDENTIFIER NOT NULL,
+        SupplierName NVARCHAR(200) NULL,
+        Amount DECIMAL(18, 2) NOT NULL,
+        PaymentMethod NVARCHAR(50) NULL,
+        Reference NVARCHAR(100) NULL,
+        Notes NVARCHAR(500) NULL,
+        PaidAt DATETIME2 NOT NULL,
+        IsVoided BIT NOT NULL CONSTRAINT DF_SupplierPayments_IsVoided DEFAULT (0),
+        VoidedAt DATETIME2 NULL
+    );
+    CREATE INDEX IX_SupplierPayments_SupplierId ON dbo.SupplierPayments (SupplierId);
+    CREATE INDEX IX_SupplierPayments_PaidAt ON dbo.SupplierPayments (PaidAt DESC);
 END;"
         };
     }

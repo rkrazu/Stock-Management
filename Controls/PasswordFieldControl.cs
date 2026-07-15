@@ -53,6 +53,10 @@ namespace Stock_Managemnet.Controls
             _hostPanel.Controls.Add(_toggleButton);
             Controls.Add(_hostPanel);
 
+            TabStop = true;
+            _hostPanel.TabStop = false;
+            _textBox.TabStop = true;
+
             _hostPanel.Resize += (s, e) => LayoutChildren();
             Resize += (s, e) => LayoutChildren();
             LayoutChildren();
@@ -64,6 +68,18 @@ namespace Stock_Managemnet.Controls
             set => _textBox.Text = value ?? string.Empty;
         }
 
+        public void FocusInput()
+        {
+            if (!ContainsFocus)
+                Focus();
+
+            if (_textBox.CanFocus)
+                _textBox.Focus();
+
+            _textBox.SelectionStart = _textBox.Text.Length;
+            _textBox.SelectionLength = 0;
+        }
+
         public void Clear()
         {
             _textBox.Clear();
@@ -73,7 +89,8 @@ namespace Stock_Managemnet.Controls
         protected override void OnEnter(EventArgs e)
         {
             base.OnEnter(e);
-            _textBox.Focus();
+            if (_textBox.CanFocus)
+                _textBox.Focus();
         }
 
         protected override void OnFontChanged(EventArgs e)
@@ -101,11 +118,13 @@ namespace Stock_Managemnet.Controls
         private void LayoutChildren()
         {
             var buttonWidth = GetToggleButtonWidth();
-            var hostHeight = Math.Max(28, Height);
-            _hostPanel.Height = hostHeight;
+            var hostHeight = Math.Max(28, _hostPanel.ClientSize.Height);
+            var textWidth = Math.Max(0, _hostPanel.ClientSize.Width - buttonWidth - 8);
+            var textHeight = Math.Min(hostHeight, _textBox.PreferredHeight);
+            var textTop = Math.Max(0, (hostHeight - textHeight) / 2);
 
-            _toggleButton.SetBounds(_hostPanel.Width - buttonWidth, 0, buttonWidth, hostHeight);
-            _textBox.SetBounds(4, 0, Math.Max(0, _hostPanel.Width - buttonWidth - 4), hostHeight);
+            _toggleButton.SetBounds(_hostPanel.ClientSize.Width - buttonWidth, 0, buttonWidth, hostHeight);
+            _textBox.SetBounds(4, textTop, textWidth, textHeight);
             _toggleButton.BringToFront();
         }
 

@@ -1,8 +1,12 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Printing;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using Stock_Managemnet.Models;
 using Stock_Managemnet.Services;
@@ -94,6 +98,174 @@ namespace Stock_Managemnet
             }
         }
 
+        public static bool ExportPdf(Invoice invoice, bool isDraft, IWin32Window owner)
+        {
+            if (invoice == null)
+                return false;
+
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.Filter = "PDF (*.pdf)|*.pdf";
+                dialog.DefaultExt = "pdf";
+                dialog.AddExtension = true;
+                dialog.FileName = BuildPdfFileName(invoice, isDraft);
+
+                if (dialog.ShowDialog(owner) != DialogResult.OK)
+                    return false;
+
+                try
+                {
+                    SavePdf(invoice, isDraft, dialog.FileName);
+                    MessageBox.Show(
+                        owner,
+                        "PDF saved successfully.",
+                        "PDF",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        owner,
+                        "Failed to save PDF.\r\n\r\n" + ex.Message,
+                        "PDF",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return false;
+                }
+            }
+        }
+
+        public static void SavePdf(Invoice invoice, bool isDraft, string filePath)
+        {
+            if (invoice == null)
+                throw new ArgumentNullException(nameof(invoice));
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path is required.", nameof(filePath));
+
+            // Same logical page as the invoice popup (pad aspect + Screen profile),
+            // then ScaleTransform for sharper output without changing relative layout/fonts.
+            const int referenceWidth = 900;
+            const int qualityScale = 2;
+            var pageSize = InvoicePaperAssets.GetLogicalPageSize(referenceWidth);
+            var width = Math.Max(1, pageSize.Width * qualityScale);
+            var height = Math.Max(1, pageSize.Height * qualityScale);
+
+            using (var bitmap = new Bitmap(width, height))
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(Color.White);
+                graphics.ScaleTransform(qualityScale, qualityScale);
+                Paint(
+                    graphics,
+                    new Rectangle(0, 0, pageSize.Width, pageSize.Height),
+                    invoice,
+                    isDraft,
+                    InvoiceRenderProfile.Screen);
+
+                var jpegBytes = EncodeJpeg(bitmap, quality: 92L);
+                WriteJpegPdf(filePath, jpegBytes, width, height);
+            }
+        }
+
+        private static string BuildPdfFileName(Invoice invoice, bool isDraft)
+        {
+            var number = isDraft || string.IsNullOrWhiteSpace(invoice.InvoiceNumber)
+                ? "Preview"
+                : invoice.InvoiceNumber.Trim();
+
+            foreach (var invalid in Path.GetInvalidFileNameChars())
+                number = number.Replace(invalid, '_');
+
+            return $"Invoice_{number}.pdf";
+        }
+
+        private static byte[] EncodeJpeg(Image image, long quality)
+        {
+            var codec = ImageCodecInfo.GetImageEncoders()
+                .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
+            if (codec == null)
+            {
+                using (var stream = new MemoryStream())
+                {
+                    image.Save(stream, ImageFormat.Jpeg);
+                    return stream.ToArray();
+                }
+            }
+
+            using (var stream = new MemoryStream())
+            using (var encoderParams = new EncoderParameters(1))
+            {
+                encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
+                image.Save(stream, codec, encoderParams);
+                return stream.ToArray();
+            }
+        }
+
+        private static void WriteJpegPdf(string filePath, byte[] jpegBytes, int pixelWidth, int pixelHeight)
+        {
+            const double pageWidthPt = 595.28;
+            var pageHeightPt = pageWidthPt * pixelHeight / (double)pixelWidth;
+
+            using (var stream = File.Create(filePath))
+            using (var writer = new BinaryWriter(stream, Encoding.ASCII))
+            {
+                var offsets = new long[6];
+
+                Action<string> writeAscii = text =>
+                {
+                    var bytes = Encoding.ASCII.GetBytes(text);
+                    writer.Write(bytes);
+                };
+
+                writeAscii("%PDF-1.4\n");
+
+                offsets[1] = stream.Position;
+                writeAscii("1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n");
+
+                offsets[2] = stream.Position;
+                writeAscii("2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n");
+
+                offsets[3] = stream.Position;
+                writeAscii(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {0:0.###} {1:0.###}] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>endobj\n",
+                    pageWidthPt,
+                    pageHeightPt));
+
+                var content = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "q {0:0.###} 0 0 {1:0.###} 0 0 cm /Im0 Do Q\n",
+                    pageWidthPt,
+                    pageHeightPt);
+                var contentBytes = Encoding.ASCII.GetBytes(content);
+
+                offsets[4] = stream.Position;
+                writeAscii($"4 0 obj<< /Length {contentBytes.Length} >>stream\n");
+                writer.Write(contentBytes);
+                writeAscii("endstream\nendobj\n");
+
+                offsets[5] = stream.Position;
+                writeAscii(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "5 0 obj<< /Type /XObject /Subtype /Image /Width {0} /Height {1} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {2} >>stream\n",
+                    pixelWidth,
+                    pixelHeight,
+                    jpegBytes.Length));
+                writer.Write(jpegBytes);
+                writeAscii("\nendstream\nendobj\n");
+
+                var xrefPos = stream.Position;
+                writeAscii("xref\n0 6\n");
+                writeAscii("0000000000 65535 f \n");
+                for (var i = 1; i <= 5; i++)
+                    writeAscii($"{offsets[i]:D10} 00000 n \n");
+
+                writeAscii($"trailer<< /Size 6 /Root 1 0 R >>\nstartxref\n{xrefPos}\n%%EOF\n");
+            }
+        }
+
         private static InvoiceFonts CreateFonts(InvoiceRenderProfile profile)
         {
             if (profile == InvoiceRenderProfile.Print)
@@ -104,6 +276,7 @@ namespace Stock_Managemnet
                     Title = new Font("Segoe UI", 18F, FontStyle.Bold),
                     Label = new Font("Segoe UI", 13F, FontStyle.Bold),
                     Text = new Font("Segoe UI", 13F),
+                    Cell = new Font("Segoe UI", 11F),
                     Small = new Font("Segoe UI", 12F)
                 };
             }
@@ -114,6 +287,7 @@ namespace Stock_Managemnet
                 Title = new Font("Segoe UI", 15F, FontStyle.Bold),
                 Label = new Font("Segoe UI", 11F, FontStyle.Bold),
                 Text = new Font("Segoe UI", 11F),
+                Cell = new Font("Segoe UI", 9.5F),
                 Small = new Font("Segoe UI", 10F)
             };
         }
@@ -132,8 +306,6 @@ namespace Stock_Managemnet
                 var width = layout.Width;
                 var pad = layout.HorizontalPadding;
                 var contentWidth = width - (pad * 2);
-                var thirdWidth = contentWidth / 3;
-                var lastThirdWidth = contentWidth - (thirdWidth * 2);
 
                 if (!InvoicePaperAssets.HasPad)
                 {
@@ -153,25 +325,44 @@ namespace Stock_Managemnet
 
                 y += layout.SectionGap;
                 var invoiceNo = isDraft ? "(assigned on submit)" : (invoice.InvoiceNumber ?? string.Empty);
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "INVOICE NO:", invoiceNo, pad, y, thirdWidth);
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Date:", invoice.CreatedAt.ToString("dd-MMM-yyyy"), pad + thirdWidth, y, thirdWidth);
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Entry Time:", invoice.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"), pad + (thirdWidth * 2), y, lastThirdWidth);
+                var halfWidth = contentWidth / 2;
+                var rightHalfWidth = contentWidth - halfWidth;
+                DrawLabelValue(graphics, fonts.Label, fonts.Text, "INVOICE NO:", invoiceNo, pad, y, halfWidth);
+                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Date:", invoice.CreatedAt.ToString("dd-MMM-yyyy"), pad + halfWidth, y, rightHalfWidth, rightAlign: true);
                 y += layout.MetaRowHeight;
                 graphics.DrawLine(borderPen, 0, y, width, y);
 
                 y += layout.SectionGap;
                 var customerName = string.IsNullOrWhiteSpace(invoice.CustomerName) ? "(No customer selected)" : invoice.CustomerName;
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Customer:", customerName, pad, y, contentWidth, valueBold: true);
+                var customerWidth = (contentWidth * 2) / 3;
+                var mobileWidth = contentWidth - customerWidth;
+                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Customer:", customerName, pad, y, customerWidth, valueBold: true);
+                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Mobile:", invoice.CustomerPhone ?? string.Empty, pad + customerWidth, y, mobileWidth, rightAlign: true);
                 y += layout.InfoRowHeight;
 
-                var halfWidth = contentWidth / 2;
-                var secondHalfWidth = contentWidth - halfWidth;
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Mobile:", invoice.CustomerPhone ?? string.Empty, pad, y, halfWidth);
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Destination:", invoice.CustomerAddress ?? string.Empty, pad + halfWidth, y, secondHalfWidth);
-                y += layout.InfoRowHeight;
+                DrawWrappedLabelValue(
+                    graphics,
+                    fonts.Label,
+                    fonts.Text,
+                    "Destination:",
+                    FlattenSingleLine(invoice.CustomerAddress),
+                    pad,
+                    y,
+                    contentWidth,
+                    layout.MultilineFieldHeight);
+                y += layout.MultilineFieldHeight;
 
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Note:", invoice.Notes ?? string.Empty, pad, y, contentWidth);
-                y += layout.NoteRowHeight;
+                DrawWrappedLabelValue(
+                    graphics,
+                    fonts.Label,
+                    fonts.Text,
+                    "Note:",
+                    FlattenSingleLine(invoice.Notes),
+                    pad,
+                    y,
+                    contentWidth,
+                    layout.MultilineFieldHeight);
+                y += layout.MultilineFieldHeight;
                 graphics.DrawLine(borderPen, 0, y, width, y);
 
                 y += 2;
@@ -190,7 +381,7 @@ namespace Stock_Managemnet
                     if (rowIndex % 2 == 0)
                         graphics.FillRectangle(Brushes.WhiteSmoke, rowRect);
 
-                    DrawTableRow(graphics, layout, y, fonts.Text, item, rowIndex);
+                    DrawTableRow(graphics, layout, y, fonts.Cell, item, rowIndex);
                     graphics.DrawLine(borderPen, 0, y + layout.RowHeight, width, y + layout.RowHeight);
                     y += layout.RowHeight;
                     rowIndex++;
@@ -198,7 +389,7 @@ namespace Stock_Managemnet
 
                 var totalQty = (invoice.Items ?? Enumerable.Empty<InvoiceLineItem>()).Sum(i => i.Quantity);
                 FillBar(graphics, new Rectangle(0, y, width, layout.RowHeight), TotalRowColor);
-                DrawTotalRow(graphics, layout, y, fonts.Label, fonts.Text, totalQty, invoice.TotalAmount);
+                DrawTotalRow(graphics, layout, y, fonts.Label, fonts.Cell, totalQty, invoice.TotalAmount);
                 graphics.DrawRectangle(borderPen, 0, layout.TableTop, width, y + layout.RowHeight - layout.TableTop);
                 y += layout.RowHeight + layout.SectionGap;
 
@@ -210,7 +401,27 @@ namespace Stock_Managemnet
 
                 graphics.DrawLine(borderPen, 0, y, width, y);
                 y += layout.SectionGap;
-                DrawLabelValue(graphics, fonts.Label, fonts.Small, "PRINT TIME:", DateTime.Now.ToString("dd-MMM-yyyy HH:mm:ss").ToUpperInvariant(), pad, y, contentWidth);
+                var footerHalfWidth = contentWidth / 2;
+                var footerRightWidth = contentWidth - footerHalfWidth;
+                DrawLabelValue(
+                    graphics,
+                    fonts.Label,
+                    fonts.Small,
+                    "ENTRY TIME:",
+                    FormatDateTime12Hour(invoice.CreatedAt),
+                    pad,
+                    y,
+                    footerHalfWidth);
+                DrawLabelValue(
+                    graphics,
+                    fonts.Label,
+                    fonts.Small,
+                    "PRINT TIME:",
+                    FormatDateTime12Hour(DateTime.Now),
+                    pad + footerHalfWidth,
+                    y,
+                    footerRightWidth,
+                    rightAlign: true);
             }
         }
 
@@ -230,17 +441,15 @@ namespace Stock_Managemnet
                 SectionGap = isPrint ? 12 : 10,
                 MetaRowHeight = isPrint ? 42 : 36,
                 InfoRowHeight = isPrint ? 36 : 30,
-                NoteRowHeight = isPrint ? 40 : 34,
+                MultilineFieldHeight = isPrint ? 56 : 48,
+                NoteRowHeight = isPrint ? 56 : 48,
                 SectionBarHeight = isPrint ? 42 : 36,
                 RowHeight = isPrint ? 40 : 34,
                 SignatureHeight = isPrint ? 84 : 72,
                 SignatureGap = isPrint ? 16 : 12,
-                SlWidth = isPrint ? 56 : 50,
-                SkuWidth = isPrint ? 108 : 100,
-                CategoryWidth = isPrint ? 128 : 120,
-                PriceWidth = isPrint ? 104 : 96,
-                QtyWidth = isPrint ? 76 : 68,
-                AmountWidth = isPrint ? 112 : 104
+                PriceWidth = isPrint ? 130 : 118,
+                QtyWidth = isPrint ? 64 : 58,
+                AmountWidth = isPrint ? 140 : 128
             };
 
             var headerOffset = useLetterhead ? 0 : layout.CompanyHeaderHeight + 4;
@@ -250,8 +459,8 @@ namespace Stock_Managemnet
                 layout.TitleBarHeight + layout.SectionGap +
                 layout.MetaRowHeight + layout.SectionGap +
                 layout.InfoRowHeight +
-                layout.InfoRowHeight +
-                layout.NoteRowHeight + 2 +
+                layout.MultilineFieldHeight +
+                layout.MultilineFieldHeight + 2 +
                 layout.SectionBarHeight;
 
             layout.TotalHeight =
@@ -272,15 +481,8 @@ namespace Stock_Managemnet
             graphics.FillRectangle(new SolidBrush(Color.FromArgb(245, 245, 245)), rect);
             graphics.DrawLine(borderPen, 0, y, layout.Width, y);
 
-            DrawCellText(graphics, "SL", font, new Rectangle(x, y, layout.SlWidth, layout.RowHeight), true);
-            x += layout.SlWidth;
-            DrawCellText(graphics, "SKU", font, new Rectangle(x, y, layout.SkuWidth, layout.RowHeight), true);
-            x += layout.SkuWidth;
-            DrawCellText(graphics, "Category", font, new Rectangle(x, y, layout.CategoryWidth, layout.RowHeight), true);
-            x += layout.CategoryWidth;
-            var nameWidth = layout.ProductNameWidth;
-            DrawCellText(graphics, "Product Name", font, new Rectangle(x, y, nameWidth, layout.RowHeight), true);
-            x += nameWidth;
+            DrawCellText(graphics, "Product Info", font, new Rectangle(x, y, layout.ProductInfoWidth, layout.RowHeight), true);
+            x += layout.ProductInfoWidth;
             DrawCellText(graphics, "Unit Price", font, new Rectangle(x, y, layout.PriceWidth, layout.RowHeight), true, rightAlign: true);
             x += layout.PriceWidth;
             DrawCellText(graphics, "Qty", font, new Rectangle(x, y, layout.QtyWidth, layout.RowHeight), true, rightAlign: true);
@@ -292,14 +494,8 @@ namespace Stock_Managemnet
         private static void DrawTableRow(Graphics graphics, DocumentLayout layout, int y, Font font, InvoiceLineItem item, int rowIndex)
         {
             var x = 0;
-            DrawCellText(graphics, rowIndex.ToString(), font, new Rectangle(x, y, layout.SlWidth, layout.RowHeight), false, rightAlign: true);
-            x += layout.SlWidth;
-            DrawCellText(graphics, item.ProductSku, font, new Rectangle(x, y, layout.SkuWidth, layout.RowHeight));
-            x += layout.SkuWidth;
-            DrawCellText(graphics, string.IsNullOrWhiteSpace(item.ProductCategory) ? "-" : item.ProductCategory, font, new Rectangle(x, y, layout.CategoryWidth, layout.RowHeight));
-            x += layout.CategoryWidth;
-            DrawCellText(graphics, item.ProductName, font, new Rectangle(x, y, layout.ProductNameWidth, layout.RowHeight));
-            x += layout.ProductNameWidth;
+            DrawCellText(graphics, FormatProductInfo(rowIndex, item), font, new Rectangle(x, y, layout.ProductInfoWidth, layout.RowHeight));
+            x += layout.ProductInfoWidth;
             DrawCellText(graphics, item.UnitPrice.ToString("C2"), font, new Rectangle(x, y, layout.PriceWidth, layout.RowHeight), false, rightAlign: true);
             x += layout.PriceWidth;
             DrawCellText(graphics, item.Quantity.ToString(), font, new Rectangle(x, y, layout.QtyWidth, layout.RowHeight), false, rightAlign: true);
@@ -309,12 +505,19 @@ namespace Stock_Managemnet
 
         private static void DrawTotalRow(Graphics graphics, DocumentLayout layout, int y, Font fontBold, Font font, int totalQty, decimal totalAmount)
         {
-            var labelRect = new Rectangle(layout.SlWidth + layout.SkuWidth, y, layout.CategoryWidth + layout.ProductNameWidth, layout.RowHeight);
-            DrawCellText(graphics, "Total", fontBold, labelRect, true);
-            var priceX = layout.SlWidth + layout.SkuWidth + layout.CategoryWidth + layout.ProductNameWidth;
+            DrawCellText(graphics, "Total", fontBold, new Rectangle(0, y, layout.ProductInfoWidth, layout.RowHeight), true);
+            var priceX = layout.ProductInfoWidth;
             DrawCellText(graphics, string.Empty, font, new Rectangle(priceX, y, layout.PriceWidth, layout.RowHeight));
             DrawCellText(graphics, totalQty.ToString(), fontBold, new Rectangle(priceX + layout.PriceWidth, y, layout.QtyWidth, layout.RowHeight), true, rightAlign: true);
             DrawCellText(graphics, totalAmount.ToString("C2"), fontBold, new Rectangle(priceX + layout.PriceWidth + layout.QtyWidth, y, layout.AmountWidth, layout.RowHeight), true, rightAlign: true);
+        }
+
+        private static string FormatProductInfo(int rowIndex, InvoiceLineItem item)
+        {
+            var sku = string.IsNullOrWhiteSpace(item?.ProductSku) ? "-" : item.ProductSku.Trim();
+            var category = string.IsNullOrWhiteSpace(item?.ProductCategory) ? "-" : item.ProductCategory.Trim();
+            var name = string.IsNullOrWhiteSpace(item?.ProductName) ? "-" : item.ProductName.Trim();
+            return $"{rowIndex}. {sku} - {category} - {name}";
         }
 
         private static void DrawSignatureBox(Graphics graphics, Pen borderPen, Font fontBold, Font fontSmall, string title, Rectangle bounds)
@@ -339,6 +542,24 @@ namespace Stock_Managemnet
             graphics.DrawString(text, font, brush, bounds, format);
         }
 
+        private static string FlattenSingleLine(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var parts = value
+                .Replace("\r\n", "\n")
+                .Replace('\r', '\n')
+                .Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Trim())
+                .Where(part => part.Length > 0);
+
+            return string.Join(" ", parts);
+        }
+
+        private static string FormatDateTime12Hour(DateTime value) =>
+            value.ToString("dd-MMM-yyyy hh:mm:ss tt");
+
         private static void DrawLabelValue(
             Graphics graphics,
             Font fontLabel,
@@ -348,13 +569,76 @@ namespace Stock_Managemnet
             int x,
             int y,
             int width,
-            bool valueBold = false)
+            bool valueBold = false,
+            bool rightAlign = false)
+        {
+            DrawWrappedLabelValue(
+                graphics,
+                fontLabel,
+                fontValue,
+                label,
+                value,
+                x,
+                y,
+                width,
+                height: 28,
+                valueBold: valueBold,
+                singleLine: true,
+                rightAlign: rightAlign);
+        }
+
+        private static void DrawWrappedLabelValue(
+            Graphics graphics,
+            Font fontLabel,
+            Font fontValue,
+            string label,
+            string value,
+            int x,
+            int y,
+            int width,
+            int height,
+            bool valueBold = false,
+            bool singleLine = false,
+            bool rightAlign = false)
         {
             var valueFont = valueBold ? new Font(fontValue, FontStyle.Bold) : fontValue;
-            graphics.DrawString(label, fontLabel, Brushes.Black, new PointF(x, y));
-            var labelSize = graphics.MeasureString(label + " ", fontLabel);
-            var valueRect = new RectangleF(x + labelSize.Width, y, Math.Max(0, width - labelSize.Width), 60);
-            graphics.DrawString(value ?? string.Empty, valueFont, Brushes.Black, valueRect);
+            var safeValue = value ?? string.Empty;
+            var labelText = label ?? string.Empty;
+            var labelSize = graphics.MeasureString(labelText + " ", fontLabel);
+            var valueSize = graphics.MeasureString(safeValue, valueFont);
+
+            float labelX;
+            float valueX;
+            float valueWidth;
+
+            if (rightAlign && singleLine)
+            {
+                var totalWidth = Math.Min(width, labelSize.Width + valueSize.Width);
+                labelX = x + width - totalWidth;
+                valueX = labelX + labelSize.Width;
+                valueWidth = Math.Max(0, x + width - valueX);
+            }
+            else
+            {
+                labelX = x;
+                valueX = x + labelSize.Width;
+                valueWidth = Math.Max(0, width - labelSize.Width);
+            }
+
+            graphics.DrawString(labelText, fontLabel, Brushes.Black, new PointF(labelX, y));
+            var valueRect = new RectangleF(valueX, y, valueWidth, Math.Max(1, height));
+
+            var format = new StringFormat
+            {
+                Alignment = StringAlignment.Near,
+                LineAlignment = StringAlignment.Near,
+                Trimming = singleLine ? StringTrimming.EllipsisCharacter : StringTrimming.EllipsisWord,
+                FormatFlags = singleLine
+                    ? StringFormatFlags.NoWrap | StringFormatFlags.LineLimit
+                    : StringFormatFlags.LineLimit
+            };
+
+            graphics.DrawString(safeValue, valueFont, Brushes.Black, valueRect, format);
             if (valueBold)
                 valueFont.Dispose();
         }
@@ -375,7 +659,7 @@ namespace Stock_Managemnet
                 Trimming = StringTrimming.EllipsisCharacter,
                 FormatFlags = StringFormatFlags.NoWrap
             };
-            var rect = new Rectangle(bounds.Left + 6, bounds.Top, bounds.Width - 12, bounds.Height);
+            var rect = new Rectangle(bounds.Left + 4, bounds.Top, bounds.Width - 8, bounds.Height);
             graphics.DrawString(text ?? string.Empty, cellFont, Brushes.Black, rect, format);
             if (bold)
                 cellFont.Dispose();
@@ -387,6 +671,7 @@ namespace Stock_Managemnet
             public Font Title { get; set; }
             public Font Label { get; set; }
             public Font Text { get; set; }
+            public Font Cell { get; set; }
             public Font Small { get; set; }
 
             public void Dispose()
@@ -395,6 +680,7 @@ namespace Stock_Managemnet
                 Title?.Dispose();
                 Label?.Dispose();
                 Text?.Dispose();
+                Cell?.Dispose();
                 Small?.Dispose();
             }
         }
@@ -408,6 +694,7 @@ namespace Stock_Managemnet
             public int SectionGap { get; set; }
             public int MetaRowHeight { get; set; }
             public int InfoRowHeight { get; set; }
+            public int MultilineFieldHeight { get; set; }
             public int NoteRowHeight { get; set; }
             public int SectionBarHeight { get; set; }
             public int RowHeight { get; set; }
@@ -415,14 +702,11 @@ namespace Stock_Managemnet
             public int SignatureGap { get; set; }
             public int TableTop { get; set; }
             public int TotalHeight { get; set; }
-            public int SlWidth { get; set; }
-            public int SkuWidth { get; set; }
-            public int CategoryWidth { get; set; }
             public int PriceWidth { get; set; }
             public int QtyWidth { get; set; }
             public int AmountWidth { get; set; }
-            public int ProductNameWidth =>
-                Math.Max(140, Width - SlWidth - SkuWidth - CategoryWidth - PriceWidth - QtyWidth - AmountWidth);
+            public int ProductInfoWidth =>
+                Math.Max(180, Width - PriceWidth - QtyWidth - AmountWidth);
         }
     }
 }

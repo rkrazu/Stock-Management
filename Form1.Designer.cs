@@ -6,6 +6,7 @@ namespace Stock_Managemnet
         private System.Windows.Forms.TabControl tabMain;
         private System.Windows.Forms.TabPage tabInventory;
         private System.Windows.Forms.TabPage tabCustomers;
+        private System.Windows.Forms.TabPage tabSuppliers;
         private System.Windows.Forms.TabPage tabInvoices;
         private System.Windows.Forms.TabPage tabAccounts;
         private System.Windows.Forms.TabPage tabProduction;
@@ -51,6 +52,7 @@ namespace Stock_Managemnet
         private System.Windows.Forms.Button btnChangePassword;
         private System.Windows.Forms.TableLayoutPanel tlpInventory;
         private System.Windows.Forms.TableLayoutPanel tlpCustomers;
+        private System.Windows.Forms.TableLayoutPanel tlpSuppliers;
         private System.Windows.Forms.TabControl tabInventorySub;
         private System.Windows.Forms.TabPage tabInventoryFg;
         private System.Windows.Forms.TabPage tabInventoryRawMaterial;
@@ -78,6 +80,14 @@ namespace Stock_Managemnet
         private System.Windows.Forms.Button btnEditCustomer;
         private System.Windows.Forms.Button btnDeleteCustomer;
         private System.Windows.Forms.DataGridView dgvCustomers;
+        private System.Windows.Forms.Panel panelSupplierToolbar;
+        private System.Windows.Forms.TextBox txtSupplierSearch;
+        private System.Windows.Forms.Button btnSupplierSearch;
+        private System.Windows.Forms.Button btnSupplierReset;
+        private System.Windows.Forms.Button btnAddSupplier;
+        private System.Windows.Forms.Button btnEditSupplier;
+        private System.Windows.Forms.Button btnDeleteSupplier;
+        private System.Windows.Forms.DataGridView dgvSuppliers;
         private System.Windows.Forms.TableLayoutPanel tlpInvoices;
         private System.Windows.Forms.Panel panelInvoiceToolbar;
         private System.Windows.Forms.TextBox txtInvoiceSearch;
@@ -85,6 +95,7 @@ namespace Stock_Managemnet
         private System.Windows.Forms.Button btnInvoiceReset;
         private System.Windows.Forms.Button btnViewInvoice;
         private System.Windows.Forms.Button btnPrintInvoice;
+        private System.Windows.Forms.Button btnChalan;
         private System.Windows.Forms.Button btnVoidInvoice;
         private System.Windows.Forms.Button btnRestoreSale;
         private System.Windows.Forms.Button btnCorrectionGuide;
@@ -161,6 +172,16 @@ namespace Stock_Managemnet
             this.btnAddCustomer = new System.Windows.Forms.Button();
             this.btnEditCustomer = new System.Windows.Forms.Button();
             this.btnDeleteCustomer = new System.Windows.Forms.Button();
+            this.tabSuppliers = new System.Windows.Forms.TabPage();
+            this.tlpSuppliers = new System.Windows.Forms.TableLayoutPanel();
+            this.dgvSuppliers = new System.Windows.Forms.DataGridView();
+            this.panelSupplierToolbar = new System.Windows.Forms.Panel();
+            this.txtSupplierSearch = new System.Windows.Forms.TextBox();
+            this.btnSupplierSearch = new System.Windows.Forms.Button();
+            this.btnSupplierReset = new System.Windows.Forms.Button();
+            this.btnAddSupplier = new System.Windows.Forms.Button();
+            this.btnEditSupplier = new System.Windows.Forms.Button();
+            this.btnDeleteSupplier = new System.Windows.Forms.Button();
             this.tabInvoices = new System.Windows.Forms.TabPage();
             this.tlpInvoices = new System.Windows.Forms.TableLayoutPanel();
             this.dgvInvoices = new System.Windows.Forms.DataGridView();
@@ -170,6 +191,7 @@ namespace Stock_Managemnet
             this.btnInvoiceReset = new System.Windows.Forms.Button();
             this.btnViewInvoice = new System.Windows.Forms.Button();
             this.btnPrintInvoice = new System.Windows.Forms.Button();
+            this.btnChalan = new System.Windows.Forms.Button();
             this.btnVoidInvoice = new System.Windows.Forms.Button();
             this.btnRestoreSale = new System.Windows.Forms.Button();
             this.btnCorrectionGuide = new System.Windows.Forms.Button();
@@ -257,6 +279,10 @@ namespace Stock_Managemnet
             this.tlpCustomers.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvCustomers)).BeginInit();
             this.panelCustomerToolbar.SuspendLayout();
+            this.tabSuppliers.SuspendLayout();
+            this.tlpSuppliers.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvSuppliers)).BeginInit();
+            this.panelSupplierToolbar.SuspendLayout();
             this.tabInvoices.SuspendLayout();
             this.tlpInvoices.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvInvoices)).BeginInit();
@@ -289,6 +315,7 @@ namespace Stock_Managemnet
             //
             this.tabMain.Controls.Add(this.tabInventory);
             this.tabMain.Controls.Add(this.tabCustomers);
+            this.tabMain.Controls.Add(this.tabSuppliers);
             this.tabMain.Controls.Add(this.tabInvoices);
             this.tabMain.Controls.Add(this.tabAccounts);
             this.tabMain.Controls.Add(this.tabProduction);
@@ -543,6 +570,88 @@ namespace Stock_Managemnet
             this.dgvCustomers.RowHeadersVisible = false;
             this.dgvCustomers.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             //
+            // tabSuppliers
+            //
+            this.tabSuppliers.Controls.Add(this.tlpSuppliers);
+            this.tabSuppliers.Text = "Suppliers";
+            this.tabSuppliers.UseVisualStyleBackColor = true;
+            //
+            // tlpSuppliers
+            //
+            this.tlpSuppliers.ColumnCount = 1;
+            this.tlpSuppliers.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tlpSuppliers.Controls.Add(this.panelSupplierToolbar, 0, 0);
+            this.tlpSuppliers.Controls.Add(this.dgvSuppliers, 0, 1);
+            this.tlpSuppliers.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tlpSuppliers.RowCount = 2;
+            this.tlpSuppliers.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tlpSuppliers.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            //
+            // panelSupplierToolbar
+            //
+            this.panelSupplierToolbar.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelSupplierToolbar.Padding = new System.Windows.Forms.Padding(8, 8, 8, 4);
+            this.panelSupplierToolbar.Controls.Add(this.txtSupplierSearch);
+            this.panelSupplierToolbar.Controls.Add(this.btnSupplierSearch);
+            this.panelSupplierToolbar.Controls.Add(this.btnSupplierReset);
+            this.panelSupplierToolbar.Controls.Add(this.btnAddSupplier);
+            this.panelSupplierToolbar.Controls.Add(this.btnEditSupplier);
+            this.panelSupplierToolbar.Controls.Add(this.btnDeleteSupplier);
+            //
+            // txtSupplierSearch
+            //
+            this.txtSupplierSearch.Location = new System.Drawing.Point(11, 12);
+            this.txtSupplierSearch.Size = new System.Drawing.Size(220, 23);
+            //
+            // btnSupplierSearch
+            //
+            this.btnSupplierSearch.Location = new System.Drawing.Point(237, 10);
+            this.btnSupplierSearch.Size = new System.Drawing.Size(65, 27);
+            this.btnSupplierSearch.Text = "Search";
+            this.btnSupplierSearch.UseVisualStyleBackColor = true;
+            //
+            // btnSupplierReset
+            //
+            this.btnSupplierReset.Location = new System.Drawing.Point(308, 10);
+            this.btnSupplierReset.Size = new System.Drawing.Size(65, 27);
+            this.btnSupplierReset.Text = "Reset";
+            this.btnSupplierReset.UseVisualStyleBackColor = true;
+            //
+            // btnAddSupplier
+            //
+            this.btnAddSupplier.Location = new System.Drawing.Point(385, 10);
+            this.btnAddSupplier.Size = new System.Drawing.Size(105, 27);
+            this.btnAddSupplier.Text = "+ Add Supplier";
+            this.btnAddSupplier.UseVisualStyleBackColor = true;
+            //
+            // btnEditSupplier
+            //
+            this.btnEditSupplier.Location = new System.Drawing.Point(496, 10);
+            this.btnEditSupplier.Size = new System.Drawing.Size(75, 27);
+            this.btnEditSupplier.Text = "Edit";
+            this.btnEditSupplier.Enabled = false;
+            //
+            // btnDeleteSupplier
+            //
+            this.btnDeleteSupplier.Location = new System.Drawing.Point(577, 10);
+            this.btnDeleteSupplier.Size = new System.Drawing.Size(75, 27);
+            this.btnDeleteSupplier.Text = "Delete";
+            this.btnDeleteSupplier.Enabled = false;
+            //
+            // dgvSuppliers
+            //
+            this.dgvSuppliers.AllowUserToAddRows = false;
+            this.dgvSuppliers.AllowUserToDeleteRows = false;
+            this.dgvSuppliers.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.dgvSuppliers.BackgroundColor = System.Drawing.Color.White;
+            this.dgvSuppliers.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.dgvSuppliers.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvSuppliers.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.dgvSuppliers.MultiSelect = false;
+            this.dgvSuppliers.ReadOnly = true;
+            this.dgvSuppliers.RowHeadersVisible = false;
+            this.dgvSuppliers.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            //
             // tabInvoices
             //
             this.tabInvoices.Controls.Add(this.tlpInvoices);
@@ -569,6 +678,7 @@ namespace Stock_Managemnet
             this.panelInvoiceToolbar.Controls.Add(this.btnInvoiceReset);
             this.panelInvoiceToolbar.Controls.Add(this.btnViewInvoice);
             this.panelInvoiceToolbar.Controls.Add(this.btnPrintInvoice);
+            this.panelInvoiceToolbar.Controls.Add(this.btnChalan);
             this.panelInvoiceToolbar.Controls.Add(this.btnVoidInvoice);
             this.panelInvoiceToolbar.Controls.Add(this.btnRestoreSale);
             this.panelInvoiceToolbar.Controls.Add(this.btnCorrectionGuide);
@@ -603,14 +713,22 @@ namespace Stock_Managemnet
             // btnPrintInvoice
             //
             this.btnPrintInvoice.Location = new System.Drawing.Point(501, 10);
-            this.btnPrintInvoice.Size = new System.Drawing.Size(110, 27);
+            this.btnPrintInvoice.Size = new System.Drawing.Size(75, 27);
             this.btnPrintInvoice.Text = "Print";
             this.btnPrintInvoice.Enabled = false;
             this.btnPrintInvoice.UseVisualStyleBackColor = true;
             //
+            // btnChalan
+            //
+            this.btnChalan.Location = new System.Drawing.Point(582, 10);
+            this.btnChalan.Size = new System.Drawing.Size(80, 27);
+            this.btnChalan.Text = "Chalan";
+            this.btnChalan.Enabled = false;
+            this.btnChalan.UseVisualStyleBackColor = true;
+            //
             // btnVoidInvoice
             //
-            this.btnVoidInvoice.Location = new System.Drawing.Point(617, 10);
+            this.btnVoidInvoice.Location = new System.Drawing.Point(668, 10);
             this.btnVoidInvoice.Size = new System.Drawing.Size(95, 27);
             this.btnVoidInvoice.Text = "Void Sale";
             this.btnVoidInvoice.Enabled = false;
@@ -618,7 +736,7 @@ namespace Stock_Managemnet
             //
             // btnRestoreSale
             //
-            this.btnRestoreSale.Location = new System.Drawing.Point(718, 10);
+            this.btnRestoreSale.Location = new System.Drawing.Point(769, 10);
             this.btnRestoreSale.Size = new System.Drawing.Size(95, 27);
             this.btnRestoreSale.Text = "Restore Sale";
             this.btnRestoreSale.Enabled = false;
@@ -626,7 +744,7 @@ namespace Stock_Managemnet
             //
             // btnCorrectionGuide
             //
-            this.btnCorrectionGuide.Location = new System.Drawing.Point(819, 10);
+            this.btnCorrectionGuide.Location = new System.Drawing.Point(870, 10);
             this.btnCorrectionGuide.Size = new System.Drawing.Size(120, 27);
             this.btnCorrectionGuide.Text = "Fix Mistakes";
             this.btnCorrectionGuide.UseVisualStyleBackColor = true;
@@ -1013,7 +1131,7 @@ namespace Stock_Managemnet
             this.lblSoftwareVersionValue.AutoSize = true;
             this.lblSoftwareVersionValue.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.lblSoftwareVersionValue.Location = new System.Drawing.Point(120, 68);
-            this.lblSoftwareVersionValue.Text = "0.0.4";
+            this.lblSoftwareVersionValue.Text = "1.5";
             //
             // grpDeveloperInfo
             //
@@ -1238,6 +1356,11 @@ namespace Stock_Managemnet
             ((System.ComponentModel.ISupportInitialize)(this.dgvCustomers)).EndInit();
             this.panelCustomerToolbar.ResumeLayout(false);
             this.panelCustomerToolbar.PerformLayout();
+            this.tabSuppliers.ResumeLayout(false);
+            this.tlpSuppliers.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dgvSuppliers)).EndInit();
+            this.panelSupplierToolbar.ResumeLayout(false);
+            this.panelSupplierToolbar.PerformLayout();
             this.tabInvoices.ResumeLayout(false);
             this.tlpInvoices.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dgvInvoices)).EndInit();

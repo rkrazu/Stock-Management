@@ -15,6 +15,7 @@ namespace Stock_Managemnet
         private Panel panelAccountsContent;
         private Panel panelAccountsChart;
         private Panel panelAccountsCustomerDue;
+        private Panel panelAccountsSupplierDue;
         private Panel panelAccountsCashLedger;
         private Panel panelAccountsSalesProfit;
         private Panel panelAccountsExpenses;
@@ -26,6 +27,12 @@ namespace Stock_Managemnet
         private Button btnReceivePayment;
         private Button btnViewBalanceSheet;
         private DataGridView dgvCustomerDue;
+        private TextBox txtSupplierDueSearch;
+        private Button btnSupplierDueSearch;
+        private Button btnSupplierDueReset;
+        private Button btnRecordSupplierPayment;
+        private Button btnViewSupplierBalanceSheet;
+        private DataGridView dgvSupplierDue;
         private ComboBox cmbCashLedgerAccount;
         private DateTimePicker dtpCashLedgerFrom;
         private DateTimePicker dtpCashLedgerTo;
@@ -86,6 +93,7 @@ namespace Stock_Managemnet
                 "Sales Profit",
                 "Expenses",
                 "Customer Due",
+                "Supplier Due",
                 "Cash Ledger"
             });
 
@@ -94,9 +102,11 @@ namespace Stock_Managemnet
             panelAccountsSalesProfit = CreateSalesProfitPanel();
             panelAccountsExpenses = CreateExpensesPanel();
             panelAccountsCustomerDue = CreateCustomerDuePanel();
+            panelAccountsSupplierDue = CreateSupplierDuePanel();
             panelAccountsCashLedger = CreateCashLedgerPanel();
 
             panelAccountsContent.Controls.Add(panelAccountsCashLedger);
+            panelAccountsContent.Controls.Add(panelAccountsSupplierDue);
             panelAccountsContent.Controls.Add(panelAccountsCustomerDue);
             panelAccountsContent.Controls.Add(panelAccountsExpenses);
             panelAccountsContent.Controls.Add(panelAccountsSalesProfit);
@@ -231,6 +241,37 @@ namespace Stock_Managemnet
 
             dgvCustomerDue = CreateAccountsGrid();
             panel.Controls.Add(dgvCustomerDue);
+            panel.Controls.Add(toolbar);
+            return panel;
+        }
+
+        private Panel CreateSupplierDuePanel()
+        {
+            var panel = new Panel { Dock = DockStyle.Fill, Visible = false };
+
+            var searchRow = CreateToolbarFlow();
+            var lblSearch = CreateAccountsFieldLabel("Search:");
+            txtSupplierDueSearch = new TextBox { Width = 220, Height = AccountsControlHeight };
+            btnSupplierDueSearch = CreateAccountsButton("Search", 76);
+            btnSupplierDueReset = CreateAccountsButton("Reset", 76);
+            AddToolbarItem(searchRow, lblSearch);
+            AddToolbarItem(searchRow, txtSupplierDueSearch);
+            AddToolbarItem(searchRow, btnSupplierDueSearch);
+            AddToolbarItem(searchRow, btnSupplierDueReset, 0);
+
+            btnRecordSupplierPayment = CreateAccountsPrimaryButton("Record Payment", 150);
+            btnViewSupplierBalanceSheet = CreateAccountsButton("Balance Sheet", 140);
+            btnViewSupplierBalanceSheet.Margin = new Padding(0, AccountsToolbarRowPadding, 10, AccountsToolbarRowPadding);
+
+            var actionsPanel = CreateToolbarFlow();
+            actionsPanel.WrapContents = false;
+            actionsPanel.Controls.Add(btnViewSupplierBalanceSheet);
+            actionsPanel.Controls.Add(btnRecordSupplierPayment);
+
+            var toolbar = CreateToolbarSplitSection(searchRow, actionsPanel);
+
+            dgvSupplierDue = CreateAccountsGrid();
+            panel.Controls.Add(dgvSupplierDue);
             panel.Controls.Add(toolbar);
             return panel;
         }
@@ -557,6 +598,7 @@ namespace Stock_Managemnet
             GridExportUi.Enable(dgvSalesProfit, "Sales Profit");
             GridExportUi.Enable(dgvExpenses, "Expenses");
             GridExportUi.Enable(dgvCustomerDue, "Customer Due");
+            GridExportUi.Enable(dgvSupplierDue, "Supplier Due");
             GridExportUi.Enable(dgvCashLedger, "Cash Ledger");
         }
 
@@ -585,6 +627,21 @@ namespace Stock_Managemnet
             dgvCustomerDue.Columns["TotalInvoiced"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvCustomerDue.Columns["TotalPaid"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvCustomerDue.Columns["BalanceDue"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+
+            dgvSupplierDue.AutoGenerateColumns = false;
+            dgvSupplierDue.Columns.Clear();
+            dgvSupplierDue.Columns.Add("SupplierName", "Supplier");
+            dgvSupplierDue.Columns.Add("Phone", "Phone");
+            dgvSupplierDue.Columns.Add("TotalPurchased", "Purchased");
+            dgvSupplierDue.Columns.Add("TotalPaid", "Paid");
+            dgvSupplierDue.Columns.Add("BalanceDue", "Due");
+            dgvSupplierDue.Columns.Add("PurchaseCount", "Purchases");
+            dgvSupplierDue.Columns["TotalPurchased"].DefaultCellStyle.Format = "C2";
+            dgvSupplierDue.Columns["TotalPaid"].DefaultCellStyle.Format = "C2";
+            dgvSupplierDue.Columns["BalanceDue"].DefaultCellStyle.Format = "C2";
+            dgvSupplierDue.Columns["TotalPurchased"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvSupplierDue.Columns["TotalPaid"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvSupplierDue.Columns["BalanceDue"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
             dgvCashLedger.AutoGenerateColumns = false;
             dgvCashLedger.Columns.Clear();
@@ -661,6 +718,23 @@ namespace Stock_Managemnet
                     e.SuppressKeyPress = true;
                 }
             };
+            btnSupplierDueSearch.Click += (s, e) => RefreshSupplierDue();
+            btnSupplierDueReset.Click += (s, e) =>
+            {
+                txtSupplierDueSearch.Clear();
+                RefreshSupplierDue();
+            };
+            btnRecordSupplierPayment.Click += BtnRecordSupplierPayment_Click;
+            btnViewSupplierBalanceSheet.Click += BtnViewSupplierBalanceSheet_Click;
+            txtSupplierDueSearch.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    RefreshSupplierDue();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
             cmbCashLedgerAccount.SelectedIndexChanged += (s, e) => RefreshCashLedger();
             cashLedgerCustomerSelect.BindSearch(
                 term => _repository.SearchCustomers(term),
@@ -678,6 +752,7 @@ namespace Stock_Managemnet
             btnCashLedgerReset.Click += (s, e) => ResetCashLedgerFilters();
             cmbCashLedgerExpense.SelectedIndexChanged += (s, e) => RefreshCashLedger();
             dgvCustomerDue.CellDoubleClick += (s, e) => BtnViewBalanceSheet_Click(s, e);
+            dgvSupplierDue.CellDoubleClick += (s, e) => BtnViewSupplierBalanceSheet_Click(s, e);
             btnProfitSearch.Click += (s, e) => RefreshSalesProfit();
             btnProfitReset.Click += (s, e) => ResetSalesProfitFilters();
             txtProfitSearch.KeyDown += (s, e) =>
@@ -726,12 +801,14 @@ namespace Stock_Managemnet
             panelAccountsSalesProfit.Visible = index == 1;
             panelAccountsExpenses.Visible = index == 2;
             panelAccountsCustomerDue.Visible = index == 3;
-            panelAccountsCashLedger.Visible = index == 4;
+            panelAccountsSupplierDue.Visible = index == 4;
+            panelAccountsCashLedger.Visible = index == 5;
 
             if (index == 0) RefreshAccountsChart();
             else if (index == 1) RefreshSalesProfit();
             else if (index == 2) RefreshExpenses();
             else if (index == 3) RefreshCustomerDue();
+            else if (index == 4) RefreshSupplierDue();
             else RefreshCashLedger();
 
             RelayoutAccountsToolbars(GetVisibleAccountsPanel(index));
@@ -745,6 +822,7 @@ namespace Stock_Managemnet
                 case 1: return panelAccountsSalesProfit;
                 case 2: return panelAccountsExpenses;
                 case 3: return panelAccountsCustomerDue;
+                case 4: return panelAccountsSupplierDue;
                 default: return panelAccountsCashLedger;
             }
         }
@@ -917,6 +995,29 @@ namespace Stock_Managemnet
             }
         }
 
+        private void RefreshSupplierDue()
+        {
+            dgvSupplierDue.Rows.Clear();
+            foreach (var row in _repository.GetSupplierDueReport(txtSupplierDueSearch.Text))
+            {
+                var idx = dgvSupplierDue.Rows.Add(
+                    row.SupplierName,
+                    row.Phone,
+                    row.TotalPurchased,
+                    row.TotalPaid,
+                    row.BalanceDue,
+                    row.PurchaseCount);
+                dgvSupplierDue.Rows[idx].Tag = row;
+
+                if (row.BalanceDue > 0)
+                {
+                    dgvSupplierDue.Rows[idx].Cells["BalanceDue"].Style.ForeColor = Color.FromArgb(153, 27, 27);
+                    dgvSupplierDue.Rows[idx].Cells["BalanceDue"].Style.Font =
+                        new Font(dgvSupplierDue.Font, FontStyle.Bold);
+                }
+            }
+        }
+
         private void RefreshCashLedger()
         {
             if (cmbCashLedgerAccount.Items.Count == 0)
@@ -993,6 +1094,12 @@ namespace Stock_Managemnet
             return dgvCustomerDue.SelectedRows[0].Tag as CustomerDueRow;
         }
 
+        private SupplierDueRow GetSelectedSupplierDueRow()
+        {
+            if (dgvSupplierDue.SelectedRows.Count == 0) return null;
+            return dgvSupplierDue.SelectedRows[0].Tag as SupplierDueRow;
+        }
+
         private void BtnReceivePayment_Click(object sender, EventArgs e)
         {
             Customer customer = null;
@@ -1017,6 +1124,33 @@ namespace Stock_Managemnet
             }
 
             using (var form = new CustomerBalanceSheetForm(_repository, dueRow))
+                form.ShowDialog(this);
+        }
+
+        private void BtnRecordSupplierPayment_Click(object sender, EventArgs e)
+        {
+            Supplier supplier = null;
+            var dueRow = GetSelectedSupplierDueRow();
+            if (dueRow != null)
+                supplier = _repository.GetSupplier(dueRow.SupplierId);
+
+            using (var form = new RecordSupplierPaymentForm(_repository, supplier))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                    RefreshAll();
+            }
+        }
+
+        private void BtnViewSupplierBalanceSheet_Click(object sender, EventArgs e)
+        {
+            var dueRow = GetSelectedSupplierDueRow();
+            if (dueRow == null)
+            {
+                MessageBox.Show("Select a supplier first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var form = new SupplierBalanceSheetForm(_repository, dueRow))
                 form.ShowDialog(this);
         }
 

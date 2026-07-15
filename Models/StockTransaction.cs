@@ -25,6 +25,8 @@ namespace Stock_Managemnet.Models
         [DataMember] public string Notes { get; set; }
         [DataMember] public Guid? CustomerId { get; set; }
         [DataMember] public string CustomerName { get; set; }
+        [DataMember] public Guid? SupplierId { get; set; }
+        [DataMember] public string SupplierName { get; set; }
         [DataMember] public DateTime Timestamp { get; set; } = DateTime.Now;
     }
 }

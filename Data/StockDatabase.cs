@@ -18,11 +18,13 @@ namespace Stock_Managemnet.Data
                 LoadSettings(connection, data);
                 data.Products = LoadProducts(connection);
                 data.Customers = LoadCustomers(connection);
+                data.Suppliers = LoadSuppliers(connection);
                 data.Transactions = LoadTransactions(connection);
                 data.Invoices = LoadInvoices(connection);
                 data.Accounts = LoadAccounts(connection);
                 data.JournalEntries = LoadJournalEntries(connection);
                 data.CustomerPayments = LoadCustomerPayments(connection);
+                data.SupplierPayments = LoadSupplierPayments(connection);
                 data.BusinessExpenses = LoadBusinessExpenses(connection);
                 data.ProductionRecipes = LoadRecipes(connection);
                 data.ProductionOrders = LoadProductionOrders(connection);
@@ -46,11 +48,13 @@ namespace Stock_Managemnet.Data
                         InsertSettings(connection, transaction, data);
                         InsertProducts(connection, transaction, data.Products);
                         InsertCustomers(connection, transaction, data.Customers);
+                        InsertSuppliers(connection, transaction, data.Suppliers);
                         InsertTransactions(connection, transaction, data.Transactions);
                         InsertInvoices(connection, transaction, data.Invoices);
                         InsertAccounts(connection, transaction, data.Accounts);
                         InsertJournalEntries(connection, transaction, data.JournalEntries);
                         InsertCustomerPayments(connection, transaction, data.CustomerPayments);
+                        InsertSupplierPayments(connection, transaction, data.SupplierPayments);
                         InsertBusinessExpenses(connection, transaction, data.BusinessExpenses);
                         InsertRecipes(connection, transaction, data.ProductionRecipes);
                         InsertProductionOrders(connection, transaction, data.ProductionOrders);
@@ -149,6 +153,32 @@ namespace Stock_Managemnet.Data
             return customers;
         }
 
+        private static List<Supplier> LoadSuppliers(SqlConnection connection)
+        {
+            var suppliers = new List<Supplier>();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SELECT Id, Name, Address, Phone, Email, CreatedAt FROM Suppliers";
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        suppliers.Add(new Supplier
+                        {
+                            Id = reader.GetGuid(0),
+                            Name = reader.GetString(1),
+                            Address = reader.IsDBNull(2) ? null : reader.GetString(2),
+                            Phone = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Email = reader.IsDBNull(4) ? null : reader.GetString(4),
+                            CreatedAt = reader.GetDateTime(5)
+                        });
+                    }
+                }
+            }
+
+            return suppliers;
+        }
+
         private static List<StockTransaction> LoadTransactions(SqlConnection connection)
         {
             var transactions = new List<StockTransaction>();
@@ -156,7 +186,7 @@ namespace Stock_Managemnet.Data
             {
                 command.CommandText = @"
 SELECT Id, InvoiceNumber, IsSale, ProductId, ProductName, ProductSku, Type, Quantity,
-       UnitPrice, TotalValue, Notes, CustomerId, CustomerName, Timestamp
+       UnitPrice, TotalValue, Notes, CustomerId, CustomerName, Timestamp, SupplierId, SupplierName
 FROM StockTransactions";
                 using (var reader = command.ExecuteReader())
                 {
@@ -177,7 +207,9 @@ FROM StockTransactions";
                             Notes = reader.IsDBNull(10) ? null : reader.GetString(10),
                             CustomerId = reader.IsDBNull(11) ? (Guid?)null : reader.GetGuid(11),
                             CustomerName = reader.IsDBNull(12) ? null : reader.GetString(12),
-                            Timestamp = reader.GetDateTime(13)
+                            Timestamp = reader.GetDateTime(13),
+                            SupplierId = reader.FieldCount > 14 && !reader.IsDBNull(14) ? (Guid?)reader.GetGuid(14) : null,
+                            SupplierName = reader.FieldCount > 15 && !reader.IsDBNull(15) ? reader.GetString(15) : null
                         });
                     }
                 }
@@ -402,6 +434,39 @@ ORDER BY PaidAt DESC";
             return payments;
         }
 
+        private static List<SupplierPayment> LoadSupplierPayments(SqlConnection connection)
+        {
+            var payments = new List<SupplierPayment>();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT Id, SupplierId, SupplierName, Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt
+FROM SupplierPayments
+ORDER BY PaidAt DESC";
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        payments.Add(new SupplierPayment
+                        {
+                            Id = reader.GetGuid(0),
+                            SupplierId = reader.GetGuid(1),
+                            SupplierName = reader.IsDBNull(2) ? null : reader.GetString(2),
+                            Amount = reader.GetDecimal(3),
+                            PaymentMethod = reader.IsDBNull(4) ? null : reader.GetString(4),
+                            Reference = reader.IsDBNull(5) ? null : reader.GetString(5),
+                            Notes = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            PaidAt = reader.GetDateTime(7),
+                            IsVoided = reader.FieldCount > 8 && !reader.IsDBNull(8) && reader.GetBoolean(8),
+                            VoidedAt = reader.FieldCount > 9 && !reader.IsDBNull(9) ? (DateTime?)reader.GetDateTime(9) : null
+                        });
+                    }
+                }
+            }
+
+            return payments;
+        }
+
         private static List<BusinessExpense> LoadBusinessExpenses(SqlConnection connection)
         {
             var expenses = new List<BusinessExpense>();
@@ -585,6 +650,7 @@ FROM ProductionOrderMaterials";
 DELETE FROM JournalLines;
 DELETE FROM JournalEntries;
 DELETE FROM CustomerPayments;
+DELETE FROM SupplierPayments;
 DELETE FROM BusinessExpenses;
 DELETE FROM Accounts;
 DELETE FROM InvoiceLineItems;
@@ -596,6 +662,7 @@ DELETE FROM ProductionRecipes;
 DELETE FROM StockTransactions;
 DELETE FROM Products;
 DELETE FROM Customers;
+DELETE FROM Suppliers;
 DELETE FROM AppSettings;";
 
             using (var command = connection.CreateCommand())
@@ -670,6 +737,27 @@ VALUES (@Id, @Name, @Address, @Phone, @Email, @CreatedAt)";
             }
         }
 
+        private static void InsertSuppliers(SqlConnection connection, SqlTransaction transaction, IEnumerable<Supplier> suppliers)
+        {
+            foreach (var supplier in suppliers ?? Enumerable.Empty<Supplier>())
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    command.CommandText = @"
+INSERT INTO Suppliers (Id, Name, Address, Phone, Email, CreatedAt)
+VALUES (@Id, @Name, @Address, @Phone, @Email, @CreatedAt)";
+                    command.Parameters.AddWithValue("@Id", supplier.Id);
+                    command.Parameters.AddWithValue("@Name", (object)supplier.Name ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Address", (object)supplier.Address ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Phone", (object)supplier.Phone ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Email", (object)supplier.Email ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@CreatedAt", supplier.CreatedAt);
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
         private static void InsertTransactions(SqlConnection connection, SqlTransaction transaction, IEnumerable<StockTransaction> transactions)
         {
             foreach (var txn in transactions ?? Enumerable.Empty<StockTransaction>())
@@ -680,10 +768,10 @@ VALUES (@Id, @Name, @Address, @Phone, @Email, @CreatedAt)";
                     command.CommandText = @"
 INSERT INTO StockTransactions
     (Id, InvoiceNumber, IsSale, ProductId, ProductName, ProductSku, Type, Quantity,
-     UnitPrice, TotalValue, Notes, CustomerId, CustomerName, Timestamp)
+     UnitPrice, TotalValue, Notes, CustomerId, CustomerName, Timestamp, SupplierId, SupplierName)
 VALUES
     (@Id, @InvoiceNumber, @IsSale, @ProductId, @ProductName, @ProductSku, @Type, @Quantity,
-     @UnitPrice, @TotalValue, @Notes, @CustomerId, @CustomerName, @Timestamp)";
+     @UnitPrice, @TotalValue, @Notes, @CustomerId, @CustomerName, @Timestamp, @SupplierId, @SupplierName)";
                     command.Parameters.AddWithValue("@Id", txn.Id);
                     command.Parameters.AddWithValue("@InvoiceNumber", (object)txn.InvoiceNumber ?? DBNull.Value);
                     command.Parameters.AddWithValue("@IsSale", txn.IsSale);
@@ -698,6 +786,8 @@ VALUES
                     command.Parameters.AddWithValue("@CustomerId", (object)txn.CustomerId ?? DBNull.Value);
                     command.Parameters.AddWithValue("@CustomerName", (object)txn.CustomerName ?? DBNull.Value);
                     command.Parameters.AddWithValue("@Timestamp", txn.Timestamp);
+                    command.Parameters.AddWithValue("@SupplierId", (object)txn.SupplierId ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@SupplierName", (object)txn.SupplierName ?? DBNull.Value);
                     command.ExecuteNonQuery();
                 }
             }
@@ -851,6 +941,33 @@ VALUES
                     command.Parameters.AddWithValue("@InvoiceNumber", (object)payment.InvoiceNumber ?? DBNull.Value);
                     command.Parameters.AddWithValue("@CashAccountId", payment.CashAccountId);
                     command.Parameters.AddWithValue("@CashAccountName", payment.CashAccountName);
+                    command.Parameters.AddWithValue("@Amount", payment.Amount);
+                    command.Parameters.AddWithValue("@PaymentMethod", (object)payment.PaymentMethod ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Reference", (object)payment.Reference ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Notes", (object)payment.Notes ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@PaidAt", payment.PaidAt);
+                    command.Parameters.AddWithValue("@IsVoided", payment.IsVoided);
+                    command.Parameters.AddWithValue("@VoidedAt", (object)payment.VoidedAt ?? DBNull.Value);
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private static void InsertSupplierPayments(SqlConnection connection, SqlTransaction transaction, IEnumerable<SupplierPayment> payments)
+        {
+            foreach (var payment in payments ?? Enumerable.Empty<SupplierPayment>())
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    command.CommandText = @"
+INSERT INTO SupplierPayments
+    (Id, SupplierId, SupplierName, Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt)
+VALUES
+    (@Id, @SupplierId, @SupplierName, @Amount, @PaymentMethod, @Reference, @Notes, @PaidAt, @IsVoided, @VoidedAt)";
+                    command.Parameters.AddWithValue("@Id", payment.Id);
+                    command.Parameters.AddWithValue("@SupplierId", payment.SupplierId);
+                    command.Parameters.AddWithValue("@SupplierName", (object)payment.SupplierName ?? DBNull.Value);
                     command.Parameters.AddWithValue("@Amount", payment.Amount);
                     command.Parameters.AddWithValue("@PaymentMethod", (object)payment.PaymentMethod ?? DBNull.Value);
                     command.Parameters.AddWithValue("@Reference", (object)payment.Reference ?? DBNull.Value);

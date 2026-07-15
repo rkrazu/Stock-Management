@@ -8,6 +8,9 @@ namespace Stock_Managemnet
         private System.Windows.Forms.Panel panelCustomer;
         private System.Windows.Forms.Label lblCustomer;
         private Controls.CustomerSelectControl customerSelect;
+        private System.Windows.Forms.Panel panelSupplier;
+        private System.Windows.Forms.Label lblSupplier;
+        private Controls.SupplierSelectControl supplierSelect;
         private System.Windows.Forms.Label lblQuantity;
         private System.Windows.Forms.NumericUpDown numQuantity;
         private System.Windows.Forms.Label lblNotes;
@@ -29,6 +32,9 @@ namespace Stock_Managemnet
             this.panelCustomer = new System.Windows.Forms.Panel();
             this.lblCustomer = new System.Windows.Forms.Label();
             this.customerSelect = new Controls.CustomerSelectControl();
+            this.panelSupplier = new System.Windows.Forms.Panel();
+            this.lblSupplier = new System.Windows.Forms.Label();
+            this.supplierSelect = new Controls.SupplierSelectControl();
             this.lblQuantity = new System.Windows.Forms.Label();
             this.numQuantity = new System.Windows.Forms.NumericUpDown();
             this.lblNotes = new System.Windows.Forms.Label();
@@ -36,6 +42,7 @@ namespace Stock_Managemnet
             this.btnApply = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.panelCustomer.SuspendLayout();
+            this.panelSupplier.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numQuantity)).BeginInit();
             this.SuspendLayout();
             //
@@ -76,6 +83,29 @@ namespace Stock_Managemnet
             | System.Windows.Forms.AnchorStyles.Right)));
             this.customerSelect.Location = new System.Drawing.Point(20, 28);
             this.customerSelect.Size = new System.Drawing.Size(540, 30);
+            //
+            // panelSupplier
+            //
+            this.panelSupplier.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.panelSupplier.Controls.Add(this.lblSupplier);
+            this.panelSupplier.Controls.Add(this.supplierSelect);
+            this.panelSupplier.Location = new System.Drawing.Point(0, 70);
+            this.panelSupplier.Size = new System.Drawing.Size(580, 65);
+            this.panelSupplier.Visible = false;
+            //
+            // lblSupplier
+            //
+            this.lblSupplier.AutoSize = true;
+            this.lblSupplier.Location = new System.Drawing.Point(20, 6);
+            this.lblSupplier.Text = "Supplier (optional):";
+            //
+            // supplierSelect
+            //
+            this.supplierSelect.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.supplierSelect.Location = new System.Drawing.Point(20, 28);
+            this.supplierSelect.Size = new System.Drawing.Size(540, 30);
             //
             // lblQuantity
             //
@@ -132,6 +162,7 @@ namespace Stock_Managemnet
             this.Controls.Add(this.lblProduct);
             this.Controls.Add(this.lblAvailable);
             this.Controls.Add(this.panelCustomer);
+            this.Controls.Add(this.panelSupplier);
             this.Controls.Add(this.lblQuantity);
             this.Controls.Add(this.numQuantity);
             this.Controls.Add(this.lblNotes);
@@ -145,6 +176,8 @@ namespace Stock_Managemnet
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.panelCustomer.ResumeLayout(false);
             this.panelCustomer.PerformLayout();
+            this.panelSupplier.ResumeLayout(false);
+            this.panelSupplier.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numQuantity)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();

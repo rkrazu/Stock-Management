@@ -30,33 +30,40 @@ namespace Stock_Managemnet
             //
             // pbLogo
             //
-            this.pbLogo.Location = new System.Drawing.Point(148, 16);
-            this.pbLogo.Size = new System.Drawing.Size(100, 100);
+            this.pbLogo.BackColor = System.Drawing.Color.Transparent;
+            this.pbLogo.Location = new System.Drawing.Point(412, 170);
+            this.pbLogo.Size = new System.Drawing.Size(200, 200);
             this.pbLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pbLogo.TabStop = false;
             //
             // lblTitle
             //
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.Location = new System.Drawing.Point(118, 122);
+            this.lblTitle.AutoSize = false;
+            this.lblTitle.BackColor = System.Drawing.Color.Transparent;
+            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold);
+            this.lblTitle.Location = new System.Drawing.Point(302, 382);
+            this.lblTitle.Size = new System.Drawing.Size(420, 34);
             this.lblTitle.Text = "ELECTRONICS";
+            this.lblTitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             //
             // lblPassword
             //
             this.lblPassword.AutoSize = true;
-            this.lblPassword.Location = new System.Drawing.Point(28, 162);
+            this.lblPassword.BackColor = System.Drawing.Color.Transparent;
+            this.lblPassword.Location = new System.Drawing.Point(332, 436);
             this.lblPassword.Text = "Password:";
             //
             // txtPassword
             //
-            this.txtPassword.Location = new System.Drawing.Point(28, 186);
-            this.txtPassword.Size = new System.Drawing.Size(340, 30);
+            this.txtPassword.Location = new System.Drawing.Point(332, 460);
+            this.txtPassword.Size = new System.Drawing.Size(360, 30);
+            this.txtPassword.TabIndex = 0;
             //
             // btnLogin
             //
-            this.btnLogin.Location = new System.Drawing.Point(212, 232);
+            this.btnLogin.Location = new System.Drawing.Point(536, 510);
             this.btnLogin.Size = new System.Drawing.Size(75, 30);
+            this.btnLogin.TabIndex = 1;
             this.btnLogin.Text = "Login";
             this.btnLogin.UseVisualStyleBackColor = true;
             this.btnLogin.Click += new System.EventHandler(this.BtnLogin_Click);
@@ -64,8 +71,9 @@ namespace Stock_Managemnet
             // btnCancel
             //
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(293, 232);
+            this.btnCancel.Location = new System.Drawing.Point(617, 510);
             this.btnCancel.Size = new System.Drawing.Size(75, 30);
+            this.btnCancel.TabIndex = 2;
             this.btnCancel.Text = "Exit";
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.BtnCancel_Click);
@@ -75,8 +83,9 @@ namespace Stock_Managemnet
             this.AcceptButton = this.btnLogin;
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.Color.FromArgb(245, 247, 250);
             this.CancelButton = this.btnCancel;
-            this.ClientSize = new System.Drawing.Size(396, 280);
+            this.ClientSize = new System.Drawing.Size(1024, 768);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnLogin);
             this.Controls.Add(this.txtPassword);
@@ -84,11 +93,14 @@ namespace Stock_Managemnet
             this.Controls.Add(this.lblTitle);
             this.Controls.Add(this.pbLogo);
             this.Font = new System.Drawing.Font("Segoe UI", 11F);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
+            this.MaximizeBox = true;
+            this.MinimizeBox = true;
+            this.MinimumSize = new System.Drawing.Size(640, 520);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "ELECTRONICS";
+            this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
+            this.ActiveControl = this.txtPassword;
             ((System.ComponentModel.ISupportInitialize)(this.pbLogo)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();

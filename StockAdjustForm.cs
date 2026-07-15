@@ -32,6 +32,35 @@ namespace Stock_Managemnet
 
             if (type == TransactionType.StockOut)
                 ConfigureStockOutLayout();
+            else
+                ConfigureStockInLayout();
+        }
+
+        private void ConfigureStockInLayout()
+        {
+            panelSupplier.Visible = true;
+            AcceptButton = null;
+
+            supplierSelect.BindSearch(
+                term => _repository.SearchSuppliers(term),
+                (supplier, term) => _repository.SupplierMatchesSearchTerm(supplier, term));
+
+            // Quantity below current stock with more breathing room.
+            lblQuantity.Location = new Point(20, 100);
+            numQuantity.Location = new Point(120, 97);
+            lblQuantity.Visible = true;
+            numQuantity.Visible = true;
+            lblQuantity.BringToFront();
+            numQuantity.BringToFront();
+
+            panelSupplier.Location = new Point(0, 140);
+            lblNotes.Location = new Point(20, 220);
+            AlignNotesWithSupplierSelect();
+            txtNotes.Height = 70;
+
+            ClientSize = new Size(580, 370);
+            Shown += StockInForm_Shown;
+            Resize += StockInForm_Resize;
         }
 
         private void ConfigureStockOutLayout()
@@ -45,6 +74,11 @@ namespace Stock_Managemnet
 
             lblQuantity.Location = new Point(20, 145);
             numQuantity.Location = new Point(120, 142);
+            lblQuantity.Visible = true;
+            numQuantity.Visible = true;
+            lblQuantity.BringToFront();
+            numQuantity.BringToFront();
+
             lblNotes.Location = new Point(20, 180);
             AlignNotesWithCustomerSelect();
             txtNotes.Height = 70;
@@ -54,10 +88,25 @@ namespace Stock_Managemnet
             Resize += StockOutForm_Resize;
         }
 
+        private void StockInForm_Resize(object sender, EventArgs e)
+        {
+            if (panelSupplier.Visible)
+                AlignNotesWithSupplierSelect();
+        }
+
         private void StockOutForm_Resize(object sender, EventArgs e)
         {
             if (panelCustomer.Visible)
                 AlignNotesWithCustomerSelect();
+        }
+
+        private void StockInForm_Shown(object sender, EventArgs e)
+        {
+            BeginInvoke(new Action(() =>
+            {
+                ActiveControl = null;
+                supplierSelect.HideDropDownIfOpen();
+            }));
         }
 
         private void StockOutForm_Shown(object sender, EventArgs e)
@@ -69,6 +118,13 @@ namespace Stock_Managemnet
             }));
         }
 
+        private void AlignNotesWithSupplierSelect()
+        {
+            txtNotes.Location = new Point(supplierSelect.Left, 240);
+            txtNotes.Width = supplierSelect.Width;
+            txtNotes.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+        }
+
         private void AlignNotesWithCustomerSelect()
         {
             txtNotes.Location = new Point(customerSelect.Left, 200);
@@ -78,14 +134,25 @@ namespace Stock_Managemnet
 
         protected override bool ProcessDialogKey(Keys keyData)
         {
-            if (_type == TransactionType.StockOut && keyData == Keys.Enter)
-            {
-                if (ActiveControl == txtNotes)
-                    return base.ProcessDialogKey(keyData);
+            if (keyData != Keys.Enter)
+                return base.ProcessDialogKey(keyData);
 
+            if (ActiveControl == txtNotes)
+                return base.ProcessDialogKey(keyData);
+
+            if (_type == TransactionType.StockOut)
+            {
                 if (customerSelect.IsInputFocused || customerSelect.IsDropDownOpen)
                 {
                     customerSelect.TrySelectHighlightedCustomer();
+                    return true;
+                }
+            }
+            else if (_type == TransactionType.StockIn)
+            {
+                if (supplierSelect.IsInputFocused || supplierSelect.IsDropDownOpen)
+                {
+                    supplierSelect.TrySelectHighlightedSupplier();
                     return true;
                 }
             }
@@ -99,7 +166,12 @@ namespace Stock_Managemnet
 
             if (_type == TransactionType.StockIn)
             {
-                var error = _repository.AdjustStock(_product.Id, _type, qty, txtNotes.Text.Trim());
+                var error = _repository.AdjustStock(
+                    _product.Id,
+                    _type,
+                    qty,
+                    txtNotes.Text.Trim(),
+                    supplierId: supplierSelect.SelectedSupplier?.Id);
                 if (error != null)
                 {
                     MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);

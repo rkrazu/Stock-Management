@@ -17,6 +17,7 @@ namespace Stock_Managemnet
         private System.Windows.Forms.Panel panelButtons;
         private System.Windows.Forms.FlowLayoutPanel flowButtons;
         private System.Windows.Forms.Button btnSubmit;
+        private System.Windows.Forms.Button btnPdf;
         private System.Windows.Forms.Button btnPrint;
         private System.Windows.Forms.Button btnClose;
 
@@ -43,6 +44,7 @@ namespace Stock_Managemnet
             this.panelButtons = new System.Windows.Forms.Panel();
             this.flowButtons = new System.Windows.Forms.FlowLayoutPanel();
             this.btnSubmit = new System.Windows.Forms.Button();
+            this.btnPdf = new System.Windows.Forms.Button();
             this.btnPrint = new System.Windows.Forms.Button();
             this.btnClose = new System.Windows.Forms.Button();
             this.panelButtons.SuspendLayout();
@@ -143,6 +145,7 @@ namespace Stock_Managemnet
             this.flowButtons.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowButtons.Controls.Add(this.btnClose);
             this.flowButtons.Controls.Add(this.btnPrint);
+            this.flowButtons.Controls.Add(this.btnPdf);
             this.flowButtons.Controls.Add(this.btnSubmit);
             this.flowButtons.Dock = System.Windows.Forms.DockStyle.Right;
             this.flowButtons.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
@@ -155,6 +158,14 @@ namespace Stock_Managemnet
             this.btnSubmit.Text = "Submit Invoice";
             this.btnSubmit.UseVisualStyleBackColor = true;
             this.btnSubmit.Click += new System.EventHandler(this.BtnSubmit_Click);
+            //
+            // btnPdf
+            //
+            this.btnPdf.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
+            this.btnPdf.Size = new System.Drawing.Size(95, 30);
+            this.btnPdf.Text = "Download";
+            this.btnPdf.UseVisualStyleBackColor = true;
+            this.btnPdf.Click += new System.EventHandler(this.BtnPdf_Click);
             //
             // btnPrint
             //

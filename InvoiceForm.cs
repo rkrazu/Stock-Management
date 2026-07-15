@@ -128,6 +128,14 @@ namespace Stock_Managemnet
             InvoiceDocumentBuilder.Print(_invoice, _isDraft);
         }
 
+        private void BtnPdf_Click(object sender, EventArgs e)
+        {
+            if (_isDraft)
+                ApplyPaymentToRequest();
+
+            InvoiceDocumentBuilder.ExportPdf(_invoice, _isDraft, this);
+        }
+
         private void BtnClose_Click(object sender, EventArgs e)
         {
             DialogResult = _isDraft ? DialogResult.Cancel : DialogResult.OK;

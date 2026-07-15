@@ -60,7 +60,6 @@ namespace Stock_Managemnet.Services
             if (title != null)
             {
                 title.Text = AppDisplayName;
-                title.Location = new Point(132, 122);
             }
         }
 

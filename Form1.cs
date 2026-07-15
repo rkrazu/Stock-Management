@@ -31,6 +31,7 @@ namespace Stock_Managemnet
             InitializeAccountsUi();
             ConfigureProductGrid();
             ConfigureCustomerGrid();
+            ConfigureSupplierGrid();
             ConfigureInvoiceGrid();
             ConfigureProductionGrids();
             ConfigureTransactionGrid();
@@ -120,12 +121,14 @@ namespace Stock_Managemnet
         {
             ClearGridSelection(dgvProducts);
             ClearGridSelection(dgvCustomers);
+            ClearGridSelection(dgvSuppliers);
             ClearGridSelection(dgvInvoices);
             ClearGridSelection(dgvRecipes);
             ClearGridSelection(dgvProductionOrders);
             ClearGridSelection(dgvTransactions);
             UpdateActionButtons();
             UpdateCustomerButtons();
+            UpdateSupplierButtons();
             UpdateInvoiceButtons();
             UpdateProductionButtons();
         }
@@ -169,7 +172,7 @@ namespace Stock_Managemnet
             btnAdd.Click += BtnAdd_Click;
             btnEdit.Click += BtnEdit_Click;
             btnDelete.Click += BtnDelete_Click;
-            btnStockIn.Click += (s, e) => OpenStockAdjust(TransactionType.StockIn);
+            btnStockIn.Click += (s, e) => OpenStockIn();
             btnStockOut.Click += (s, e) => OpenStockOut();
             chkLowStockOnly.CheckedChanged += (s, e) => RefreshProducts();
             cmbProductCategory.SelectedIndexChanged += CmbProductCategory_SelectedIndexChanged;
@@ -212,10 +215,32 @@ namespace Stock_Managemnet
                     e.SuppressKeyPress = true;
                 }
             };
+
+            btnSupplierSearch.Click += (s, e) => RefreshSuppliers(preserveSelection: false);
+            btnSupplierReset.Click += (s, e) => ResetSupplierFilters();
+            btnAddSupplier.Click += BtnAddSupplier_Click;
+            btnEditSupplier.Click += BtnEditSupplier_Click;
+            btnDeleteSupplier.Click += BtnDeleteSupplier_Click;
+            dgvSuppliers.SelectionChanged += (s, e) =>
+            {
+                GuardGridSelection(dgvSuppliers);
+                UpdateSupplierButtons();
+            };
+            dgvSuppliers.CellDoubleClick += (s, e) => BtnEditSupplier_Click(s, e);
+            txtSupplierSearch.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    RefreshSuppliers(preserveSelection: false);
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
             btnInvoiceSearch.Click += (s, e) => RefreshInvoices(preserveSelection: false);
             btnInvoiceReset.Click += (s, e) => ResetInvoiceFilters();
             btnViewInvoice.Click += BtnViewInvoice_Click;
             btnPrintInvoice.Click += BtnPrintInvoice_Click;
+            btnChalan.Click += BtnChalan_Click;
             btnVoidInvoice.Click += BtnVoidInvoice_Click;
             btnRestoreSale.Click += BtnRestoreSale_Click;
             btnCorrectionGuide.Click += BtnCorrectionGuide_Click;
@@ -282,6 +307,7 @@ namespace Stock_Managemnet
             dgvTransactions.SelectionChanged += (s, e) => GuardGridSelection(dgvTransactions);
             dgvProducts.VisibleChanged += Grid_VisibleChanged;
             dgvCustomers.VisibleChanged += Grid_VisibleChanged;
+            dgvSuppliers.VisibleChanged += Grid_VisibleChanged;
             dgvInvoices.VisibleChanged += Grid_VisibleChanged;
             dgvRecipes.VisibleChanged += Grid_VisibleChanged;
             dgvProductionOrders.VisibleChanged += Grid_VisibleChanged;
@@ -417,7 +443,7 @@ namespace Stock_Managemnet
 
         private void DgvProducts_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-            if (!IsFgInventoryTab || e.ColumnIndex < 0)
+            if (e.ColumnIndex < 0)
                 return;
 
             if (dgvProducts.Columns[e.ColumnIndex].Name != "Select")
@@ -480,7 +506,7 @@ namespace Stock_Managemnet
 
         private void UpdateSelectAllHeaderState()
         {
-            if (!IsFgInventoryTab || dgvProducts.Rows.Count == 0)
+            if (dgvProducts.Rows.Count == 0)
             {
                 _selectAllHeaderState = _fgSelectedProductIds.Count > 0 ? (bool?)null : false;
                 dgvProducts.InvalidateColumn(dgvProducts.Columns["Select"].Index);
@@ -512,9 +538,14 @@ namespace Stock_Managemnet
             dgvProducts.InvalidateColumn(dgvProducts.Columns["Select"].Index);
         }
 
-        private void ClearFgProductSelection()
+        private void ClearInventoryProductSelection()
         {
             ApplyVisibleProductCheckboxes(selectVisible: false);
+        }
+
+        private void ClearFgProductSelection()
+        {
+            ClearInventoryProductSelection();
         }
 
         private List<Product> GetFgCartProducts()
@@ -522,6 +553,14 @@ namespace Stock_Managemnet
             return _fgSelectedProductIds
                 .Select(id => _repository.GetProduct(id))
                 .Where(product => product != null && product.ProductType == ProductType.FG)
+                .ToList();
+        }
+
+        private List<Product> GetRawMaterialCartProducts()
+        {
+            return _fgSelectedProductIds
+                .Select(id => _repository.GetProduct(id))
+                .Where(product => product != null && product.ProductType == ProductType.RawMaterial)
                 .ToList();
         }
 
@@ -533,6 +572,16 @@ namespace Stock_Managemnet
             dgvCustomers.Columns.Add("Phone", "Phone");
             dgvCustomers.Columns.Add("Email", "Email");
             dgvCustomers.Columns.Add("Address", "Address");
+        }
+
+        private void ConfigureSupplierGrid()
+        {
+            dgvSuppliers.AutoGenerateColumns = false;
+            dgvSuppliers.Columns.Clear();
+            dgvSuppliers.Columns.Add("Name", "Name");
+            dgvSuppliers.Columns.Add("Phone", "Phone");
+            dgvSuppliers.Columns.Add("Email", "Email");
+            dgvSuppliers.Columns.Add("Address", "Address");
         }
 
         private void ConfigureInvoiceGrid()
@@ -609,6 +658,7 @@ namespace Stock_Managemnet
         {
             GridExportUi.Enable(dgvProducts, "Products");
             GridExportUi.Enable(dgvCustomers, "Customers");
+            GridExportUi.Enable(dgvSuppliers, "Suppliers");
             GridExportUi.Enable(dgvInvoices, "Invoices");
             GridExportUi.Enable(dgvRecipes, "Productions");
             GridExportUi.Enable(dgvProductionOrders, "Production History");
@@ -647,9 +697,10 @@ namespace Stock_Managemnet
         {
             var isFg = IsFgInventoryTab;
             dgvProducts.MultiSelect = false;
-            dgvProducts.Columns["Select"].Visible = isFg;
+            dgvProducts.Columns["Select"].Visible = true;
             btnStockIn.Visible = !isFg;
             btnStockOut.Visible = isFg;
+            ClearInventoryProductSelection();
             RefreshProductCategoryFilter();
             RefreshProducts();
             UpdateActionButtons();
@@ -702,6 +753,12 @@ namespace Stock_Managemnet
         {
             txtCustomerSearch.Clear();
             RefreshCustomers(preserveSelection: false);
+        }
+
+        private void ResetSupplierFilters()
+        {
+            txtSupplierSearch.Clear();
+            RefreshSuppliers(preserveSelection: false);
         }
 
         private void ResetInvoiceFilters()
@@ -789,12 +846,14 @@ namespace Stock_Managemnet
             RefreshProductCategoryFilter();
             RefreshProducts();
             RefreshCustomers();
+            RefreshSuppliers();
             RefreshInvoices();
             RefreshAccountsTab();
             RefreshProduction();
             RefreshTransactions();
             UpdateActionButtons();
             UpdateCustomerButtons();
+            UpdateSupplierButtons();
             UpdateInvoiceButtons();
             UpdateProductionButtons();
         }
@@ -905,6 +964,42 @@ namespace Stock_Managemnet
             }
 
             UpdateCustomerButtons();
+        }
+
+        private void RefreshSuppliers(bool preserveSelection = true)
+        {
+            var selectedId = preserveSelection ? GetSelectedSupplier()?.Id : null;
+            dgvSuppliers.Rows.Clear();
+
+            foreach (var s in _repository.SearchSuppliers(txtSupplierSearch.Text))
+            {
+                var idx = dgvSuppliers.Rows.Add(s.Name, s.Phone, s.Email, s.Address);
+                dgvSuppliers.Rows[idx].Tag = s;
+            }
+
+            if (selectedId.HasValue)
+            {
+                var reselected = false;
+                foreach (DataGridViewRow row in dgvSuppliers.Rows)
+                {
+                    if (row.Tag is Supplier supplier && supplier.Id == selectedId.Value)
+                    {
+                        _allowGridSelection = true;
+                        row.Selected = true;
+                        reselected = true;
+                        break;
+                    }
+                }
+
+                if (!reselected)
+                    ApplyNoSelection(dgvSuppliers);
+            }
+            else
+            {
+                ApplyNoSelection(dgvSuppliers);
+            }
+
+            UpdateSupplierButtons();
         }
 
         private void RefreshInvoices(bool preserveSelection = true)
@@ -1067,16 +1162,19 @@ namespace Stock_Managemnet
             if (IsFgInventoryTab)
                 return GetFgCartProducts();
 
-            var product = GetSelectedProduct();
-            return product != null
-                ? new List<Product> { product }
-                : new List<Product>();
+            return GetRawMaterialCartProducts();
         }
 
         private Customer GetSelectedCustomer()
         {
             if (dgvCustomers.SelectedRows.Count == 0) return null;
             return dgvCustomers.SelectedRows[0].Tag as Customer;
+        }
+
+        private Supplier GetSelectedSupplier()
+        {
+            if (dgvSuppliers.SelectedRows.Count == 0) return null;
+            return dgvSuppliers.SelectedRows[0].Tag as Supplier;
         }
 
         private Invoice GetSelectedInvoice()
@@ -1101,13 +1199,13 @@ namespace Stock_Managemnet
         {
             var isFg = IsFgInventoryTab;
             var rowProduct = GetSelectedProduct();
-            var cartCount = isFg ? GetFgCartProducts().Count : 0;
+            var cartCount = isFg ? GetFgCartProducts().Count : GetRawMaterialCartProducts().Count;
 
             btnEdit.Enabled = rowProduct != null;
             btnDelete.Enabled = rowProduct != null;
             btnStockIn.Visible = !isFg;
             btnStockOut.Visible = isFg;
-            btnStockIn.Enabled = !isFg && rowProduct != null;
+            btnStockIn.Enabled = !isFg && cartCount > 0;
             btnStockOut.Enabled = isFg && cartCount > 0;
         }
 
@@ -1118,6 +1216,13 @@ namespace Stock_Managemnet
             btnDeleteCustomer.Enabled = hasSelection;
         }
 
+        private void UpdateSupplierButtons()
+        {
+            var hasSelection = GetSelectedSupplier() != null;
+            btnEditSupplier.Enabled = hasSelection;
+            btnDeleteSupplier.Enabled = hasSelection;
+        }
+
         private void UpdateInvoiceButtons()
         {
             var invoice = GetSelectedInvoice();
@@ -1125,6 +1230,7 @@ namespace Stock_Managemnet
             var isActive = invoice?.IsActive ?? false;
             btnViewInvoice.Enabled = hasSelection;
             btnPrintInvoice.Enabled = hasSelection;
+            btnChalan.Enabled = hasSelection;
             btnVoidInvoice.Enabled = hasSelection && isActive;
             btnRestoreSale.Enabled = hasSelection && !isActive;
         }
@@ -1249,6 +1355,48 @@ namespace Stock_Managemnet
             RefreshAll();
         }
 
+        private void BtnAddSupplier_Click(object sender, EventArgs e)
+        {
+            using (var form = new SupplierEditForm(_repository))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                    RefreshAll();
+            }
+        }
+
+        private void BtnEditSupplier_Click(object sender, EventArgs e)
+        {
+            var supplier = GetSelectedSupplier();
+            if (supplier == null)
+            {
+                MessageBox.Show("Select a supplier first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var form = new SupplierEditForm(_repository, supplier))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                    RefreshAll();
+            }
+        }
+
+        private void BtnDeleteSupplier_Click(object sender, EventArgs e)
+        {
+            var supplier = GetSelectedSupplier();
+            if (supplier == null) return;
+
+            var confirm = MessageBox.Show(
+                $"Delete supplier \"{supplier.Name}\"?",
+                "Confirm Delete",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes) return;
+
+            _repository.DeleteSupplier(supplier.Id);
+            RefreshAll();
+        }
+
         private void BtnViewInvoice_Click(object sender, EventArgs e)
         {
             var invoice = GetSelectedInvoice();
@@ -1274,6 +1422,20 @@ namespace Stock_Managemnet
 
             var latest = _repository.GetInvoice(invoice.Id) ?? invoice;
             InvoiceDocumentBuilder.Print(latest, isDraft: false);
+        }
+
+        private void BtnChalan_Click(object sender, EventArgs e)
+        {
+            var invoice = GetSelectedInvoice();
+            if (invoice == null)
+            {
+                MessageBox.Show("Select an invoice first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var latest = _repository.GetInvoice(invoice.Id) ?? invoice;
+            using (var form = new ChalanForm(latest))
+                form.ShowDialog(this);
         }
 
         private void BtnVoidInvoice_Click(object sender, EventArgs e)
@@ -1470,6 +1632,29 @@ namespace Stock_Managemnet
             _repository.DeleteProduct(product.Id);
             _fgSelectedProductIds.Remove(product.Id);
             RefreshAll();
+        }
+
+        private void OpenStockIn()
+        {
+            var products = GetRawMaterialCartProducts();
+            if (products.Count == 0)
+            {
+                MessageBox.Show("Select at least one raw material.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var latest = products
+                .Select(p => _repository.GetProduct(p.Id) ?? p)
+                .ToList();
+
+            using (var form = new MultiStockInForm(_repository, latest))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                {
+                    ClearInventoryProductSelection();
+                    RefreshAll();
+                }
+            }
         }
 
         private void OpenStockAdjust(TransactionType type)

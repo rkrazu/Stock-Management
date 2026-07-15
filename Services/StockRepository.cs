@@ -23,6 +23,7 @@ namespace Stock_Managemnet.Services
 
                 if (Data.Products == null) Data.Products = new List<Product>();
                 if (Data.Customers == null) Data.Customers = new List<Customer>();
+                if (Data.Suppliers == null) Data.Suppliers = new List<Supplier>();
                 if (Data.Transactions == null) Data.Transactions = new List<StockTransaction>();
                 if (Data.ProductionRecipes == null) Data.ProductionRecipes = new List<ProductionRecipe>();
                 if (Data.ProductionOrders == null) Data.ProductionOrders = new List<ProductionOrder>();
@@ -30,6 +31,7 @@ namespace Stock_Managemnet.Services
                 if (Data.Accounts == null) Data.Accounts = new List<Account>();
                 if (Data.JournalEntries == null) Data.JournalEntries = new List<JournalEntry>();
                 if (Data.CustomerPayments == null) Data.CustomerPayments = new List<CustomerPayment>();
+                if (Data.SupplierPayments == null) Data.SupplierPayments = new List<SupplierPayment>();
                 if (Data.BusinessExpenses == null) Data.BusinessExpenses = new List<BusinessExpense>();
                 if (Data.NextInvoiceNumber < 1) Data.NextInvoiceNumber = 1;
                 if (Data.NextProductionNumber < 1) Data.NextProductionNumber = 1;
@@ -396,11 +398,48 @@ namespace Stock_Managemnet.Services
                 .OrderByDescending(i => i.CreatedAt);
         }
 
-        public string AdjustStock(Guid productId, TransactionType type, int quantity, string notes, Guid? customerId = null)
+        public string AdjustStock(
+            Guid productId,
+            TransactionType type,
+            int quantity,
+            string notes,
+            Guid? customerId = null,
+            Guid? supplierId = null)
         {
-            var error = ApplyStockChange(productId, type, quantity, notes, customerId: customerId);
+            var error = ApplyStockChange(
+                productId,
+                type,
+                quantity,
+                notes,
+                customerId: customerId,
+                supplierId: supplierId);
             if (error != null)
                 return error;
+
+            Save();
+            return null;
+        }
+
+        public string StockInMultiple(IEnumerable<(Guid ProductId, int Quantity)> lines, string notes, Guid? supplierId = null)
+        {
+            if (lines == null)
+                return "No products selected.";
+
+            var lineList = lines.Where(l => l.Quantity > 0).ToList();
+            if (lineList.Count == 0)
+                return "Add at least one product to stock in.";
+
+            foreach (var line in lineList)
+            {
+                var error = ApplyStockChange(
+                    line.ProductId,
+                    TransactionType.StockIn,
+                    line.Quantity,
+                    notes,
+                    supplierId: supplierId);
+                if (error != null)
+                    return error;
+            }
 
             Save();
             return null;
@@ -414,7 +453,9 @@ namespace Stock_Managemnet.Services
             string invoiceNumber = null,
             bool isSale = false,
             Guid? customerId = null,
-            string customerName = null)
+            string customerName = null,
+            Guid? supplierId = null,
+            string supplierName = null)
         {
             if (quantity <= 0)
                 return "Quantity must be greater than zero.";
@@ -432,6 +473,14 @@ namespace Stock_Managemnet.Services
                 customer = GetCustomer(customerId.Value);
                 if (customer == null)
                     return "Customer not found.";
+            }
+
+            Supplier supplier = null;
+            if (supplierId.HasValue)
+            {
+                supplier = GetSupplier(supplierId.Value);
+                if (supplier == null)
+                    return "Supplier not found.";
             }
 
             if (type == TransactionType.StockIn)
@@ -455,6 +504,8 @@ namespace Stock_Managemnet.Services
                 IsSale = isSale,
                 CustomerId = customer?.Id ?? customerId,
                 CustomerName = customer?.Name ?? customerName,
+                SupplierId = supplier?.Id ?? supplierId,
+                SupplierName = supplier?.Name ?? supplierName,
                 Timestamp = DateTime.Now
             });
 
@@ -550,6 +601,206 @@ namespace Stock_Managemnet.Services
                    MatchesTextPart(customer.Phone, term) ||
                    MatchesTextPart(customer.Email, term) ||
                    MatchesTextPart(customer.Address, term);
+        }
+
+        public Supplier GetSupplier(Guid id) =>
+            Data.Suppliers.FirstOrDefault(s => s.Id == id);
+
+        public bool SupplierPhoneExists(string phone, Guid? excludeId = null)
+        {
+            var normalized = NormalizePhone(phone);
+            if (string.IsNullOrEmpty(normalized)) return false;
+
+            return Data.Suppliers.Any(s =>
+                NormalizePhone(s.Phone) == normalized &&
+                (!excludeId.HasValue || s.Id != excludeId.Value));
+        }
+
+        public void AddSupplier(Supplier supplier)
+        {
+            supplier.CreatedAt = DateTime.Now;
+            Data.Suppliers.Add(supplier);
+            Save();
+        }
+
+        public void UpdateSupplier(Supplier supplier)
+        {
+            var existing = GetSupplier(supplier.Id);
+            if (existing == null) return;
+
+            existing.Name = supplier.Name;
+            existing.Address = supplier.Address;
+            existing.Phone = supplier.Phone;
+            existing.Email = supplier.Email;
+            Save();
+        }
+
+        public void DeleteSupplier(Guid id)
+        {
+            Data.Suppliers.RemoveAll(s => s.Id == id);
+            Data.SupplierPayments.RemoveAll(p => p.SupplierId == id);
+            foreach (var t in Data.Transactions.Where(t => t.SupplierId == id))
+            {
+                t.SupplierId = null;
+                t.SupplierName = null;
+            }
+            Save();
+        }
+
+        public IEnumerable<Supplier> SearchSuppliers(string term)
+        {
+            if (string.IsNullOrWhiteSpace(term))
+                return Data.Suppliers.OrderBy(s => s.Name);
+
+            term = term.Trim();
+
+            if (TryParseDisplaySearch(term, out var namePart, out var phonePart))
+            {
+                return Data.Suppliers
+                    .Where(s => MatchesTextPart(s.Name, namePart) && MatchesPhonePart(s.Phone, phonePart))
+                    .OrderBy(s => s.Name);
+            }
+
+            return Data.Suppliers
+                .Where(s =>
+                    MatchesTextPart(s.Name, term) ||
+                    MatchesTextPart(s.Phone, term) ||
+                    MatchesTextPart(s.Email, term) ||
+                    MatchesTextPart(s.Address, term))
+                .OrderBy(s => s.Name);
+        }
+
+        public bool SupplierMatchesSearchTerm(Supplier supplier, string term)
+        {
+            if (supplier == null)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(term))
+                return true;
+
+            term = term.Trim();
+
+            if (TryParseDisplaySearch(term, out var namePart, out var phonePart))
+                return MatchesTextPart(supplier.Name, namePart) && MatchesPhonePart(supplier.Phone, phonePart);
+
+            return MatchesTextPart(supplier.Name, term) ||
+                   MatchesTextPart(supplier.Phone, term) ||
+                   MatchesTextPart(supplier.Email, term) ||
+                   MatchesTextPart(supplier.Address, term);
+        }
+
+        public decimal GetSupplierBalance(Guid supplierId)
+        {
+            var purchased = Data.Transactions
+                .Where(t => t.Type == TransactionType.StockIn && t.SupplierId == supplierId)
+                .Sum(t => t.TotalValue);
+            var paid = Data.SupplierPayments
+                .Where(p => p.IsActive && p.SupplierId == supplierId)
+                .Sum(p => p.Amount);
+            return Math.Max(0, purchased - paid);
+        }
+
+        public IEnumerable<SupplierDueRow> GetSupplierDueReport(string term = null)
+        {
+            var rows = Data.Suppliers.Select(supplier =>
+            {
+                var purchases = Data.Transactions
+                    .Where(t => t.Type == TransactionType.StockIn && t.SupplierId == supplier.Id)
+                    .ToList();
+                var totalPurchased = purchases.Sum(t => t.TotalValue);
+                var totalPaid = Data.SupplierPayments
+                    .Where(p => p.IsActive && p.SupplierId == supplier.Id)
+                    .Sum(p => p.Amount);
+                return new SupplierDueRow
+                {
+                    SupplierId = supplier.Id,
+                    SupplierName = supplier.Name,
+                    Phone = supplier.Phone ?? string.Empty,
+                    TotalPurchased = totalPurchased,
+                    TotalPaid = totalPaid,
+                    BalanceDue = Math.Max(0, totalPurchased - totalPaid),
+                    PurchaseCount = purchases.Count
+                };
+            }).Where(r => r.TotalPurchased > 0 || r.TotalPaid > 0 || r.BalanceDue > 0);
+
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                term = term.Trim();
+                rows = rows.Where(r =>
+                    (r.SupplierName != null && r.SupplierName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (r.Phone != null && r.Phone.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0));
+            }
+
+            return rows.OrderByDescending(r => r.BalanceDue).ThenBy(r => r.SupplierName);
+        }
+
+        public IEnumerable<SupplierLedgerRow> GetSupplierLedger(Guid supplierId)
+        {
+            var entries = new List<(DateTime SortDate, int SortOrder, SupplierLedgerRow Row)>();
+
+            foreach (var txn in Data.Transactions.Where(t =>
+                t.Type == TransactionType.StockIn && t.SupplierId == supplierId))
+            {
+                entries.Add((txn.Timestamp, 0, new SupplierLedgerRow
+                {
+                    Date = txn.Timestamp,
+                    EntryType = "Debit",
+                    Description = $"Stock in: {txn.ProductName} x{txn.Quantity}",
+                    Reference = txn.ProductSku ?? string.Empty,
+                    Debit = txn.TotalValue,
+                    Credit = 0
+                }));
+            }
+
+            foreach (var payment in Data.SupplierPayments.Where(p => p.SupplierId == supplierId && p.IsActive))
+            {
+                var method = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Payment" : payment.PaymentMethod;
+                entries.Add((payment.PaidAt, 1, new SupplierLedgerRow
+                {
+                    Date = payment.PaidAt,
+                    EntryType = "Credit",
+                    Description = $"{method} paid to supplier",
+                    Reference = payment.Reference ?? string.Empty,
+                    Debit = 0,
+                    Credit = payment.Amount
+                }));
+            }
+
+            decimal balance = 0;
+            foreach (var entry in entries.OrderBy(e => e.SortDate).ThenBy(e => e.SortOrder))
+            {
+                balance += entry.Row.Debit - entry.Row.Credit;
+                entry.Row.Balance = balance;
+                yield return entry.Row;
+            }
+        }
+
+        public string RecordSupplierPayment(SupplierPayment payment)
+        {
+            if (payment == null)
+                return "Invalid payment.";
+
+            if (payment.Amount <= 0)
+                return "Payment amount must be greater than zero.";
+
+            var supplier = GetSupplier(payment.SupplierId);
+            if (supplier == null)
+                return "Supplier not found.";
+
+            var balance = GetSupplierBalance(payment.SupplierId);
+            if (payment.Amount > balance)
+                return $"Payment exceeds supplier due ({balance:C2}).";
+
+            payment.Id = payment.Id == Guid.Empty ? Guid.NewGuid() : payment.Id;
+            payment.SupplierName = supplier.Name;
+            payment.IsVoided = false;
+            payment.VoidedAt = null;
+            if (payment.PaidAt == default)
+                payment.PaidAt = DateTime.Now;
+
+            Data.SupplierPayments.Insert(0, payment);
+            Save();
+            return null;
         }
 
         private static bool TryParseDisplaySearch(string term, out string namePart, out string phonePart)
