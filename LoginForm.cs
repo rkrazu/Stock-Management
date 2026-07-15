@@ -99,7 +99,6 @@ namespace Stock_Managemnet
             WindowState = FormWindowState.Maximized;
             LayoutLoginContent();
             Invalidate();
-            LoginSceneAssets.PlayStartupSound();
             BeginInvoke(new Action(FocusPasswordInput));
         }
 
