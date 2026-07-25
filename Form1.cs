@@ -1622,7 +1622,8 @@ namespace Stock_Managemnet
             if (product == null) return;
 
             var confirm = MessageBox.Show(
-                $"Delete \"{product.Name}\" and its transaction history?",
+                $"Delete product \"{product.Name}\"?\r\n\r\n" +
+                "Sales invoices, payments, and account history will be kept.",
                 "Confirm Delete",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);

@@ -92,9 +92,9 @@ namespace Stock_Managemnet
             this.numAmount.DecimalPlaces = 2;
             this.numAmount.Location = new System.Drawing.Point(130, 141);
             this.numAmount.Maximum = new decimal(new int[] { 99999999, 0, 0, 0 });
-            this.numAmount.Minimum = new decimal(new int[] { 1, 0, 0, 131072 });
+            this.numAmount.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
             this.numAmount.Size = new System.Drawing.Size(160, 23);
-            this.numAmount.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            this.numAmount.Value = new decimal(new int[] { 0, 0, 0, 0 });
             //
             this.lblMethod.AutoSize = true;
             this.lblMethod.Location = new System.Drawing.Point(20, 180);

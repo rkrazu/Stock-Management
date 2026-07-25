@@ -97,11 +97,20 @@ namespace Stock_Managemnet.Services
 
         public void DeleteProduct(Guid id)
         {
+            // Only remove the product master record.
+            // Keep invoices, line items, payments, journals, and stock history —
+            // those rows already store product name/SKU snapshots and must remain
+            // for account balance / customer due integrity.
+            if (GetProduct(id) == null)
+                return;
+
             Data.Products.RemoveAll(p => p.Id == id);
-            Data.Transactions.RemoveAll(t => t.ProductId == id);
-            foreach (var invoice in Data.Invoices)
-                invoice.Items?.RemoveAll(i => i.ProductId == id);
-            Data.Invoices.RemoveAll(i => i.Items == null || i.Items.Count == 0);
+
+            // Recipes referencing this product can no longer be produced.
+            Data.ProductionRecipes.RemoveAll(r => r.OutputProductId == id);
+            foreach (var recipe in Data.ProductionRecipes)
+                recipe.Materials?.RemoveAll(m => m.ProductId == id);
+
             Save();
         }
 

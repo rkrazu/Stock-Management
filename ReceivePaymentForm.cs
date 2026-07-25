@@ -25,6 +25,10 @@ namespace Stock_Managemnet
             cmbMethod.SelectedIndex = 0;
             dtpPaidAt.Value = DateTime.Now;
 
+            numAmount.Minimum = 0m;
+            numAmount.Maximum = 99999999m;
+            numAmount.Value = 0m;
+
             LoadCashAccounts();
             LoadCustomers();
 
@@ -33,6 +37,8 @@ namespace Stock_Managemnet
 
             if (_defaultInvoiceId.HasValue && cmbInvoice.Enabled)
                 cmbInvoice.SelectedValue = _defaultInvoiceId.Value;
+
+            numAmount.Value = 0m;
         }
 
         private void LoadCashAccounts()
@@ -76,6 +82,8 @@ namespace Stock_Managemnet
 
             if (_defaultInvoiceId.HasValue && invoices.Any(i => i.Id == _defaultInvoiceId.Value))
                 cmbInvoice.SelectedValue = _defaultInvoiceId.Value;
+            else if (invoices.Count > 0)
+                cmbInvoice.SelectedIndex = 0;
         }
 
         private void CmbCustomer_SelectedIndexChanged(object sender, EventArgs e)
@@ -91,19 +99,12 @@ namespace Stock_Managemnet
             }
 
             LoadInvoices();
+            numAmount.Value = 0m;
         }
 
         private void CmbInvoice_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (!(cmbInvoice.SelectedValue is Guid invoiceId))
-                return;
-
-            var invoice = _repository.GetInvoice(invoiceId);
-            if (invoice == null)
-                return;
-
-            numAmount.Maximum = Math.Max(numAmount.Minimum + 1, (decimal)invoice.BalanceDue);
-            numAmount.Value = Math.Min(numAmount.Maximum, Math.Max(numAmount.Minimum, invoice.BalanceDue));
+            numAmount.Value = 0m;
         }
 
         private void BtnSave_Click(object sender, EventArgs e)
@@ -117,6 +118,13 @@ namespace Stock_Managemnet
             if (!(cmbCashAccount.SelectedValue is Guid cashAccountId))
             {
                 MessageBox.Show("Select a cash or bank account.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (numAmount.Value <= 0m)
+            {
+                MessageBox.Show("Please add amount.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                numAmount.Focus();
                 return;
             }
 
