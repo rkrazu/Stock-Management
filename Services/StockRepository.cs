@@ -29,6 +29,7 @@ namespace Stock_Managemnet.Services
                 if (Data.ProductionOrders == null) Data.ProductionOrders = new List<ProductionOrder>();
                 if (Data.Invoices == null) Data.Invoices = new List<Invoice>();
                 if (Data.Accounts == null) Data.Accounts = new List<Account>();
+                if (Data.BankAccounts == null) Data.BankAccounts = new List<BankAccount>();
                 if (Data.JournalEntries == null) Data.JournalEntries = new List<JournalEntry>();
                 if (Data.CustomerPayments == null) Data.CustomerPayments = new List<CustomerPayment>();
                 if (Data.SupplierPayments == null) Data.SupplierPayments = new List<SupplierPayment>();
@@ -154,7 +155,7 @@ namespace Stock_Managemnet.Services
                     return "Select a cash or bank account for the payment received.";
 
                 var cashAccount = Data.Accounts.FirstOrDefault(a => a.Id == request.CashAccountId.Value);
-                if (cashAccount == null || (cashAccount.Id != SystemAccounts.CashId && cashAccount.Id != SystemAccounts.BankId))
+                if (cashAccount == null || !_accounting.IsCashOrBankAccount(Data, cashAccount.Id))
                     return "Select a valid cash or bank account.";
             }
 
@@ -354,8 +355,189 @@ namespace Stock_Managemnet.Services
         public IEnumerable<Account> GetCashAndBankAccounts() =>
             _accounting.GetCashAndBankAccounts(Data);
 
+        public IEnumerable<PaymentMethodOption> GetPaymentMethodOptions()
+        {
+            var options = new List<PaymentMethodOption>
+            {
+                new PaymentMethodOption
+                {
+                    CashAccountId = SystemAccounts.CashId,
+                    Name = "Cash"
+                }
+            };
+
+            foreach (var bank in GetBankAccounts())
+            {
+                options.Add(new PaymentMethodOption
+                {
+                    CashAccountId = bank.GlAccountId,
+                    BankAccountId = bank.Id,
+                    Name = bank.Name
+                });
+            }
+
+            // Keep legacy system Bank available when no named bank accounts exist yet,
+            // or always as a fallback destination.
+            if (!options.Any(o => o.CashAccountId == SystemAccounts.BankId))
+            {
+                options.Add(new PaymentMethodOption
+                {
+                    CashAccountId = SystemAccounts.BankId,
+                    Name = "Bank"
+                });
+            }
+
+            return options;
+        }
+
+        public IEnumerable<BankAccount> GetBankAccounts() =>
+            (Data.BankAccounts ?? Enumerable.Empty<BankAccount>())
+                .Where(b => b.IsActive)
+                .OrderBy(b => b.Name);
+
+        public BankAccount GetBankAccount(Guid id) =>
+            Data.BankAccounts?.FirstOrDefault(b => b.Id == id);
+
+        public IEnumerable<BankAccountRow> GetBankAccountRows()
+        {
+            return GetBankAccounts().Select(b => new BankAccountRow
+            {
+                BankAccountId = b.Id,
+                GlAccountId = b.GlAccountId,
+                Name = b.Name,
+                AccountNumber = b.AccountNumber ?? string.Empty,
+                Branch = b.Branch ?? string.Empty,
+                Balance = _accounting.GetBankDisplayBalance(Data, b.GlAccountId)
+            });
+        }
+
+        public IEnumerable<BankLedgerRow> GetBankLedger(Guid bankAccountId)
+        {
+            var bank = GetBankAccount(bankAccountId);
+            if (bank == null)
+                return Enumerable.Empty<BankLedgerRow>();
+
+            return _accounting.GetBankLedger(Data, bank.GlAccountId);
+        }
+
+        public string AddBankAccount(BankAccount bank)
+        {
+            if (bank == null)
+                return "Invalid bank account.";
+
+            var name = bank.Name?.Trim();
+            if (string.IsNullOrEmpty(name))
+                return "Bank account name is required.";
+
+            if (Data.BankAccounts.Any(b => b.IsActive
+                && string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase)))
+                return "A bank account with this name already exists.";
+
+            bank.Id = bank.Id == Guid.Empty ? Guid.NewGuid() : bank.Id;
+            bank.Name = name;
+            bank.AccountNumber = bank.AccountNumber?.Trim();
+            bank.Branch = bank.Branch?.Trim();
+            bank.Notes = bank.Notes?.Trim();
+            bank.IsActive = true;
+            bank.CreatedAt = DateTime.Now;
+            bank.GlAccountId = Guid.NewGuid();
+
+            Data.Accounts.Add(new Account
+            {
+                Id = bank.GlAccountId,
+                Code = AllocateBankAccountCode(),
+                Name = name,
+                Type = AccountType.Asset,
+                IsSystem = false,
+                IsActive = true,
+                CreatedAt = DateTime.Now
+            });
+
+            Data.BankAccounts.Add(bank);
+            Save();
+            return null;
+        }
+
+        public string UpdateBankAccount(BankAccount bank)
+        {
+            if (bank == null)
+                return "Invalid bank account.";
+
+            var existing = GetBankAccount(bank.Id);
+            if (existing == null)
+                return "Bank account not found.";
+
+            var name = bank.Name?.Trim();
+            if (string.IsNullOrEmpty(name))
+                return "Bank account name is required.";
+
+            if (Data.BankAccounts.Any(b => b.IsActive
+                && b.Id != bank.Id
+                && string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase)))
+                return "A bank account with this name already exists.";
+
+            existing.Name = name;
+            existing.AccountNumber = bank.AccountNumber?.Trim();
+            existing.Branch = bank.Branch?.Trim();
+            existing.Notes = bank.Notes?.Trim();
+
+            var gl = Data.Accounts.FirstOrDefault(a => a.Id == existing.GlAccountId);
+            if (gl != null)
+                gl.Name = name;
+
+            Save();
+            return null;
+        }
+
+        public string DeleteBankAccount(Guid id)
+        {
+            var bank = GetBankAccount(id);
+            if (bank == null)
+                return "Bank account not found.";
+
+            var hasJournal = Data.JournalEntries
+                .SelectMany(e => e.Lines ?? Enumerable.Empty<JournalLine>())
+                .Any(l => l.AccountId == bank.GlAccountId);
+            if (hasJournal)
+                return "Cannot delete a bank account that has ledger transactions.";
+
+            var hasSupplierPayments = Data.SupplierPayments
+                .Any(p => p.IsActive && p.CashAccountId == bank.GlAccountId);
+            if (hasSupplierPayments)
+                return "Cannot delete a bank account that has supplier payments.";
+
+            var hasCustomerPayments = Data.CustomerPayments
+                .Any(p => p.IsActive && p.CashAccountId == bank.GlAccountId);
+            if (hasCustomerPayments)
+                return "Cannot delete a bank account that has customer payments.";
+
+            Data.BankAccounts.RemoveAll(b => b.Id == id);
+            Data.Accounts.RemoveAll(a => a.Id == bank.GlAccountId);
+            Save();
+            return null;
+        }
+
+        private string AllocateBankAccountCode()
+        {
+            var used = new HashSet<string>(
+                Data.Accounts.Where(a => !string.IsNullOrWhiteSpace(a.Code)).Select(a => a.Code),
+                StringComparer.OrdinalIgnoreCase);
+
+            for (var i = 1011; i < 1999; i++)
+            {
+                var code = i.ToString();
+                if (!used.Contains(code))
+                    return code;
+            }
+
+            return Guid.NewGuid().ToString("N").Substring(0, 8).ToUpperInvariant();
+        }
+
         public decimal GetAccountBalance(Guid accountId) =>
             _accounting.GetAccountBalance(Data, accountId);
+
+        public decimal GetCashOrBankDisplayBalance(Guid accountId) =>
+            _accounting.GetBankDisplayBalance(Data, accountId);
 
         public SalesProfitSummary GetSalesProfitSummary(DateTime? from = null, DateTime? to = null, string term = null) =>
             _accounting.GetSalesProfitSummary(Data, from, to, term);
@@ -771,7 +953,8 @@ namespace Stock_Managemnet.Services
                     Description = $"{method} paid to supplier",
                     Reference = payment.Reference ?? string.Empty,
                     Debit = 0,
-                    Credit = payment.Amount
+                    Credit = payment.Amount,
+                    PaymentId = payment.Id
                 }));
             }
 
@@ -796,12 +979,20 @@ namespace Stock_Managemnet.Services
             if (supplier == null)
                 return "Supplier not found.";
 
+            if (!_accounting.IsCashOrBankAccount(Data, payment.CashAccountId))
+                return "Select a cash or bank account.";
+
+            var cashAccount = Data.Accounts.FirstOrDefault(a => a.Id == payment.CashAccountId);
+            if (cashAccount == null)
+                return "Select a cash or bank account.";
+
             var balance = GetSupplierBalance(payment.SupplierId);
             if (payment.Amount > balance)
                 return $"Payment exceeds supplier due ({balance:C2}).";
 
             payment.Id = payment.Id == Guid.Empty ? Guid.NewGuid() : payment.Id;
             payment.SupplierName = supplier.Name;
+            payment.CashAccountName = cashAccount.Name;
             payment.IsVoided = false;
             payment.VoidedAt = null;
             if (payment.PaidAt == default)
@@ -810,6 +1001,86 @@ namespace Stock_Managemnet.Services
             Data.SupplierPayments.Insert(0, payment);
             Save();
             return null;
+        }
+
+        public string VoidCustomerPayment(Guid paymentId, string reason)
+        {
+            var payment = Data.CustomerPayments.FirstOrDefault(p => p.Id == paymentId);
+            if (payment == null)
+                return "Payment not found.";
+
+            var error = _accounting.VoidPayment(Data, payment, reason);
+            if (error != null)
+                return error;
+
+            ReallocateCustomerInvoicePayments(payment.CustomerId);
+            Save();
+            return null;
+        }
+
+        public string VoidSupplierPayment(Guid paymentId, string reason)
+        {
+            var payment = Data.SupplierPayments.FirstOrDefault(p => p.Id == paymentId);
+            if (payment == null)
+                return "Payment not found.";
+
+            if (!payment.IsActive)
+                return "Payment is already voided.";
+
+            payment.IsVoided = true;
+            payment.VoidedAt = DateTime.Now;
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                var note = reason.Trim();
+                payment.Notes = string.IsNullOrWhiteSpace(payment.Notes)
+                    ? $"Voided: {note}"
+                    : $"{payment.Notes}\r\nVoided: {note}";
+            }
+
+            Save();
+            return null;
+        }
+
+        private void ReallocateCustomerInvoicePayments(Guid customerId)
+        {
+            var invoices = Data.Invoices
+                .Where(i => i.IsActive && i.CustomerId == customerId)
+                .OrderBy(i => i.CreatedAt)
+                .ToList();
+
+            foreach (var invoice in invoices)
+                invoice.AmountPaid = 0;
+
+            foreach (var payment in Data.CustomerPayments
+                .Where(p => p.IsActive && p.CustomerId == customerId && p.Amount > 0)
+                .OrderBy(p => p.PaidAt))
+            {
+                var remaining = payment.Amount;
+
+                if (payment.InvoiceId.HasValue)
+                {
+                    var target = invoices.FirstOrDefault(i => i.Id == payment.InvoiceId.Value);
+                    if (target != null)
+                    {
+                        var applied = Math.Min(remaining, Math.Max(0, target.TotalAmount - target.AmountPaid));
+                        target.AmountPaid += applied;
+                        remaining -= applied;
+                    }
+                }
+
+                if (remaining <= 0)
+                    continue;
+
+                foreach (var invoice in invoices.Where(i => i.BalanceDue > 0))
+                {
+                    if (remaining <= 0)
+                        break;
+
+                    var applied = Math.Min(remaining, invoice.BalanceDue);
+                    invoice.AmountPaid += applied;
+                    remaining -= applied;
+                }
+            }
         }
 
         private static bool TryParseDisplaySearch(string term, out string namePart, out string phonePart)

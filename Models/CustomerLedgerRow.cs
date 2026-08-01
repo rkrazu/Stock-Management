@@ -11,5 +11,7 @@ namespace Stock_Managemnet.Models
         public decimal Debit { get; set; }
         public decimal Credit { get; set; }
         public decimal Balance { get; set; }
+        /// <summary>Set for payment (Credit) rows so the UI can void them.</summary>
+        public Guid? PaymentId { get; set; }
     }
 }

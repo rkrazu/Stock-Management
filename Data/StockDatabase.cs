@@ -22,6 +22,7 @@ namespace Stock_Managemnet.Data
                 data.Transactions = LoadTransactions(connection);
                 data.Invoices = LoadInvoices(connection);
                 data.Accounts = LoadAccounts(connection);
+                data.BankAccounts = LoadBankAccounts(connection);
                 data.JournalEntries = LoadJournalEntries(connection);
                 data.CustomerPayments = LoadCustomerPayments(connection);
                 data.SupplierPayments = LoadSupplierPayments(connection);
@@ -52,6 +53,7 @@ namespace Stock_Managemnet.Data
                         InsertTransactions(connection, transaction, data.Transactions);
                         InsertInvoices(connection, transaction, data.Invoices);
                         InsertAccounts(connection, transaction, data.Accounts);
+                        InsertBankAccounts(connection, transaction, data.BankAccounts);
                         InsertJournalEntries(connection, transaction, data.JournalEntries);
                         InsertCustomerPayments(connection, transaction, data.CustomerPayments);
                         InsertSupplierPayments(connection, transaction, data.SupplierPayments);
@@ -327,6 +329,37 @@ ORDER BY Code";
             return accounts;
         }
 
+        private static List<BankAccount> LoadBankAccounts(SqlConnection connection)
+        {
+            var banks = new List<BankAccount>();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT Id, Name, AccountNumber, Branch, Notes, GlAccountId, IsActive, CreatedAt
+FROM BankAccounts
+ORDER BY Name";
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        banks.Add(new BankAccount
+                        {
+                            Id = reader.GetGuid(0),
+                            Name = reader.GetString(1),
+                            AccountNumber = reader.IsDBNull(2) ? null : reader.GetString(2),
+                            Branch = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Notes = reader.IsDBNull(4) ? null : reader.GetString(4),
+                            GlAccountId = reader.GetGuid(5),
+                            IsActive = reader.GetBoolean(6),
+                            CreatedAt = reader.GetDateTime(7)
+                        });
+                    }
+                }
+            }
+
+            return banks;
+        }
+
         private static List<JournalEntry> LoadJournalEntries(SqlConnection connection)
         {
             var entries = new List<JournalEntry>();
@@ -440,7 +473,8 @@ ORDER BY PaidAt DESC";
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = @"
-SELECT Id, SupplierId, SupplierName, Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt
+SELECT Id, SupplierId, SupplierName, Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt,
+       CashAccountId, CashAccountName
 FROM SupplierPayments
 ORDER BY PaidAt DESC";
                 using (var reader = command.ExecuteReader())
@@ -458,7 +492,9 @@ ORDER BY PaidAt DESC";
                             Notes = reader.IsDBNull(6) ? null : reader.GetString(6),
                             PaidAt = reader.GetDateTime(7),
                             IsVoided = reader.FieldCount > 8 && !reader.IsDBNull(8) && reader.GetBoolean(8),
-                            VoidedAt = reader.FieldCount > 9 && !reader.IsDBNull(9) ? (DateTime?)reader.GetDateTime(9) : null
+                            VoidedAt = reader.FieldCount > 9 && !reader.IsDBNull(9) ? (DateTime?)reader.GetDateTime(9) : null,
+                            CashAccountId = reader.FieldCount > 10 && !reader.IsDBNull(10) ? reader.GetGuid(10) : Guid.Empty,
+                            CashAccountName = reader.FieldCount > 11 && !reader.IsDBNull(11) ? reader.GetString(11) : null
                         });
                     }
                 }
@@ -652,6 +688,7 @@ DELETE FROM JournalEntries;
 DELETE FROM CustomerPayments;
 DELETE FROM SupplierPayments;
 DELETE FROM BusinessExpenses;
+DELETE FROM BankAccounts;
 DELETE FROM Accounts;
 DELETE FROM InvoiceLineItems;
 DELETE FROM Invoices;
@@ -872,6 +909,31 @@ VALUES (@Id, @Code, @Name, @Type, @IsSystem, @IsActive, @CreatedAt)";
             }
         }
 
+        private static void InsertBankAccounts(SqlConnection connection, SqlTransaction transaction, IEnumerable<BankAccount> banks)
+        {
+            foreach (var bank in banks ?? Enumerable.Empty<BankAccount>())
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    command.CommandText = @"
+INSERT INTO BankAccounts
+    (Id, Name, AccountNumber, Branch, Notes, GlAccountId, IsActive, CreatedAt)
+VALUES
+    (@Id, @Name, @AccountNumber, @Branch, @Notes, @GlAccountId, @IsActive, @CreatedAt)";
+                    command.Parameters.AddWithValue("@Id", bank.Id);
+                    command.Parameters.AddWithValue("@Name", bank.Name ?? string.Empty);
+                    command.Parameters.AddWithValue("@AccountNumber", (object)bank.AccountNumber ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Branch", (object)bank.Branch ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Notes", (object)bank.Notes ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@GlAccountId", bank.GlAccountId);
+                    command.Parameters.AddWithValue("@IsActive", bank.IsActive);
+                    command.Parameters.AddWithValue("@CreatedAt", bank.CreatedAt);
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
         private static void InsertJournalEntries(SqlConnection connection, SqlTransaction transaction, IEnumerable<JournalEntry> entries)
         {
             foreach (var entry in entries ?? Enumerable.Empty<JournalEntry>())
@@ -962,9 +1024,11 @@ VALUES
                     command.Transaction = transaction;
                     command.CommandText = @"
 INSERT INTO SupplierPayments
-    (Id, SupplierId, SupplierName, Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt)
+    (Id, SupplierId, SupplierName, Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt,
+     CashAccountId, CashAccountName)
 VALUES
-    (@Id, @SupplierId, @SupplierName, @Amount, @PaymentMethod, @Reference, @Notes, @PaidAt, @IsVoided, @VoidedAt)";
+    (@Id, @SupplierId, @SupplierName, @Amount, @PaymentMethod, @Reference, @Notes, @PaidAt, @IsVoided, @VoidedAt,
+     @CashAccountId, @CashAccountName)";
                     command.Parameters.AddWithValue("@Id", payment.Id);
                     command.Parameters.AddWithValue("@SupplierId", payment.SupplierId);
                     command.Parameters.AddWithValue("@SupplierName", (object)payment.SupplierName ?? DBNull.Value);
@@ -975,6 +1039,9 @@ VALUES
                     command.Parameters.AddWithValue("@PaidAt", payment.PaidAt);
                     command.Parameters.AddWithValue("@IsVoided", payment.IsVoided);
                     command.Parameters.AddWithValue("@VoidedAt", (object)payment.VoidedAt ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@CashAccountId",
+                        payment.CashAccountId == Guid.Empty ? (object)DBNull.Value : payment.CashAccountId);
+                    command.Parameters.AddWithValue("@CashAccountName", (object)payment.CashAccountName ?? DBNull.Value);
                     command.ExecuteNonQuery();
                 }
             }

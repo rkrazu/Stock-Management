@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
 using Stock_Managemnet.Controls;
 using Stock_Managemnet.Models;
@@ -8,35 +7,31 @@ using Stock_Managemnet.Services;
 
 namespace Stock_Managemnet
 {
-    public sealed class SupplierBalanceSheetForm : Form
+    public sealed class BankLedgerForm : Form
     {
         private static readonly Font SummaryFont = new Font("Segoe UI", 12F);
         private static readonly Font GridFont = new Font("Segoe UI", 12F);
         private static readonly Font GridHeaderFont = new Font("Segoe UI", 12F, FontStyle.Bold);
 
         private readonly StockRepository _repository;
-        private SupplierDueRow _dueRow;
-        private readonly Label _lblSummary;
+        private readonly BankAccountRow _bankRow;
         private readonly DataGridView _grid;
-        private readonly Button _btnVoidPayment;
 
-        public event EventHandler PaymentsChanged;
-
-        public SupplierBalanceSheetForm(StockRepository repository, SupplierDueRow dueRow)
+        public BankLedgerForm(StockRepository repository, BankAccountRow bankRow)
         {
             _repository = repository;
-            _dueRow = dueRow ?? throw new ArgumentNullException(nameof(dueRow));
+            _bankRow = bankRow ?? throw new ArgumentNullException(nameof(bankRow));
 
-            Text = $"Supplier Balance Sheet - {dueRow.SupplierName}";
+            Text = $"Bank Ledger - {bankRow.Name}";
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.Sizable;
             MaximizeBox = true;
             MinimizeBox = false;
-            ClientSize = new Size(1400, 640);
-            MinimumSize = new Size(1200, 520);
+            ClientSize = new Size(1200, 640);
+            MinimumSize = new Size(1000, 520);
             UiStyles.Apply(this);
 
-            _lblSummary = new Label
+            var lblSummary = new Label
             {
                 Dock = DockStyle.Fill,
                 Font = SummaryFont,
@@ -47,11 +42,11 @@ namespace Stock_Managemnet
             var summaryPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 92,
+                Height = 80,
                 Padding = new Padding(16, 12, 16, 8),
                 BackColor = Color.FromArgb(249, 250, 251)
             };
-            summaryPanel.Controls.Add(_lblSummary);
+            summaryPanel.Controls.Add(lblSummary);
 
             _grid = new DataGridView
             {
@@ -72,7 +67,7 @@ namespace Stock_Managemnet
                     Font = GridFont,
                     BackColor = Color.White,
                     ForeColor = SystemColors.ControlText,
-                    SelectionBackColor = Color.FromArgb(219, 234, 254),
+                    SelectionBackColor = Color.White,
                     SelectionForeColor = SystemColors.ControlText
                 },
                 ColumnHeadersDefaultCellStyle =
@@ -88,18 +83,9 @@ namespace Stock_Managemnet
                 EnableHeadersVisualStyles = false,
                 StandardTab = true
             };
+            _grid.SelectionChanged += (s, e) => _grid.ClearSelection();
             ConfigureGrid();
             LoadLedger();
-
-            _btnVoidPayment = new Button
-            {
-                Text = "Void Payment",
-                Font = SummaryFont,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left,
-                Size = new Size(140, 32),
-                Location = new Point(16, 10)
-            };
-            _btnVoidPayment.Click += BtnVoidPayment_Click;
 
             var btnClose = new Button
             {
@@ -108,7 +94,7 @@ namespace Stock_Managemnet
                 Font = SummaryFont,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Size = new Size(90, 32),
-                Location = new Point(1294, 10)
+                Location = new Point(1094, 10)
             };
             btnClose.Click += (s, e) => Close();
 
@@ -118,7 +104,6 @@ namespace Stock_Managemnet
                 Height = 52,
                 Padding = new Padding(16, 10, 16, 10)
             };
-            footer.Controls.Add(_btnVoidPayment);
             footer.Controls.Add(btnClose);
 
             var content = new Panel
@@ -137,22 +122,19 @@ namespace Stock_Managemnet
 
         private string GetExportBaseName()
         {
-            var name = string.IsNullOrWhiteSpace(_dueRow.SupplierName)
-                ? "Supplier"
-                : _dueRow.SupplierName.Trim();
-
+            var name = string.IsNullOrWhiteSpace(_bankRow.Name) ? "Bank" : _bankRow.Name.Trim();
             foreach (var invalid in System.IO.Path.GetInvalidFileNameChars())
                 name = name.Replace(invalid, '_');
-
-            return $"Supplier Balance Sheet - {name}";
+            return $"Bank Ledger - {name}";
         }
 
         private string BuildSummaryText()
         {
             return
-                $"Supplier: {_dueRow.SupplierName}\r\n" +
-                $"Phone: {(string.IsNullOrWhiteSpace(_dueRow.Phone) ? "-" : _dueRow.Phone)}\r\n" +
-                $"Purchased: {_dueRow.TotalPurchased:C2}    Paid: {_dueRow.TotalPaid:C2}    Balance due: {_dueRow.BalanceDue:C2}    Purchases: {_dueRow.PurchaseCount}";
+                $"Account: {_bankRow.Name}\r\n" +
+                $"Account no: {(string.IsNullOrWhiteSpace(_bankRow.AccountNumber) ? "-" : _bankRow.AccountNumber)}    " +
+                $"Branch: {(string.IsNullOrWhiteSpace(_bankRow.Branch) ? "-" : _bankRow.Branch)}    " +
+                $"Balance: {_bankRow.Balance:C2}";
         }
 
         private void ConfigureGrid()
@@ -163,14 +145,14 @@ namespace Stock_Managemnet
             _grid.Columns.Add("EntryType", "Type");
             _grid.Columns.Add("Description", "Description");
             _grid.Columns.Add("Reference", "Reference");
-            _grid.Columns.Add("Debit", "Debit");
-            _grid.Columns.Add("Credit", "Credit");
+            _grid.Columns.Add("Debit", "In");
+            _grid.Columns.Add("Credit", "Out");
             _grid.Columns.Add("Balance", "Balance");
 
             _grid.Columns["Date"].DefaultCellStyle.Format = "g";
             _grid.Columns["Date"].FillWeight = 90;
-            _grid.Columns["EntryType"].FillWeight = 55;
-            _grid.Columns["Description"].FillWeight = 160;
+            _grid.Columns["EntryType"].FillWeight = 45;
+            _grid.Columns["Description"].FillWeight = 180;
             _grid.Columns["Reference"].FillWeight = 70;
             _grid.Columns["Debit"].DefaultCellStyle.Format = "C2";
             _grid.Columns["Credit"].DefaultCellStyle.Format = "C2";
@@ -189,7 +171,7 @@ namespace Stock_Managemnet
         private void LoadLedger()
         {
             _grid.Rows.Clear();
-            foreach (var row in _repository.GetSupplierLedger(_dueRow.SupplierId))
+            foreach (var row in _repository.GetBankLedger(_bankRow.BankAccountId))
             {
                 var idx = _grid.Rows.Add(
                     row.Date,
@@ -199,59 +181,20 @@ namespace Stock_Managemnet
                     row.Debit > 0 ? row.Debit : (object)null,
                     row.Credit > 0 ? row.Credit : (object)null,
                     row.Balance);
-                _grid.Rows[idx].Tag = row;
 
-                if (row.EntryType == "Debit")
+                if (row.EntryType == "In")
                 {
-                    _grid.Rows[idx].Cells["Debit"].Style.ForeColor = Color.FromArgb(153, 27, 27);
-                    _grid.Rows[idx].Cells["Debit"].Style.SelectionForeColor = Color.FromArgb(153, 27, 27);
+                    _grid.Rows[idx].Cells["Debit"].Style.ForeColor = Color.FromArgb(22, 101, 52);
+                    _grid.Rows[idx].Cells["Debit"].Style.SelectionForeColor = Color.FromArgb(22, 101, 52);
                 }
-                else if (row.EntryType == "Credit")
+                else if (row.EntryType == "Out")
                 {
-                    _grid.Rows[idx].Cells["Credit"].Style.ForeColor = Color.FromArgb(22, 101, 52);
-                    _grid.Rows[idx].Cells["Credit"].Style.SelectionForeColor = Color.FromArgb(22, 101, 52);
+                    _grid.Rows[idx].Cells["Credit"].Style.ForeColor = Color.FromArgb(153, 27, 27);
+                    _grid.Rows[idx].Cells["Credit"].Style.SelectionForeColor = Color.FromArgb(153, 27, 27);
                 }
             }
-        }
 
-        private void RefreshDueRow()
-        {
-            _dueRow = _repository.GetSupplierDueReport()
-                .FirstOrDefault(r => r.SupplierId == _dueRow.SupplierId)
-                ?? _dueRow;
-            _lblSummary.Text = BuildSummaryText();
-            Text = $"Supplier Balance Sheet - {_dueRow.SupplierName}";
-        }
-
-        private void BtnVoidPayment_Click(object sender, EventArgs e)
-        {
-            if (!(_grid.CurrentRow?.Tag is SupplierLedgerRow row)
-                || !row.PaymentId.HasValue
-                || row.EntryType != "Credit")
-            {
-                MessageBox.Show(
-                    "Select a payment (Credit) row to void.",
-                    Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            var confirm = MessageBox.Show(
-                $"Void this payment of {row.Credit:C2}?\n\n" +
-                "This restores the supplier due and returns the amount to the cash/bank balance.",
-                "Void Payment", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes)
-                return;
-
-            var error = _repository.VoidSupplierPayment(row.PaymentId.Value, "Corrected wrong payment");
-            if (error != null)
-            {
-                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            RefreshDueRow();
-            LoadLedger();
-            PaymentsChanged?.Invoke(this, EventArgs.Empty);
+            _grid.ClearSelection();
         }
     }
 }

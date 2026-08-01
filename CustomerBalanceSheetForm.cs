@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using Stock_Managemnet.Controls;
 using Stock_Managemnet.Models;
@@ -14,8 +15,12 @@ namespace Stock_Managemnet
         private static readonly Font GridHeaderFont = new Font("Segoe UI", 12F, FontStyle.Bold);
 
         private readonly StockRepository _repository;
-        private readonly CustomerDueRow _dueRow;
+        private CustomerDueRow _dueRow;
+        private readonly Label _lblSummary;
         private readonly DataGridView _grid;
+        private readonly Button _btnVoidPayment;
+
+        public event EventHandler PaymentsChanged;
 
         public CustomerBalanceSheetForm(StockRepository repository, CustomerDueRow dueRow)
         {
@@ -31,7 +36,7 @@ namespace Stock_Managemnet
             MinimumSize = new Size(1200, 520);
             UiStyles.Apply(this);
 
-            var lblSummary = new Label
+            _lblSummary = new Label
             {
                 Dock = DockStyle.Fill,
                 Font = SummaryFont,
@@ -46,7 +51,7 @@ namespace Stock_Managemnet
                 Padding = new Padding(16, 12, 16, 8),
                 BackColor = Color.FromArgb(249, 250, 251)
             };
-            summaryPanel.Controls.Add(lblSummary);
+            summaryPanel.Controls.Add(_lblSummary);
 
             _grid = new DataGridView
             {
@@ -67,7 +72,7 @@ namespace Stock_Managemnet
                     Font = GridFont,
                     BackColor = Color.White,
                     ForeColor = SystemColors.ControlText,
-                    SelectionBackColor = Color.White,
+                    SelectionBackColor = Color.FromArgb(219, 234, 254),
                     SelectionForeColor = SystemColors.ControlText
                 },
                 ColumnHeadersDefaultCellStyle =
@@ -83,9 +88,18 @@ namespace Stock_Managemnet
                 EnableHeadersVisualStyles = false,
                 StandardTab = true
             };
-            _grid.SelectionChanged += (s, e) => _grid.ClearSelection();
             ConfigureGrid();
             LoadLedger();
+
+            _btnVoidPayment = new Button
+            {
+                Text = "Void Payment",
+                Font = SummaryFont,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left,
+                Size = new Size(140, 32),
+                Location = new Point(16, 10)
+            };
+            _btnVoidPayment.Click += BtnVoidPayment_Click;
 
             var btnClose = new Button
             {
@@ -104,6 +118,7 @@ namespace Stock_Managemnet
                 Height = 52,
                 Padding = new Padding(16, 10, 16, 10)
             };
+            footer.Controls.Add(_btnVoidPayment);
             footer.Controls.Add(btnClose);
 
             var content = new Panel
@@ -184,6 +199,7 @@ namespace Stock_Managemnet
                     row.Debit > 0 ? row.Debit : (object)null,
                     row.Credit > 0 ? row.Credit : (object)null,
                     row.Balance);
+                _grid.Rows[idx].Tag = row;
 
                 if (row.EntryType == "Debit")
                 {
@@ -196,8 +212,46 @@ namespace Stock_Managemnet
                     _grid.Rows[idx].Cells["Credit"].Style.SelectionForeColor = Color.FromArgb(22, 101, 52);
                 }
             }
+        }
 
-            _grid.ClearSelection();
+        private void RefreshDueRow()
+        {
+            _dueRow = _repository.GetCustomerDueReport()
+                .FirstOrDefault(r => r.CustomerId == _dueRow.CustomerId)
+                ?? _dueRow;
+            _lblSummary.Text = BuildSummaryText();
+            Text = $"Customer Balance Sheet - {_dueRow.CustomerName}";
+        }
+
+        private void BtnVoidPayment_Click(object sender, EventArgs e)
+        {
+            if (!(_grid.CurrentRow?.Tag is CustomerLedgerRow row)
+                || !row.PaymentId.HasValue
+                || row.EntryType != "Credit")
+            {
+                MessageBox.Show(
+                    "Select a payment (Credit) row to void.",
+                    Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Void this payment of {row.Credit:C2}?\n\n" +
+                "This reverses the cash/bank receipt and restores the customer due.",
+                "Void Payment", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var error = _repository.VoidCustomerPayment(row.PaymentId.Value, "Corrected wrong payment");
+            if (error != null)
+            {
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            RefreshDueRow();
+            LoadLedger();
+            PaymentsChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

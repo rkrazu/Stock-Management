@@ -19,13 +19,21 @@ namespace Stock_Managemnet
             UiStyles.Apply(this);
             Text = "Record Supplier Payment";
 
-            cmbMethod.Items.AddRange(new object[] { "Cash", "Bank", "Mobile Banking", "Cheque", "Other" });
-            cmbMethod.SelectedIndex = 0;
             dtpPaidAt.Value = DateTime.Now;
-
+            LoadPaymentMethods();
             LoadSuppliers();
             if (_defaultSupplierId.HasValue)
                 cmbSupplier.SelectedValue = _defaultSupplierId.Value;
+        }
+
+        private void LoadPaymentMethods()
+        {
+            var methods = _repository.GetPaymentMethodOptions().ToList();
+            cmbMethod.DisplayMember = "Name";
+            cmbMethod.ValueMember = "CashAccountId";
+            cmbMethod.DataSource = methods;
+            if (methods.Count > 0)
+                cmbMethod.SelectedIndex = 0;
         }
 
         private void LoadSuppliers()
@@ -57,11 +65,18 @@ namespace Stock_Managemnet
                 return;
             }
 
+            if (!(cmbMethod.SelectedItem is PaymentMethodOption method) || method.CashAccountId == Guid.Empty)
+            {
+                MessageBox.Show("Select a payment method.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             var payment = new SupplierPayment
             {
                 SupplierId = supplierId,
+                CashAccountId = method.CashAccountId,
                 Amount = numAmount.Value,
-                PaymentMethod = cmbMethod.SelectedItem?.ToString() ?? "Cash",
+                PaymentMethod = method.Name,
                 Reference = txtReference.Text.Trim(),
                 Notes = txtNotes.Text.Trim(),
                 PaidAt = dtpPaidAt.Value

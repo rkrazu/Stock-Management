@@ -14,6 +14,7 @@ namespace Stock_Managemnet.Models
         [DataMember] public List<ProductionOrder> ProductionOrders { get; set; } = new List<ProductionOrder>();
         [DataMember] public List<Invoice> Invoices { get; set; } = new List<Invoice>();
         [DataMember] public List<Account> Accounts { get; set; } = new List<Account>();
+        [DataMember] public List<BankAccount> BankAccounts { get; set; } = new List<BankAccount>();
         [DataMember] public List<JournalEntry> JournalEntries { get; set; } = new List<JournalEntry>();
         [DataMember] public List<CustomerPayment> CustomerPayments { get; set; } = new List<CustomerPayment>();
         [DataMember] public List<SupplierPayment> SupplierPayments { get; set; } = new List<SupplierPayment>();

@@ -437,6 +437,41 @@ BEGIN
     );
     CREATE INDEX IX_SupplierPayments_SupplierId ON dbo.SupplierPayments (SupplierId);
     CREATE INDEX IX_SupplierPayments_PaidAt ON dbo.SupplierPayments (PaidAt DESC);
+END;",
+
+            @"IF OBJECT_ID(N'dbo.BankAccounts', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.BankAccounts (
+        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        Name NVARCHAR(200) NOT NULL,
+        AccountNumber NVARCHAR(100) NULL,
+        Branch NVARCHAR(200) NULL,
+        Notes NVARCHAR(500) NULL,
+        GlAccountId UNIQUEIDENTIFIER NOT NULL,
+        IsActive BIT NOT NULL CONSTRAINT DF_BankAccounts_IsActive DEFAULT (1),
+        CreatedAt DATETIME2 NOT NULL
+    );
+    CREATE INDEX IX_BankAccounts_Name ON dbo.BankAccounts (Name);
+END;",
+
+            @"IF COL_LENGTH('dbo.SupplierPayments', 'CashAccountId') IS NULL
+BEGIN
+    ALTER TABLE dbo.SupplierPayments ADD CashAccountId UNIQUEIDENTIFIER NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.SupplierPayments', 'CashAccountName') IS NULL
+BEGIN
+    ALTER TABLE dbo.SupplierPayments ADD CashAccountName NVARCHAR(200) NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.CustomerPayments', 'PaymentMethod') IS NOT NULL
+BEGIN
+    ALTER TABLE dbo.CustomerPayments ALTER COLUMN PaymentMethod NVARCHAR(200) NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.SupplierPayments', 'PaymentMethod') IS NOT NULL
+BEGIN
+    ALTER TABLE dbo.SupplierPayments ALTER COLUMN PaymentMethod NVARCHAR(200) NULL;
 END;"
         };
     }

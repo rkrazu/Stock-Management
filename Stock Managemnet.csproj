@@ -131,6 +131,10 @@
     <Compile Include="Models\StockOutRequest.cs" />
     <Compile Include="Models\Customer.cs" />
     <Compile Include="Models\Supplier.cs" />
+    <Compile Include="Models\BankAccount.cs" />
+    <Compile Include="Models\BankAccountRow.cs" />
+    <Compile Include="Models\BankLedgerRow.cs" />
+    <Compile Include="Models\PaymentMethodOption.cs" />
     <Compile Include="Models\ProductType.cs" />
     <Compile Include="Models\Product.cs" />
     <Compile Include="Models\ProductionMaterial.cs" />
@@ -235,6 +239,15 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="SupplierBalanceSheetForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="BankAccountEditForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="BankAccountEditForm.Designer.cs">
+      <DependentUpon>BankAccountEditForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="BankLedgerForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="ChalanForm.cs">

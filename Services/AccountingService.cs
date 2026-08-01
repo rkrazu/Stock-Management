@@ -10,6 +10,7 @@ namespace Stock_Managemnet.Services
         public void EnsureInitialized(StockData data)
         {
             if (data.Accounts == null) data.Accounts = new List<Account>();
+            if (data.BankAccounts == null) data.BankAccounts = new List<BankAccount>();
             if (data.JournalEntries == null) data.JournalEntries = new List<JournalEntry>();
             if (data.CustomerPayments == null) data.CustomerPayments = new List<CustomerPayment>();
             if (data.BusinessExpenses == null) data.BusinessExpenses = new List<BusinessExpense>();
@@ -323,7 +324,7 @@ namespace Stock_Managemnet.Services
             payment.CustomerName = customer.Name;
 
             var cashAccount = GetAccount(data, payment.CashAccountId);
-            if (cashAccount == null || (cashAccount.Id != SystemAccounts.CashId && cashAccount.Id != SystemAccounts.BankId))
+            if (cashAccount == null || !IsCashOrBankAccount(data, cashAccount.Id))
                 return "Select a cash or bank account.";
 
             payment.CashAccountName = cashAccount.Name;
@@ -403,7 +404,7 @@ namespace Stock_Managemnet.Services
             expense.ExpenseAccountName = expenseAccount.Name;
 
             var cashAccount = GetAccount(data, expense.CashAccountId);
-            if (cashAccount == null || (cashAccount.Id != SystemAccounts.CashId && cashAccount.Id != SystemAccounts.BankId))
+            if (cashAccount == null || !IsCashOrBankAccount(data, cashAccount.Id))
                 return "Select a cash or bank account.";
 
             expense.CashAccountName = cashAccount.Name;
@@ -565,7 +566,8 @@ namespace Stock_Managemnet.Services
                     Description = BuildPaymentDescription(payment),
                     Reference = GetPaymentReference(payment),
                     Debit = 0,
-                    Credit = payment.Amount
+                    Credit = payment.Amount,
+                    PaymentId = payment.Id
                 }));
             }
 
@@ -621,14 +623,16 @@ namespace Stock_Managemnet.Services
             Guid? customerId = null,
             Guid? expenseAccountId = null)
         {
-            var cashAccountIds = new HashSet<Guid> { SystemAccounts.CashId, SystemAccounts.BankId };
+            var cashAccountIds = GetLiquidAccountIds(data);
             if (accountId.HasValue)
                 cashAccountIds = new HashSet<Guid> { accountId.Value };
 
             var expenseAccountIds = new HashSet<Guid>(
                 data.Accounts.Where(a => a.IsActive && a.Type == AccountType.Expense).Select(a => a.Id));
 
-            var rows = new List<CashLedgerRow>();
+            var accountNames = data.Accounts.ToDictionary(a => a.Id, a => a.Name);
+            var rows = new List<(DateTime Date, int Sort, CashLedgerRow Row)>();
+
             foreach (var entry in data.JournalEntries.OrderBy(e => e.EntryDate).ThenBy(e => e.CreatedAt))
             {
                 if (from.HasValue && entry.EntryDate.Date < from.Value.Date)
@@ -652,7 +656,7 @@ namespace Stock_Managemnet.Services
 
                 foreach (var line in entry.Lines.Where(l => cashAccountIds.Contains(l.AccountId)))
                 {
-                    rows.Add(new CashLedgerRow
+                    rows.Add((entry.EntryDate, 0, new CashLedgerRow
                     {
                         Date = entry.EntryDate,
                         AccountName = line.AccountName,
@@ -660,25 +664,145 @@ namespace Stock_Managemnet.Services
                         Reference = entry.ReferenceNumber ?? string.Empty,
                         Debit = line.Debit,
                         Credit = line.Credit
-                    });
+                    }));
+                }
+            }
+
+            // Supplier payments are record-only (no AP journal) but still leave the bank/cash.
+            // Skip when customer/expense filters are active — those views are journal-only.
+            if (!customerId.HasValue
+                && (!expenseAccountId.HasValue || expenseAccountId.Value == Guid.Empty))
+            {
+                foreach (var payment in (data.SupplierPayments ?? Enumerable.Empty<SupplierPayment>())
+                    .Where(p => p.IsActive && p.Amount > 0 && cashAccountIds.Contains(p.CashAccountId)))
+                {
+                    if (from.HasValue && payment.PaidAt.Date < from.Value.Date)
+                        continue;
+                    if (to.HasValue && payment.PaidAt.Date > to.Value.Date)
+                        continue;
+
+                    string accountName;
+                    if (!accountNames.TryGetValue(payment.CashAccountId, out accountName)
+                        || string.IsNullOrWhiteSpace(accountName))
+                        accountName = payment.CashAccountName ?? "Cash/Bank";
+
+                    var method = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Payment" : payment.PaymentMethod;
+                    rows.Add((payment.PaidAt, 1, new CashLedgerRow
+                    {
+                        Date = payment.PaidAt,
+                        AccountName = accountName,
+                        Description = $"{method} paid to supplier {payment.SupplierName}",
+                        Reference = payment.Reference ?? string.Empty,
+                        Debit = 0,
+                        Credit = payment.Amount
+                    }));
                 }
             }
 
             decimal running = 0;
-            foreach (var row in rows.OrderBy(r => r.Date))
+            var ordered = rows.OrderBy(r => r.Date).ThenBy(r => r.Sort).Select(r => r.Row).ToList();
+            foreach (var row in ordered)
             {
                 running += row.Debit - row.Credit;
                 row.RunningBalance = running;
             }
 
-            return rows.OrderBy(r => r.Date);
+            return ordered;
         }
 
         private static Guid? ResolveLedgerCustomerId(JournalEntry entry) =>
             entry?.Lines?.FirstOrDefault(l => l.CustomerId.HasValue)?.CustomerId;
 
-        public IEnumerable<Account> GetCashAndBankAccounts(StockData data) =>
-            data.Accounts.Where(a => a.IsActive && (a.Id == SystemAccounts.CashId || a.Id == SystemAccounts.BankId));
+        public bool IsCashOrBankAccount(StockData data, Guid accountId)
+        {
+            if (accountId == SystemAccounts.CashId || accountId == SystemAccounts.BankId)
+                return true;
+
+            return data?.BankAccounts != null
+                && data.BankAccounts.Any(b => b.IsActive && b.GlAccountId == accountId);
+        }
+
+        public HashSet<Guid> GetLiquidAccountIds(StockData data)
+        {
+            var ids = new HashSet<Guid> { SystemAccounts.CashId, SystemAccounts.BankId };
+            if (data?.BankAccounts == null)
+                return ids;
+
+            foreach (var bank in data.BankAccounts.Where(b => b.IsActive))
+                ids.Add(bank.GlAccountId);
+
+            return ids;
+        }
+
+        public IEnumerable<Account> GetCashAndBankAccounts(StockData data)
+        {
+            var ids = GetLiquidAccountIds(data);
+            return data.Accounts
+                .Where(a => a.IsActive && ids.Contains(a.Id))
+                .OrderBy(a => a.Id == SystemAccounts.CashId ? 0 : a.Id == SystemAccounts.BankId ? 1 : 2)
+                .ThenBy(a => a.Name);
+        }
+
+        public IEnumerable<BankLedgerRow> GetBankLedger(StockData data, Guid glAccountId)
+        {
+            var rows = new List<(DateTime Date, int Sort, BankLedgerRow Row)>();
+
+            foreach (var entry in data.JournalEntries ?? Enumerable.Empty<JournalEntry>())
+            {
+                foreach (var line in entry.Lines ?? Enumerable.Empty<JournalLine>())
+                {
+                    if (line.AccountId != glAccountId)
+                        continue;
+
+                    rows.Add((entry.EntryDate, 0, new BankLedgerRow
+                    {
+                        Date = entry.EntryDate,
+                        EntryType = line.Debit > 0 ? "In" : "Out",
+                        Description = entry.Description ?? string.Empty,
+                        Reference = entry.ReferenceNumber ?? string.Empty,
+                        Debit = line.Debit,
+                        Credit = line.Credit
+                    }));
+                }
+            }
+
+            // Supplier payments are record-only (no AP journal) but still reduce bank cash.
+            foreach (var payment in (data.SupplierPayments ?? Enumerable.Empty<SupplierPayment>())
+                .Where(p => p.IsActive && p.CashAccountId == glAccountId && p.Amount > 0))
+            {
+                var method = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Payment" : payment.PaymentMethod;
+                rows.Add((payment.PaidAt, 1, new BankLedgerRow
+                {
+                    Date = payment.PaidAt,
+                    EntryType = "Out",
+                    Description = $"{method} to supplier {payment.SupplierName}",
+                    Reference = string.IsNullOrWhiteSpace(payment.Reference)
+                        ? payment.Id.ToString("N").Substring(0, 8).ToUpperInvariant()
+                        : payment.Reference,
+                    Debit = 0,
+                    Credit = payment.Amount
+                }));
+            }
+
+            decimal running = 0;
+            var ordered = rows.OrderBy(r => r.Date).ThenBy(r => r.Sort).Select(r => r.Row).ToList();
+            foreach (var row in ordered)
+            {
+                running += row.Debit - row.Credit;
+                row.Balance = running;
+            }
+
+            return ordered;
+        }
+
+        public decimal GetBankDisplayBalance(StockData data, Guid glAccountId)
+        {
+            var journalBalance = GetAccountBalance(data, glAccountId);
+            var supplierOut = (data.SupplierPayments ?? Enumerable.Empty<SupplierPayment>())
+                .Where(p => p.IsActive && p.CashAccountId == glAccountId)
+                .Sum(p => p.Amount);
+            return journalBalance - supplierOut;
+        }
 
         public IEnumerable<Invoice> GetOpenInvoices(StockData data, Guid customerId) =>
             data.Invoices

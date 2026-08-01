@@ -21,15 +21,14 @@ namespace Stock_Managemnet
             UiStyles.Apply(this);
             Text = "Receive Payment";
 
-            cmbMethod.Items.AddRange(new object[] { "Cash", "Bank", "Mobile Banking", "Cheque", "Other" });
-            cmbMethod.SelectedIndex = 0;
             dtpPaidAt.Value = DateTime.Now;
 
             numAmount.Minimum = 0m;
             numAmount.Maximum = 99999999m;
             numAmount.Value = 0m;
 
-            LoadCashAccounts();
+            // Method = Cash + configured bank accounts (drives the GL cash/bank account).
+            LoadPaymentMethods();
             LoadCustomers();
 
             if (_defaultCustomerId.HasValue)
@@ -41,14 +40,14 @@ namespace Stock_Managemnet
             numAmount.Value = 0m;
         }
 
-        private void LoadCashAccounts()
+        private void LoadPaymentMethods()
         {
-            var accounts = _repository.GetCashAndBankAccounts().ToList();
-            cmbCashAccount.DisplayMember = "Name";
-            cmbCashAccount.ValueMember = "Id";
-            cmbCashAccount.DataSource = accounts;
-            if (accounts.Count > 0)
-                cmbCashAccount.SelectedIndex = 0;
+            var methods = _repository.GetPaymentMethodOptions().ToList();
+            cmbMethod.DisplayMember = "Name";
+            cmbMethod.ValueMember = "CashAccountId";
+            cmbMethod.DataSource = methods;
+            if (methods.Count > 0)
+                cmbMethod.SelectedIndex = 0;
         }
 
         private void LoadCustomers()
@@ -115,9 +114,9 @@ namespace Stock_Managemnet
                 return;
             }
 
-            if (!(cmbCashAccount.SelectedValue is Guid cashAccountId))
+            if (!(cmbMethod.SelectedItem is PaymentMethodOption method) || method.CashAccountId == Guid.Empty)
             {
-                MessageBox.Show("Select a cash or bank account.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Select a payment method.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -136,9 +135,9 @@ namespace Stock_Managemnet
             {
                 CustomerId = customerId,
                 InvoiceId = invoiceId,
-                CashAccountId = cashAccountId,
+                CashAccountId = method.CashAccountId,
                 Amount = numAmount.Value,
-                PaymentMethod = cmbMethod.SelectedItem?.ToString(),
+                PaymentMethod = method.Name,
                 Reference = txtReference.Text.Trim(),
                 Notes = txtNotes.Text.Trim(),
                 PaidAt = dtpPaidAt.Value

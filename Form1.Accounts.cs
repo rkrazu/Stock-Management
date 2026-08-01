@@ -16,6 +16,7 @@ namespace Stock_Managemnet
         private Panel panelAccountsChart;
         private Panel panelAccountsCustomerDue;
         private Panel panelAccountsSupplierDue;
+        private Panel panelAccountsBankAccounts;
         private Panel panelAccountsCashLedger;
         private Panel panelAccountsSalesProfit;
         private Panel panelAccountsExpenses;
@@ -33,6 +34,11 @@ namespace Stock_Managemnet
         private Button btnRecordSupplierPayment;
         private Button btnViewSupplierBalanceSheet;
         private DataGridView dgvSupplierDue;
+        private Button btnAddBankAccount;
+        private Button btnEditBankAccount;
+        private Button btnDeleteBankAccount;
+        private Button btnViewBankLedger;
+        private DataGridView dgvBankAccounts;
         private ComboBox cmbCashLedgerAccount;
         private DateTimePicker dtpCashLedgerFrom;
         private DateTimePicker dtpCashLedgerTo;
@@ -61,6 +67,7 @@ namespace Stock_Managemnet
         private CheckBox chkExpenseDateRange;
         private Button btnRecordExpense;
         private DataGridView dgvExpenses;
+        private bool _cashLedgerAccountLoading;
 
         private const int AccountsControlHeight = 32;
         private const int AccountsToolbarGap = 10;
@@ -94,7 +101,8 @@ namespace Stock_Managemnet
                 "Expenses",
                 "Customer Due",
                 "Supplier Due",
-                "Cash Ledger"
+                "Bank Accounts",
+                "Ledger"
             });
 
             panelAccountsContent = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16) };
@@ -103,9 +111,11 @@ namespace Stock_Managemnet
             panelAccountsExpenses = CreateExpensesPanel();
             panelAccountsCustomerDue = CreateCustomerDuePanel();
             panelAccountsSupplierDue = CreateSupplierDuePanel();
+            panelAccountsBankAccounts = CreateBankAccountsPanel();
             panelAccountsCashLedger = CreateCashLedgerPanel();
 
             panelAccountsContent.Controls.Add(panelAccountsCashLedger);
+            panelAccountsContent.Controls.Add(panelAccountsBankAccounts);
             panelAccountsContent.Controls.Add(panelAccountsSupplierDue);
             panelAccountsContent.Controls.Add(panelAccountsCustomerDue);
             panelAccountsContent.Controls.Add(panelAccountsExpenses);
@@ -272,6 +282,33 @@ namespace Stock_Managemnet
 
             dgvSupplierDue = CreateAccountsGrid();
             panel.Controls.Add(dgvSupplierDue);
+            panel.Controls.Add(toolbar);
+            return panel;
+        }
+
+        private Panel CreateBankAccountsPanel()
+        {
+            var panel = new Panel { Dock = DockStyle.Fill, Visible = false };
+
+            btnAddBankAccount = CreateAccountsPrimaryButton("+ Add Bank", 130);
+            btnEditBankAccount = CreateAccountsButton("Edit", 80);
+            btnDeleteBankAccount = CreateAccountsButton("Delete", 80);
+            btnViewBankLedger = CreateAccountsButton("Ledger", 100);
+            btnEditBankAccount.Margin = new Padding(0, AccountsToolbarRowPadding, 10, AccountsToolbarRowPadding);
+            btnDeleteBankAccount.Margin = new Padding(0, AccountsToolbarRowPadding, 10, AccountsToolbarRowPadding);
+            btnViewBankLedger.Margin = new Padding(0, AccountsToolbarRowPadding, 10, AccountsToolbarRowPadding);
+
+            var actionsPanel = CreateToolbarFlow();
+            actionsPanel.WrapContents = false;
+            actionsPanel.Controls.Add(btnViewBankLedger);
+            actionsPanel.Controls.Add(btnEditBankAccount);
+            actionsPanel.Controls.Add(btnDeleteBankAccount);
+            actionsPanel.Controls.Add(btnAddBankAccount);
+
+            var toolbar = CreateToolbarSection(actionsPanel);
+
+            dgvBankAccounts = CreateAccountsGrid();
+            panel.Controls.Add(dgvBankAccounts);
             panel.Controls.Add(toolbar);
             return panel;
         }
@@ -599,7 +636,8 @@ namespace Stock_Managemnet
             GridExportUi.Enable(dgvExpenses, "Expenses");
             GridExportUi.Enable(dgvCustomerDue, "Customer Due");
             GridExportUi.Enable(dgvSupplierDue, "Supplier Due");
-            GridExportUi.Enable(dgvCashLedger, "Cash Ledger");
+            GridExportUi.Enable(dgvBankAccounts, "Bank Accounts");
+            GridExportUi.Enable(dgvCashLedger, "Ledger");
         }
 
         private void ConfigureAccountsGrids()
@@ -642,6 +680,15 @@ namespace Stock_Managemnet
             dgvSupplierDue.Columns["TotalPurchased"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvSupplierDue.Columns["TotalPaid"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvSupplierDue.Columns["BalanceDue"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+
+            dgvBankAccounts.AutoGenerateColumns = false;
+            dgvBankAccounts.Columns.Clear();
+            dgvBankAccounts.Columns.Add("Name", "Account Name");
+            dgvBankAccounts.Columns.Add("AccountNumber", "Account No");
+            dgvBankAccounts.Columns.Add("Branch", "Branch");
+            dgvBankAccounts.Columns.Add("Balance", "Balance");
+            dgvBankAccounts.Columns["Balance"].DefaultCellStyle.Format = "C2";
+            dgvBankAccounts.Columns["Balance"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
             dgvCashLedger.AutoGenerateColumns = false;
             dgvCashLedger.Columns.Clear();
@@ -726,6 +773,11 @@ namespace Stock_Managemnet
             };
             btnRecordSupplierPayment.Click += BtnRecordSupplierPayment_Click;
             btnViewSupplierBalanceSheet.Click += BtnViewSupplierBalanceSheet_Click;
+            btnAddBankAccount.Click += BtnAddBankAccount_Click;
+            btnEditBankAccount.Click += BtnEditBankAccount_Click;
+            btnDeleteBankAccount.Click += BtnDeleteBankAccount_Click;
+            btnViewBankLedger.Click += BtnViewBankLedger_Click;
+            dgvBankAccounts.CellDoubleClick += (s, e) => BtnViewBankLedger_Click(s, e);
             txtSupplierDueSearch.KeyDown += (s, e) =>
             {
                 if (e.KeyCode == Keys.Enter)
@@ -735,7 +787,11 @@ namespace Stock_Managemnet
                     e.SuppressKeyPress = true;
                 }
             };
-            cmbCashLedgerAccount.SelectedIndexChanged += (s, e) => RefreshCashLedger();
+            cmbCashLedgerAccount.SelectedIndexChanged += (s, e) =>
+            {
+                if (!_cashLedgerAccountLoading)
+                    RefreshCashLedger();
+            };
             cashLedgerCustomerSelect.BindSearch(
                 term => _repository.SearchCustomers(term),
                 (customer, term) => _repository.CustomerMatchesSearchTerm(customer, term));
@@ -802,13 +858,15 @@ namespace Stock_Managemnet
             panelAccountsExpenses.Visible = index == 2;
             panelAccountsCustomerDue.Visible = index == 3;
             panelAccountsSupplierDue.Visible = index == 4;
-            panelAccountsCashLedger.Visible = index == 5;
+            panelAccountsBankAccounts.Visible = index == 5;
+            panelAccountsCashLedger.Visible = index == 6;
 
             if (index == 0) RefreshAccountsChart();
             else if (index == 1) RefreshSalesProfit();
             else if (index == 2) RefreshExpenses();
             else if (index == 3) RefreshCustomerDue();
             else if (index == 4) RefreshSupplierDue();
+            else if (index == 5) RefreshBankAccounts();
             else RefreshCashLedger();
 
             RelayoutAccountsToolbars(GetVisibleAccountsPanel(index));
@@ -823,6 +881,7 @@ namespace Stock_Managemnet
                 case 2: return panelAccountsExpenses;
                 case 3: return panelAccountsCustomerDue;
                 case 4: return panelAccountsSupplierDue;
+                case 5: return panelAccountsBankAccounts;
                 default: return panelAccountsCashLedger;
             }
         }
@@ -863,7 +922,8 @@ namespace Stock_Managemnet
 
             var outstanding = _repository.GetTotalOutstanding();
             var cash = _repository.GetAccountBalance(SystemAccounts.CashId);
-            var bank = _repository.GetAccountBalance(SystemAccounts.BankId);
+            var bank = _repository.GetBankAccountRows().Sum(b => b.Balance)
+                + _repository.GetAccountBalance(SystemAccounts.BankId);
             var profit = _repository.GetSalesProfitSummary();
             var expenses = _repository.GetTotalExpenses();
             lblAccountsSummary.Text =
@@ -1018,16 +1078,38 @@ namespace Stock_Managemnet
             }
         }
 
+        private void RefreshBankAccounts()
+        {
+            dgvBankAccounts.Rows.Clear();
+            foreach (var row in _repository.GetBankAccountRows())
+            {
+                var idx = dgvBankAccounts.Rows.Add(
+                    row.Name,
+                    row.AccountNumber,
+                    row.Branch,
+                    row.Balance);
+                dgvBankAccounts.Rows[idx].Tag = row;
+            }
+        }
+
         private void RefreshCashLedger()
         {
-            if (cmbCashLedgerAccount.Items.Count == 0)
+            var selectedAccountId = cmbCashLedgerAccount.SelectedValue as Guid?;
+            var accounts = _repository.GetCashAndBankAccounts().ToList();
+            _cashLedgerAccountLoading = true;
+            try
             {
-                var accounts = _repository.GetCashAndBankAccounts().ToList();
                 cmbCashLedgerAccount.DisplayMember = "Name";
                 cmbCashLedgerAccount.ValueMember = "Id";
                 cmbCashLedgerAccount.DataSource = accounts;
-                dtpCashLedgerTo.Value = DateTime.Today;
-                dtpCashLedgerFrom.Value = DateTime.Today.AddMonths(-1);
+                if (selectedAccountId.HasValue && accounts.Any(a => a.Id == selectedAccountId.Value))
+                    cmbCashLedgerAccount.SelectedValue = selectedAccountId.Value;
+                else if (accounts.Count > 0)
+                    cmbCashLedgerAccount.SelectedIndex = 0;
+            }
+            finally
+            {
+                _cashLedgerAccountLoading = false;
             }
 
             if (cmbCashLedgerExpense.Items.Count == 0)
@@ -1040,6 +1122,12 @@ namespace Stock_Managemnet
                 cmbCashLedgerExpense.DisplayMember = "Name";
                 cmbCashLedgerExpense.ValueMember = "Id";
                 cmbCashLedgerExpense.DataSource = expenseItems;
+            }
+
+            if (dtpCashLedgerTo.Value == default(DateTime))
+            {
+                dtpCashLedgerTo.Value = DateTime.Today;
+                dtpCashLedgerFrom.Value = DateTime.Today.AddMonths(-1);
             }
 
             dgvCashLedger.Rows.Clear();
@@ -1070,7 +1158,7 @@ namespace Stock_Managemnet
             }
 
             if (accountId.HasValue)
-                lblCashBalance.Text = $"Balance: {_repository.GetAccountBalance(accountId.Value):C2}";
+                lblCashBalance.Text = $"Balance: {_repository.GetCashOrBankDisplayBalance(accountId.Value):C2}";
             else
                 lblCashBalance.Text = string.Empty;
         }
@@ -1124,7 +1212,10 @@ namespace Stock_Managemnet
             }
 
             using (var form = new CustomerBalanceSheetForm(_repository, dueRow))
+            {
+                form.PaymentsChanged += (s, args) => RefreshAll();
                 form.ShowDialog(this);
+            }
         }
 
         private void BtnRecordSupplierPayment_Click(object sender, EventArgs e)
@@ -1151,6 +1242,86 @@ namespace Stock_Managemnet
             }
 
             using (var form = new SupplierBalanceSheetForm(_repository, dueRow))
+            {
+                form.PaymentsChanged += (s, args) => RefreshAll();
+                form.ShowDialog(this);
+            }
+        }
+
+        private BankAccountRow GetSelectedBankAccountRow()
+        {
+            if (dgvBankAccounts.CurrentRow == null)
+                return null;
+            return dgvBankAccounts.CurrentRow.Tag as BankAccountRow;
+        }
+
+        private void BtnAddBankAccount_Click(object sender, EventArgs e)
+        {
+            using (var form = new BankAccountEditForm(_repository))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                    RefreshAll();
+            }
+        }
+
+        private void BtnEditBankAccount_Click(object sender, EventArgs e)
+        {
+            var row = GetSelectedBankAccountRow();
+            if (row == null)
+            {
+                MessageBox.Show("Select a bank account first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var bank = _repository.GetBankAccount(row.BankAccountId);
+            if (bank == null)
+            {
+                MessageBox.Show("Bank account not found.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (var form = new BankAccountEditForm(_repository, bank))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                    RefreshAll();
+            }
+        }
+
+        private void BtnDeleteBankAccount_Click(object sender, EventArgs e)
+        {
+            var row = GetSelectedBankAccountRow();
+            if (row == null)
+            {
+                MessageBox.Show("Select a bank account first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Delete bank account \"{row.Name}\"?",
+                Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var error = _repository.DeleteBankAccount(row.BankAccountId);
+            if (error != null)
+            {
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            RefreshAll();
+        }
+
+        private void BtnViewBankLedger_Click(object sender, EventArgs e)
+        {
+            var row = GetSelectedBankAccountRow();
+            if (row == null)
+            {
+                MessageBox.Show("Select a bank account first.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var form = new BankLedgerForm(_repository, row))
                 form.ShowDialog(this);
         }
 
