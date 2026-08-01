@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -314,6 +315,7 @@ namespace Stock_Managemnet
             dgvTransactions.VisibleChanged += Grid_VisibleChanged;
             btnBackupDatabase.Click += BtnBackupDatabase_Click;
             btnRestoreDatabase.Click += BtnRestoreDatabase_Click;
+            btnOpenReceiptsFolder.Click += BtnOpenReceiptsFolder_Click;
             lstSettingsNav.SelectedIndexChanged += LstSettingsNav_SelectedIndexChanged;
             btnChangePassword.Click += BtnChangePassword_Click;
         }
@@ -1724,6 +1726,27 @@ namespace Stock_Managemnet
             var previous = pbDeveloperPhoto.Image;
             pbDeveloperPhoto.Image = DeveloperInfo.LoadPhoto();
             previous?.Dispose();
+        }
+
+        private void BtnOpenReceiptsFolder_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                ReceiptStorageService.EnsureRootExists();
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = ReceiptStorageService.RootPath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Could not open the receipts folder.\r\n\r\n" + ex.Message,
+                    Text,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
         }
 
         private void BtnBackupDatabase_Click(object sender, EventArgs e)

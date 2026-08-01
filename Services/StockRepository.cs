@@ -45,6 +45,7 @@ namespace Stock_Managemnet.Services
 
                 EnsureInvoiceSequence();
                 EnsureProductionSequence();
+                ReceiptStorageService.EnsureRootExists();
             }
             catch (Exception ex)
             {
@@ -324,6 +325,79 @@ namespace Stock_Managemnet.Services
 
             Save();
             return null;
+        }
+
+        public string AttachReceiptToCustomerPayment(CustomerPayment payment, string sourceImagePath)
+        {
+            if (payment == null)
+                return "Invalid payment.";
+
+            try
+            {
+                if (payment.Id == Guid.Empty)
+                    payment.Id = Guid.NewGuid();
+
+                var saved = ReceiptStorageService.SaveImage(sourceImagePath, payment.Id, payment.PaidAt);
+                payment.ReceiptRelativePath = saved.RelativePath;
+                payment.ReceiptOriginalName = saved.OriginalName;
+                payment.ReceiptContentType = saved.ContentType;
+                payment.ReceiptSizeBytes = saved.SizeBytes;
+                payment.ReceiptSha256 = saved.Sha256;
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        public string AttachReceiptToSupplierPayment(SupplierPayment payment, string sourceImagePath)
+        {
+            if (payment == null)
+                return "Invalid payment.";
+
+            try
+            {
+                if (payment.Id == Guid.Empty)
+                    payment.Id = Guid.NewGuid();
+
+                var saved = ReceiptStorageService.SaveImage(sourceImagePath, payment.Id, payment.PaidAt);
+                payment.ReceiptRelativePath = saved.RelativePath;
+                payment.ReceiptOriginalName = saved.OriginalName;
+                payment.ReceiptContentType = saved.ContentType;
+                payment.ReceiptSizeBytes = saved.SizeBytes;
+                payment.ReceiptSha256 = saved.Sha256;
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        public CustomerPayment GetCustomerPayment(Guid paymentId) =>
+            Data.CustomerPayments?.FirstOrDefault(p => p.Id == paymentId);
+
+        public SupplierPayment GetSupplierPayment(Guid paymentId) =>
+            Data.SupplierPayments?.FirstOrDefault(p => p.Id == paymentId);
+
+        public string OpenPaymentReceipt(string relativePath)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(relativePath))
+                    return "No receipt photo is attached.";
+
+                if (!ReceiptStorageService.Exists(relativePath))
+                    return "Receipt photo file is missing from disk.";
+
+                ReceiptStorageService.Open(relativePath);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
         }
 
         public decimal GetCustomerBalance(Guid customerId) =>
@@ -954,7 +1028,8 @@ namespace Stock_Managemnet.Services
                     Reference = payment.Reference ?? string.Empty,
                     Debit = 0,
                     Credit = payment.Amount,
-                    PaymentId = payment.Id
+                    PaymentId = payment.Id,
+                    HasReceipt = payment.HasReceipt
                 }));
             }
 

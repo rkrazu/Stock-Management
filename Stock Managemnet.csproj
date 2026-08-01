@@ -160,6 +160,7 @@
     <Compile Include="Services\Licensing\LicenseService.cs" />
     <Compile Include="Services\Licensing\MachineFingerprint.cs" />
     <Compile Include="Services\DataGridViewExcelExporter.cs" />
+    <Compile Include="Services\ReceiptStorageService.cs" />
     <Compile Include="ActivationForm.cs">
       <SubType>Form</SubType>
     </Compile>

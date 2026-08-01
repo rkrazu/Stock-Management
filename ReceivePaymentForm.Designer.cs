@@ -16,6 +16,10 @@ namespace Stock_Managemnet
         private System.Windows.Forms.TextBox txtReference;
         private System.Windows.Forms.Label lblPaidAt;
         private System.Windows.Forms.DateTimePicker dtpPaidAt;
+        private System.Windows.Forms.Label lblReceipt;
+        private System.Windows.Forms.Label lblReceiptFile;
+        private System.Windows.Forms.Button btnBrowseReceipt;
+        private System.Windows.Forms.Button btnClearReceipt;
         private System.Windows.Forms.Label lblNotes;
         private System.Windows.Forms.TextBox txtNotes;
         private System.Windows.Forms.Button btnSave;
@@ -43,95 +47,98 @@ namespace Stock_Managemnet
             this.txtReference = new System.Windows.Forms.TextBox();
             this.lblPaidAt = new System.Windows.Forms.Label();
             this.dtpPaidAt = new System.Windows.Forms.DateTimePicker();
+            this.lblReceipt = new System.Windows.Forms.Label();
+            this.lblReceiptFile = new System.Windows.Forms.Label();
+            this.btnBrowseReceipt = new System.Windows.Forms.Button();
+            this.btnClearReceipt = new System.Windows.Forms.Button();
             this.lblNotes = new System.Windows.Forms.Label();
             this.txtNotes = new System.Windows.Forms.TextBox();
             this.btnSave = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.numAmount)).BeginInit();
             this.SuspendLayout();
-            //
             this.lblCustomer.AutoSize = true;
             this.lblCustomer.Location = new System.Drawing.Point(20, 20);
             this.lblCustomer.Text = "Customer:";
-            //
             this.cmbCustomer.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbCustomer.Location = new System.Drawing.Point(130, 17);
             this.cmbCustomer.Size = new System.Drawing.Size(450, 23);
             this.cmbCustomer.SelectedIndexChanged += new System.EventHandler(this.CmbCustomer_SelectedIndexChanged);
-            //
             this.lblCustomerBalance.AutoSize = true;
             this.lblCustomerBalance.ForeColor = System.Drawing.Color.FromArgb(37, 99, 235);
             this.lblCustomerBalance.Location = new System.Drawing.Point(130, 44);
             this.lblCustomerBalance.Size = new System.Drawing.Size(450, 15);
-            //
             this.lblInvoice.AutoSize = true;
             this.lblInvoice.Location = new System.Drawing.Point(20, 72);
             this.lblInvoice.Text = "Invoice:";
-            //
             this.cmbInvoice.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbInvoice.Location = new System.Drawing.Point(130, 69);
             this.cmbInvoice.Size = new System.Drawing.Size(450, 23);
             this.cmbInvoice.SelectedIndexChanged += new System.EventHandler(this.CmbInvoice_SelectedIndexChanged);
-            //
             this.lblAmount.AutoSize = true;
             this.lblAmount.Location = new System.Drawing.Point(20, 108);
             this.lblAmount.Text = "Amount:";
-            //
             this.numAmount.DecimalPlaces = 2;
             this.numAmount.Location = new System.Drawing.Point(130, 105);
             this.numAmount.Maximum = new decimal(new int[] { 99999999, 0, 0, 0 });
             this.numAmount.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
             this.numAmount.Size = new System.Drawing.Size(160, 23);
-            this.numAmount.Value = new decimal(new int[] { 0, 0, 0, 0 });
-            //
             this.lblMethod.AutoSize = true;
             this.lblMethod.Location = new System.Drawing.Point(20, 144);
             this.lblMethod.Text = "Method:";
-            //
             this.cmbMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbMethod.Location = new System.Drawing.Point(130, 141);
             this.cmbMethod.Size = new System.Drawing.Size(280, 23);
-            //
             this.lblReference.AutoSize = true;
             this.lblReference.Location = new System.Drawing.Point(20, 180);
             this.lblReference.Text = "Reference:";
-            //
             this.txtReference.Location = new System.Drawing.Point(130, 177);
             this.txtReference.Size = new System.Drawing.Size(450, 23);
-            //
             this.lblPaidAt.AutoSize = true;
             this.lblPaidAt.Location = new System.Drawing.Point(20, 216);
             this.lblPaidAt.Text = "Paid at:";
-            //
             this.dtpPaidAt.CustomFormat = "dd-MMM-yyyy HH:mm";
             this.dtpPaidAt.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dtpPaidAt.Location = new System.Drawing.Point(130, 213);
             this.dtpPaidAt.Size = new System.Drawing.Size(200, 23);
-            //
+            this.lblReceipt.AutoSize = true;
+            this.lblReceipt.Location = new System.Drawing.Point(20, 252);
+            this.lblReceipt.Text = "Receipt photo:";
+            this.lblReceiptFile.AutoSize = true;
+            this.lblReceiptFile.ForeColor = System.Drawing.Color.FromArgb(75, 85, 99);
+            this.lblReceiptFile.Location = new System.Drawing.Point(130, 252);
+            this.lblReceiptFile.MaximumSize = new System.Drawing.Size(280, 0);
+            this.lblReceiptFile.Text = "No photo selected (optional)";
+            this.btnBrowseReceipt.Location = new System.Drawing.Point(420, 248);
+            this.btnBrowseReceipt.Size = new System.Drawing.Size(80, 26);
+            this.btnBrowseReceipt.Text = "Browse...";
+            this.btnBrowseReceipt.UseVisualStyleBackColor = true;
+            this.btnBrowseReceipt.Click += new System.EventHandler(this.BtnBrowseReceipt_Click);
+            this.btnClearReceipt.Location = new System.Drawing.Point(505, 248);
+            this.btnClearReceipt.Size = new System.Drawing.Size(75, 26);
+            this.btnClearReceipt.Text = "Clear";
+            this.btnClearReceipt.UseVisualStyleBackColor = true;
+            this.btnClearReceipt.Click += new System.EventHandler(this.BtnClearReceipt_Click);
             this.lblNotes.AutoSize = true;
-            this.lblNotes.Location = new System.Drawing.Point(20, 252);
+            this.lblNotes.Location = new System.Drawing.Point(20, 290);
             this.lblNotes.Text = "Notes:";
-            //
-            this.txtNotes.Location = new System.Drawing.Point(130, 249);
+            this.txtNotes.Location = new System.Drawing.Point(130, 287);
             this.txtNotes.Multiline = true;
             this.txtNotes.Size = new System.Drawing.Size(450, 70);
-            //
-            this.btnSave.Location = new System.Drawing.Point(424, 335);
+            this.btnSave.Location = new System.Drawing.Point(424, 372);
             this.btnSave.Size = new System.Drawing.Size(75, 28);
             this.btnSave.Text = "Save";
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
-            //
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(505, 335);
+            this.btnCancel.Location = new System.Drawing.Point(505, 372);
             this.btnCancel.Size = new System.Drawing.Size(75, 28);
             this.btnCancel.Text = "Cancel";
             this.btnCancel.Click += new System.EventHandler(this.BtnCancel_Click);
-            //
             this.AcceptButton = this.btnSave;
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
-            this.ClientSize = new System.Drawing.Size(610, 380);
+            this.ClientSize = new System.Drawing.Size(610, 420);
             this.Controls.Add(this.lblCustomer);
             this.Controls.Add(this.cmbCustomer);
             this.Controls.Add(this.lblCustomerBalance);
@@ -145,6 +152,10 @@ namespace Stock_Managemnet
             this.Controls.Add(this.txtReference);
             this.Controls.Add(this.lblPaidAt);
             this.Controls.Add(this.dtpPaidAt);
+            this.Controls.Add(this.lblReceipt);
+            this.Controls.Add(this.lblReceiptFile);
+            this.Controls.Add(this.btnBrowseReceipt);
+            this.Controls.Add(this.btnClearReceipt);
             this.Controls.Add(this.lblNotes);
             this.Controls.Add(this.txtNotes);
             this.Controls.Add(this.btnSave);

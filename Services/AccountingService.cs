@@ -567,7 +567,8 @@ namespace Stock_Managemnet.Services
                     Reference = GetPaymentReference(payment),
                     Debit = 0,
                     Credit = payment.Amount,
-                    PaymentId = payment.Id
+                    PaymentId = payment.Id,
+                    HasReceipt = payment.HasReceipt
                 }));
             }
 

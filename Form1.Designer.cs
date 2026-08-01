@@ -41,6 +41,7 @@ namespace Stock_Managemnet
         private System.Windows.Forms.Label lblBackupHelp;
         private System.Windows.Forms.Button btnBackupDatabase;
         private System.Windows.Forms.Button btnRestoreDatabase;
+        private System.Windows.Forms.Button btnOpenReceiptsFolder;
         private System.Windows.Forms.GroupBox grpPasswordChange;
         private System.Windows.Forms.Label lblCurrentPassword;
         private Stock_Managemnet.Controls.PasswordFieldControl txtCurrentPassword;
@@ -258,6 +259,7 @@ namespace Stock_Managemnet
             this.lblBackupHelp = new System.Windows.Forms.Label();
             this.btnBackupDatabase = new System.Windows.Forms.Button();
             this.btnRestoreDatabase = new System.Windows.Forms.Button();
+            this.btnOpenReceiptsFolder = new System.Windows.Forms.Button();
             this.grpPasswordChange = new System.Windows.Forms.GroupBox();
             this.lblCurrentPassword = new System.Windows.Forms.Label();
             this.txtCurrentPassword = new Stock_Managemnet.Controls.PasswordFieldControl();
@@ -1131,7 +1133,7 @@ namespace Stock_Managemnet
             this.lblSoftwareVersionValue.AutoSize = true;
             this.lblSoftwareVersionValue.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.lblSoftwareVersionValue.Location = new System.Drawing.Point(120, 68);
-            this.lblSoftwareVersionValue.Text = "1.7";
+            this.lblSoftwareVersionValue.Text = "1.8";
             //
             // grpDeveloperInfo
             //
@@ -1236,33 +1238,41 @@ namespace Stock_Managemnet
             this.grpBackupRestore.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.grpBackupRestore.Location = new System.Drawing.Point(0, 126);
-            this.grpBackupRestore.Size = new System.Drawing.Size(760, 220);
+            this.grpBackupRestore.Size = new System.Drawing.Size(760, 300);
             this.grpBackupRestore.Text = "Backup && Restore";
             this.grpBackupRestore.Controls.Add(this.lblBackupHelp);
             this.grpBackupRestore.Controls.Add(this.btnBackupDatabase);
             this.grpBackupRestore.Controls.Add(this.btnRestoreDatabase);
+            this.grpBackupRestore.Controls.Add(this.btnOpenReceiptsFolder);
             //
             // lblBackupHelp
             //
             this.lblBackupHelp.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.lblBackupHelp.Location = new System.Drawing.Point(20, 30);
-            this.lblBackupHelp.Size = new System.Drawing.Size(720, 90);
-            this.lblBackupHelp.Text = "Create a .bak backup file to USB drive or cloud storage. If this computer fails, install the app and SQL Server on a new PC, then restore the backup file to recover all data.";
+            this.lblBackupHelp.Size = new System.Drawing.Size(720, 150);
+            this.lblBackupHelp.Text = "Create a .bak backup file to USB drive or cloud storage. If this computer fails, install the app and SQL Server on a new PC, then restore the backup file to recover all data.\r\n\r\nPayment receipt photos are stored in a hidden Windows folder:\r\nC:\\ProgramData\\StockManagement\\Receipts\\\r\nUse \"Open Receipts Folder\" below, then copy that folder when backing up so receipt images are not lost.";
             //
             // btnBackupDatabase
             //
-            this.btnBackupDatabase.Location = new System.Drawing.Point(20, 140);
+            this.btnBackupDatabase.Location = new System.Drawing.Point(20, 200);
             this.btnBackupDatabase.Size = new System.Drawing.Size(150, 34);
             this.btnBackupDatabase.Text = "Backup Database...";
             this.btnBackupDatabase.UseVisualStyleBackColor = true;
             //
             // btnRestoreDatabase
             //
-            this.btnRestoreDatabase.Location = new System.Drawing.Point(180, 140);
+            this.btnRestoreDatabase.Location = new System.Drawing.Point(180, 200);
             this.btnRestoreDatabase.Size = new System.Drawing.Size(150, 34);
             this.btnRestoreDatabase.Text = "Restore Database...";
             this.btnRestoreDatabase.UseVisualStyleBackColor = true;
+            //
+            // btnOpenReceiptsFolder
+            //
+            this.btnOpenReceiptsFolder.Location = new System.Drawing.Point(340, 200);
+            this.btnOpenReceiptsFolder.Size = new System.Drawing.Size(170, 34);
+            this.btnOpenReceiptsFolder.Text = "Open Receipts Folder";
+            this.btnOpenReceiptsFolder.UseVisualStyleBackColor = true;
             //
             // grpPasswordChange
             //

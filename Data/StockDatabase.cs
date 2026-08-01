@@ -436,7 +436,8 @@ FROM JournalLines";
             {
                 command.CommandText = @"
 SELECT Id, CustomerId, CustomerName, InvoiceId, InvoiceNumber, CashAccountId, CashAccountName,
-       Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt
+       Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt,
+       ReceiptRelativePath, ReceiptOriginalName, ReceiptContentType, ReceiptSizeBytes, ReceiptSha256
 FROM CustomerPayments
 ORDER BY PaidAt DESC";
                 using (var reader = command.ExecuteReader())
@@ -458,7 +459,12 @@ ORDER BY PaidAt DESC";
                             Notes = reader.IsDBNull(10) ? null : reader.GetString(10),
                             PaidAt = reader.GetDateTime(11),
                             IsVoided = reader.FieldCount > 12 && !reader.IsDBNull(12) && reader.GetBoolean(12),
-                            VoidedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) ? (DateTime?)reader.GetDateTime(13) : null
+                            VoidedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) ? (DateTime?)reader.GetDateTime(13) : null,
+                            ReceiptRelativePath = reader.FieldCount > 14 && !reader.IsDBNull(14) ? reader.GetString(14) : null,
+                            ReceiptOriginalName = reader.FieldCount > 15 && !reader.IsDBNull(15) ? reader.GetString(15) : null,
+                            ReceiptContentType = reader.FieldCount > 16 && !reader.IsDBNull(16) ? reader.GetString(16) : null,
+                            ReceiptSizeBytes = reader.FieldCount > 17 && !reader.IsDBNull(17) ? reader.GetInt64(17) : 0L,
+                            ReceiptSha256 = reader.FieldCount > 18 && !reader.IsDBNull(18) ? reader.GetString(18) : null
                         });
                     }
                 }
@@ -474,7 +480,8 @@ ORDER BY PaidAt DESC";
             {
                 command.CommandText = @"
 SELECT Id, SupplierId, SupplierName, Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt,
-       CashAccountId, CashAccountName
+       CashAccountId, CashAccountName,
+       ReceiptRelativePath, ReceiptOriginalName, ReceiptContentType, ReceiptSizeBytes, ReceiptSha256
 FROM SupplierPayments
 ORDER BY PaidAt DESC";
                 using (var reader = command.ExecuteReader())
@@ -494,7 +501,12 @@ ORDER BY PaidAt DESC";
                             IsVoided = reader.FieldCount > 8 && !reader.IsDBNull(8) && reader.GetBoolean(8),
                             VoidedAt = reader.FieldCount > 9 && !reader.IsDBNull(9) ? (DateTime?)reader.GetDateTime(9) : null,
                             CashAccountId = reader.FieldCount > 10 && !reader.IsDBNull(10) ? reader.GetGuid(10) : Guid.Empty,
-                            CashAccountName = reader.FieldCount > 11 && !reader.IsDBNull(11) ? reader.GetString(11) : null
+                            CashAccountName = reader.FieldCount > 11 && !reader.IsDBNull(11) ? reader.GetString(11) : null,
+                            ReceiptRelativePath = reader.FieldCount > 12 && !reader.IsDBNull(12) ? reader.GetString(12) : null,
+                            ReceiptOriginalName = reader.FieldCount > 13 && !reader.IsDBNull(13) ? reader.GetString(13) : null,
+                            ReceiptContentType = reader.FieldCount > 14 && !reader.IsDBNull(14) ? reader.GetString(14) : null,
+                            ReceiptSizeBytes = reader.FieldCount > 15 && !reader.IsDBNull(15) ? reader.GetInt64(15) : 0L,
+                            ReceiptSha256 = reader.FieldCount > 16 && !reader.IsDBNull(16) ? reader.GetString(16) : null
                         });
                     }
                 }
@@ -992,10 +1004,12 @@ VALUES
                     command.CommandText = @"
 INSERT INTO CustomerPayments
     (Id, CustomerId, CustomerName, InvoiceId, InvoiceNumber, CashAccountId, CashAccountName,
-     Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt)
+     Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt,
+     ReceiptRelativePath, ReceiptOriginalName, ReceiptContentType, ReceiptSizeBytes, ReceiptSha256)
 VALUES
     (@Id, @CustomerId, @CustomerName, @InvoiceId, @InvoiceNumber, @CashAccountId, @CashAccountName,
-     @Amount, @PaymentMethod, @Reference, @Notes, @PaidAt, @IsVoided, @VoidedAt)";
+     @Amount, @PaymentMethod, @Reference, @Notes, @PaidAt, @IsVoided, @VoidedAt,
+     @ReceiptRelativePath, @ReceiptOriginalName, @ReceiptContentType, @ReceiptSizeBytes, @ReceiptSha256)";
                     command.Parameters.AddWithValue("@Id", payment.Id);
                     command.Parameters.AddWithValue("@CustomerId", payment.CustomerId);
                     command.Parameters.AddWithValue("@CustomerName", payment.CustomerName);
@@ -1010,6 +1024,11 @@ VALUES
                     command.Parameters.AddWithValue("@PaidAt", payment.PaidAt);
                     command.Parameters.AddWithValue("@IsVoided", payment.IsVoided);
                     command.Parameters.AddWithValue("@VoidedAt", (object)payment.VoidedAt ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ReceiptRelativePath", (object)payment.ReceiptRelativePath ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ReceiptOriginalName", (object)payment.ReceiptOriginalName ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ReceiptContentType", (object)payment.ReceiptContentType ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ReceiptSizeBytes", payment.ReceiptSizeBytes);
+                    command.Parameters.AddWithValue("@ReceiptSha256", (object)payment.ReceiptSha256 ?? DBNull.Value);
                     command.ExecuteNonQuery();
                 }
             }
@@ -1025,10 +1044,12 @@ VALUES
                     command.CommandText = @"
 INSERT INTO SupplierPayments
     (Id, SupplierId, SupplierName, Amount, PaymentMethod, Reference, Notes, PaidAt, IsVoided, VoidedAt,
-     CashAccountId, CashAccountName)
+     CashAccountId, CashAccountName,
+     ReceiptRelativePath, ReceiptOriginalName, ReceiptContentType, ReceiptSizeBytes, ReceiptSha256)
 VALUES
     (@Id, @SupplierId, @SupplierName, @Amount, @PaymentMethod, @Reference, @Notes, @PaidAt, @IsVoided, @VoidedAt,
-     @CashAccountId, @CashAccountName)";
+     @CashAccountId, @CashAccountName,
+     @ReceiptRelativePath, @ReceiptOriginalName, @ReceiptContentType, @ReceiptSizeBytes, @ReceiptSha256)";
                     command.Parameters.AddWithValue("@Id", payment.Id);
                     command.Parameters.AddWithValue("@SupplierId", payment.SupplierId);
                     command.Parameters.AddWithValue("@SupplierName", (object)payment.SupplierName ?? DBNull.Value);
@@ -1042,6 +1063,11 @@ VALUES
                     command.Parameters.AddWithValue("@CashAccountId",
                         payment.CashAccountId == Guid.Empty ? (object)DBNull.Value : payment.CashAccountId);
                     command.Parameters.AddWithValue("@CashAccountName", (object)payment.CashAccountName ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ReceiptRelativePath", (object)payment.ReceiptRelativePath ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ReceiptOriginalName", (object)payment.ReceiptOriginalName ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ReceiptContentType", (object)payment.ReceiptContentType ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ReceiptSizeBytes", payment.ReceiptSizeBytes);
+                    command.Parameters.AddWithValue("@ReceiptSha256", (object)payment.ReceiptSha256 ?? DBNull.Value);
                     command.ExecuteNonQuery();
                 }
             }

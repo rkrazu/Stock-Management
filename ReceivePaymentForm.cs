@@ -11,6 +11,7 @@ namespace Stock_Managemnet
         private readonly StockRepository _repository;
         private readonly Guid? _defaultCustomerId;
         private readonly Guid? _defaultInvoiceId;
+        private string _receiptSourcePath;
 
         public ReceivePaymentForm(StockRepository repository, Customer customer = null, Invoice invoice = null)
         {
@@ -27,9 +28,9 @@ namespace Stock_Managemnet
             numAmount.Maximum = 99999999m;
             numAmount.Value = 0m;
 
-            // Method = Cash + configured bank accounts (drives the GL cash/bank account).
             LoadPaymentMethods();
             LoadCustomers();
+            UpdateReceiptLabel();
 
             if (_defaultCustomerId.HasValue)
                 cmbCustomer.SelectedValue = _defaultCustomerId.Value;
@@ -106,6 +107,51 @@ namespace Stock_Managemnet
             numAmount.Value = 0m;
         }
 
+        private void BtnBrowseReceipt_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new OpenFileDialog
+            {
+                Title = "Select money receipt photo",
+                Filter = "Image files|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff|All files|*.*",
+                CheckFileExists = true,
+                Multiselect = false
+            })
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return;
+
+                if (!ReceiptStorageService.IsAllowedImage(dialog.FileName))
+                {
+                    MessageBox.Show("Select a photo file (JPG, PNG, BMP, GIF, or TIFF).", Text,
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                _receiptSourcePath = dialog.FileName;
+                UpdateReceiptLabel();
+            }
+        }
+
+        private void BtnClearReceipt_Click(object sender, EventArgs e)
+        {
+            _receiptSourcePath = null;
+            UpdateReceiptLabel();
+        }
+
+        private void UpdateReceiptLabel()
+        {
+            if (string.IsNullOrWhiteSpace(_receiptSourcePath))
+            {
+                lblReceiptFile.Text = "No photo selected (optional)";
+                btnClearReceipt.Enabled = false;
+            }
+            else
+            {
+                lblReceiptFile.Text = System.IO.Path.GetFileName(_receiptSourcePath);
+                btnClearReceipt.Enabled = true;
+            }
+        }
+
         private void BtnSave_Click(object sender, EventArgs e)
         {
             if (!(cmbCustomer.SelectedValue is Guid customerId))
@@ -133,6 +179,7 @@ namespace Stock_Managemnet
 
             var payment = new CustomerPayment
             {
+                Id = Guid.NewGuid(),
                 CustomerId = customerId,
                 InvoiceId = invoiceId,
                 CashAccountId = method.CashAccountId,
@@ -142,6 +189,16 @@ namespace Stock_Managemnet
                 Notes = txtNotes.Text.Trim(),
                 PaidAt = dtpPaidAt.Value
             };
+
+            if (!string.IsNullOrWhiteSpace(_receiptSourcePath))
+            {
+                var receiptError = _repository.AttachReceiptToCustomerPayment(payment, _receiptSourcePath);
+                if (receiptError != null)
+                {
+                    MessageBox.Show(receiptError, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
 
             var error = _repository.ReceivePayment(payment);
             if (error != null)

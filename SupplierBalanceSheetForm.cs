@@ -19,6 +19,7 @@ namespace Stock_Managemnet
         private readonly Label _lblSummary;
         private readonly DataGridView _grid;
         private readonly Button _btnVoidPayment;
+        private readonly Button _btnViewReceipt;
 
         public event EventHandler PaymentsChanged;
 
@@ -101,6 +102,16 @@ namespace Stock_Managemnet
             };
             _btnVoidPayment.Click += BtnVoidPayment_Click;
 
+            _btnViewReceipt = new Button
+            {
+                Text = "View Receipt",
+                Font = SummaryFont,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left,
+                Size = new Size(140, 32),
+                Location = new Point(166, 10)
+            };
+            _btnViewReceipt.Click += BtnViewReceipt_Click;
+
             var btnClose = new Button
             {
                 Text = "Close",
@@ -119,6 +130,7 @@ namespace Stock_Managemnet
                 Padding = new Padding(16, 10, 16, 10)
             };
             footer.Controls.Add(_btnVoidPayment);
+            footer.Controls.Add(_btnViewReceipt);
             footer.Controls.Add(btnClose);
 
             var content = new Panel
@@ -252,6 +264,32 @@ namespace Stock_Managemnet
             RefreshDueRow();
             LoadLedger();
             PaymentsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void BtnViewReceipt_Click(object sender, EventArgs e)
+        {
+            if (!(_grid.CurrentRow?.Tag is SupplierLedgerRow row)
+                || !row.PaymentId.HasValue
+                || row.EntryType != "Credit")
+            {
+                MessageBox.Show(
+                    "Select a payment (Credit) row that has a receipt photo.",
+                    Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var payment = _repository.GetSupplierPayment(row.PaymentId.Value);
+            if (payment == null || !payment.HasReceipt)
+            {
+                MessageBox.Show(
+                    "No receipt photo is attached to this payment.",
+                    Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var error = _repository.OpenPaymentReceipt(payment.ReceiptRelativePath);
+            if (error != null)
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 }

@@ -10,6 +10,7 @@ namespace Stock_Managemnet
     {
         private readonly StockRepository _repository;
         private readonly Guid? _defaultSupplierId;
+        private string _receiptSourcePath;
 
         public RecordSupplierPaymentForm(StockRepository repository, Supplier supplier = null)
         {
@@ -22,6 +23,7 @@ namespace Stock_Managemnet
             dtpPaidAt.Value = DateTime.Now;
             LoadPaymentMethods();
             LoadSuppliers();
+            UpdateReceiptLabel();
             if (_defaultSupplierId.HasValue)
                 cmbSupplier.SelectedValue = _defaultSupplierId.Value;
         }
@@ -57,6 +59,51 @@ namespace Stock_Managemnet
                 numAmount.Value = Math.Min(numAmount.Maximum, Math.Max(numAmount.Minimum, balance));
         }
 
+        private void BtnBrowseReceipt_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new OpenFileDialog
+            {
+                Title = "Select money receipt photo",
+                Filter = "Image files|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff|All files|*.*",
+                CheckFileExists = true,
+                Multiselect = false
+            })
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                    return;
+
+                if (!ReceiptStorageService.IsAllowedImage(dialog.FileName))
+                {
+                    MessageBox.Show("Select a photo file (JPG, PNG, BMP, GIF, or TIFF).", Text,
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                _receiptSourcePath = dialog.FileName;
+                UpdateReceiptLabel();
+            }
+        }
+
+        private void BtnClearReceipt_Click(object sender, EventArgs e)
+        {
+            _receiptSourcePath = null;
+            UpdateReceiptLabel();
+        }
+
+        private void UpdateReceiptLabel()
+        {
+            if (string.IsNullOrWhiteSpace(_receiptSourcePath))
+            {
+                lblReceiptFile.Text = "No photo selected (optional)";
+                btnClearReceipt.Enabled = false;
+            }
+            else
+            {
+                lblReceiptFile.Text = System.IO.Path.GetFileName(_receiptSourcePath);
+                btnClearReceipt.Enabled = true;
+            }
+        }
+
         private void BtnSave_Click(object sender, EventArgs e)
         {
             if (!(cmbSupplier.SelectedValue is Guid supplierId))
@@ -73,6 +120,7 @@ namespace Stock_Managemnet
 
             var payment = new SupplierPayment
             {
+                Id = Guid.NewGuid(),
                 SupplierId = supplierId,
                 CashAccountId = method.CashAccountId,
                 Amount = numAmount.Value,
@@ -81,6 +129,16 @@ namespace Stock_Managemnet
                 Notes = txtNotes.Text.Trim(),
                 PaidAt = dtpPaidAt.Value
             };
+
+            if (!string.IsNullOrWhiteSpace(_receiptSourcePath))
+            {
+                var receiptError = _repository.AttachReceiptToSupplierPayment(payment, _receiptSourcePath);
+                if (receiptError != null)
+                {
+                    MessageBox.Show(receiptError, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
 
             var error = _repository.RecordSupplierPayment(payment);
             if (error != null)

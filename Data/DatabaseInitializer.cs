@@ -472,6 +472,48 @@ END;",
             @"IF COL_LENGTH('dbo.SupplierPayments', 'PaymentMethod') IS NOT NULL
 BEGIN
     ALTER TABLE dbo.SupplierPayments ALTER COLUMN PaymentMethod NVARCHAR(200) NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.CustomerPayments', 'ReceiptRelativePath') IS NULL
+BEGIN
+    ALTER TABLE dbo.CustomerPayments ADD ReceiptRelativePath NVARCHAR(500) NULL;
+END;",
+            @"IF COL_LENGTH('dbo.CustomerPayments', 'ReceiptOriginalName') IS NULL
+BEGIN
+    ALTER TABLE dbo.CustomerPayments ADD ReceiptOriginalName NVARCHAR(260) NULL;
+END;",
+            @"IF COL_LENGTH('dbo.CustomerPayments', 'ReceiptContentType') IS NULL
+BEGIN
+    ALTER TABLE dbo.CustomerPayments ADD ReceiptContentType NVARCHAR(100) NULL;
+END;",
+            @"IF COL_LENGTH('dbo.CustomerPayments', 'ReceiptSizeBytes') IS NULL
+BEGIN
+    ALTER TABLE dbo.CustomerPayments ADD ReceiptSizeBytes BIGINT NOT NULL CONSTRAINT DF_CustomerPayments_ReceiptSize DEFAULT (0);
+END;",
+            @"IF COL_LENGTH('dbo.CustomerPayments', 'ReceiptSha256') IS NULL
+BEGIN
+    ALTER TABLE dbo.CustomerPayments ADD ReceiptSha256 NVARCHAR(64) NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.SupplierPayments', 'ReceiptRelativePath') IS NULL
+BEGIN
+    ALTER TABLE dbo.SupplierPayments ADD ReceiptRelativePath NVARCHAR(500) NULL;
+END;",
+            @"IF COL_LENGTH('dbo.SupplierPayments', 'ReceiptOriginalName') IS NULL
+BEGIN
+    ALTER TABLE dbo.SupplierPayments ADD ReceiptOriginalName NVARCHAR(260) NULL;
+END;",
+            @"IF COL_LENGTH('dbo.SupplierPayments', 'ReceiptContentType') IS NULL
+BEGIN
+    ALTER TABLE dbo.SupplierPayments ADD ReceiptContentType NVARCHAR(100) NULL;
+END;",
+            @"IF COL_LENGTH('dbo.SupplierPayments', 'ReceiptSizeBytes') IS NULL
+BEGIN
+    ALTER TABLE dbo.SupplierPayments ADD ReceiptSizeBytes BIGINT NOT NULL CONSTRAINT DF_SupplierPayments_ReceiptSize DEFAULT (0);
+END;",
+            @"IF COL_LENGTH('dbo.SupplierPayments', 'ReceiptSha256') IS NULL
+BEGIN
+    ALTER TABLE dbo.SupplierPayments ADD ReceiptSha256 NVARCHAR(64) NULL;
 END;"
         };
     }
