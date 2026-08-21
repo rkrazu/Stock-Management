@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Globalization;
+using System.Threading;
 using System.Windows.Forms;
 using Stock_Managemnet.Data;
 using Stock_Managemnet.Services;
@@ -13,6 +15,7 @@ namespace Stock_Managemnet
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            ConfigureCurrencyCulture();
 
             if (!LicenseService.IsActivated())
             {
@@ -45,6 +48,19 @@ namespace Stock_Managemnet
             }
 
             Application.Run(new Form1());
+        }
+
+        private static void ConfigureCurrencyCulture()
+        {
+            var culture = (CultureInfo)CultureInfo.GetCultureInfo("bn-BD").Clone();
+            culture.NumberFormat.CurrencySymbol = "৳";
+            culture.NumberFormat.CurrencyPositivePattern = 2;  // ৳ n
+            culture.NumberFormat.CurrencyNegativePattern = 12; // ৳ -n
+
+            CultureInfo.DefaultThreadCurrentCulture = culture;
+            CultureInfo.DefaultThreadCurrentUICulture = culture;
+            Thread.CurrentThread.CurrentCulture = culture;
+            Thread.CurrentThread.CurrentUICulture = culture;
         }
     }
 }

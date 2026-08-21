@@ -627,7 +627,7 @@ namespace Stock_Managemnet
             x += layout.QtyWidth;
             if (layout.ShowPrices)
             {
-                var text = amount < 0 ? $"-{Math.Abs(amount):C2}" : amount.ToString("C2");
+                var text = amount.ToString("C2");
                 DrawCellText(graphics, text, font, new Rectangle(x, y, layout.AmountWidth, layout.RowHeight), false, rightAlign: true);
             }
         }
