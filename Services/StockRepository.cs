@@ -143,7 +143,15 @@ namespace Stock_Managemnet.Services
             if (!request.CustomerId.HasValue)
                 return "Select a customer for sales stock out.";
 
-            var totalAmount = ComputeStockOutTotal(request);
+            var subTotal = ComputeStockOutSubTotal(request);
+            if (request.DiscountAmount < 0)
+                return "Discount cannot be negative.";
+
+            var maxDiscount = Math.Round(subTotal * 0.10m, 2, MidpointRounding.AwayFromZero);
+            if (request.DiscountAmount > maxDiscount)
+                return $"Discount cannot exceed 10% of the invoice amount. Maximum allowed discount: {maxDiscount:C2}.";
+
+            var totalAmount = Math.Max(0, subTotal - request.DiscountAmount);
             if (request.AmountPaidAtSale < 0)
                 return "Paid amount cannot be negative.";
 
@@ -163,7 +171,7 @@ namespace Stock_Managemnet.Services
             return null;
         }
 
-        private decimal ComputeStockOutTotal(StockOutRequest request)
+        private decimal ComputeStockOutSubTotal(StockOutRequest request)
         {
             decimal total = 0;
             foreach (var line in request.Lines)
@@ -177,11 +185,18 @@ namespace Stock_Managemnet.Services
             return total;
         }
 
+        private decimal ComputeStockOutTotal(StockOutRequest request)
+        {
+            var subTotal = ComputeStockOutSubTotal(request);
+            var discount = Math.Max(0, Math.Min(request.DiscountAmount, subTotal));
+            return Math.Max(0, subTotal - discount);
+        }
+
         public Invoice BuildStockOutInvoicePreview(StockOutRequest request)
         {
             var customer = request.CustomerId.HasValue ? GetCustomer(request.CustomerId.Value) : null;
             var items = new List<InvoiceLineItem>();
-            decimal totalAmount = 0;
+            decimal subTotal = 0;
 
             foreach (var line in request.Lines)
             {
@@ -191,7 +206,7 @@ namespace Stock_Managemnet.Services
 
                 var unitPrice = product.UnitPrice;
                 var lineTotal = unitPrice * line.Quantity;
-                totalAmount += lineTotal;
+                subTotal += lineTotal;
                 items.Add(new InvoiceLineItem
                 {
                     ProductId = product.Id,
@@ -205,6 +220,7 @@ namespace Stock_Managemnet.Services
                 });
             }
 
+            var discount = Math.Max(0, Math.Min(request.DiscountAmount, subTotal));
             return new Invoice
             {
                 CustomerId = customer?.Id,
@@ -213,7 +229,8 @@ namespace Stock_Managemnet.Services
                 CustomerAddress = customer?.Address,
                 Notes = request.Notes ?? string.Empty,
                 CreatedAt = DateTime.Now,
-                TotalAmount = totalAmount,
+                DiscountAmount = discount,
+                TotalAmount = Math.Max(0, subTotal - discount),
                 AmountPaid = request.AmountPaidAtSale,
                 Items = items
             };
@@ -229,7 +246,7 @@ namespace Stock_Managemnet.Services
             var invoiceNumber = GenerateInvoiceNumber();
             var items = new List<InvoiceLineItem>();
             Guid? firstTransactionId = null;
-            decimal totalAmount = 0;
+            decimal subTotal = 0;
 
             foreach (var line in request.Lines)
             {
@@ -242,7 +259,7 @@ namespace Stock_Managemnet.Services
 
                 product.Quantity -= line.Quantity;
                 product.LastUpdated = DateTime.Now;
-                totalAmount += lineTotal;
+                subTotal += lineTotal;
 
                 Data.Transactions.Insert(0, new StockTransaction
                 {
@@ -275,6 +292,7 @@ namespace Stock_Managemnet.Services
                 });
             }
 
+            var discount = Math.Max(0, Math.Min(request.DiscountAmount, subTotal));
             var invoice = new Invoice
             {
                 InvoiceNumber = invoiceNumber,
@@ -283,7 +301,8 @@ namespace Stock_Managemnet.Services
                 CustomerPhone = customer?.Phone ?? string.Empty,
                 CustomerAddress = customer?.Address ?? string.Empty,
                 Notes = request.Notes ?? string.Empty,
-                TotalAmount = totalAmount,
+                DiscountAmount = discount,
+                TotalAmount = Math.Max(0, subTotal - discount),
                 AmountPaid = request.AmountPaidAtSale,
                 TransactionId = firstTransactionId,
                 CreatedAt = DateTime.Now,
@@ -962,7 +981,7 @@ namespace Stock_Managemnet.Services
             var paid = Data.SupplierPayments
                 .Where(p => p.IsActive && p.SupplierId == supplierId)
                 .Sum(p => p.Amount);
-            return Math.Max(0, purchased - paid);
+            return purchased - paid;
         }
 
         public IEnumerable<SupplierDueRow> GetSupplierDueReport(string term = null)
@@ -983,10 +1002,10 @@ namespace Stock_Managemnet.Services
                     Phone = supplier.Phone ?? string.Empty,
                     TotalPurchased = totalPurchased,
                     TotalPaid = totalPaid,
-                    BalanceDue = Math.Max(0, totalPurchased - totalPaid),
+                    BalanceDue = totalPurchased - totalPaid,
                     PurchaseCount = purchases.Count
                 };
-            }).Where(r => r.TotalPurchased > 0 || r.TotalPaid > 0 || r.BalanceDue > 0);
+            }).Where(r => r.TotalPurchased > 0 || r.TotalPaid > 0 || r.BalanceDue != 0);
 
             if (!string.IsNullOrWhiteSpace(term))
             {
@@ -1020,12 +1039,17 @@ namespace Stock_Managemnet.Services
             foreach (var payment in Data.SupplierPayments.Where(p => p.SupplierId == supplierId && p.IsActive))
             {
                 var method = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Payment" : payment.PaymentMethod;
+                var description = payment.IsAdvance
+                    ? $"{method} advance paid to supplier"
+                    : $"{method} paid to supplier";
                 entries.Add((payment.PaidAt, 1, new SupplierLedgerRow
                 {
                     Date = payment.PaidAt,
                     EntryType = "Credit",
-                    Description = $"{method} paid to supplier",
-                    Reference = payment.Reference ?? string.Empty,
+                    Description = description,
+                    Reference = payment.IsAdvance
+                        ? (string.IsNullOrWhiteSpace(payment.Reference) ? "ADVANCE" : payment.Reference)
+                        : (payment.Reference ?? string.Empty),
                     Debit = 0,
                     Credit = payment.Amount,
                     PaymentId = payment.Id,
@@ -1062,7 +1086,7 @@ namespace Stock_Managemnet.Services
                 return "Select a cash or bank account.";
 
             var balance = GetSupplierBalance(payment.SupplierId);
-            if (payment.Amount > balance)
+            if (!payment.IsAdvance && balance > 0 && payment.Amount > balance)
                 return $"Payment exceeds supplier due ({balance:C2}).";
 
             payment.Id = payment.Id == Guid.Empty ? Guid.NewGuid() : payment.Id;
@@ -1127,7 +1151,7 @@ namespace Stock_Managemnet.Services
                 invoice.AmountPaid = 0;
 
             foreach (var payment in Data.CustomerPayments
-                .Where(p => p.IsActive && p.CustomerId == customerId && p.Amount > 0)
+                .Where(p => p.IsActive && p.CustomerId == customerId && p.Amount > 0 && !p.IsAdvance)
                 .OrderBy(p => p.PaidAt))
             {
                 var remaining = payment.Amount;

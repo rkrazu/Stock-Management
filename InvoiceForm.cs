@@ -12,6 +12,7 @@ namespace Stock_Managemnet
         private readonly StockOutRequest _stockOutRequest;
         private Invoice _invoice;
         private readonly bool _isDraft;
+        private bool _updatingTotals;
 
         public InvoiceForm(StockRepository repository, StockOutRequest stockOutRequest)
         {
@@ -55,15 +56,48 @@ namespace Stock_Managemnet
             if (accounts.Count > 0)
                 cmbCashAccount.SelectedIndex = 0;
 
-            numAmountPaid.Maximum = Math.Max(0, _invoice.TotalAmount);
-            numAmountPaid.Value = Math.Min(numAmountPaid.Maximum, Math.Max(0, _stockOutRequest.AmountPaidAtSale));
-            UpdatePaymentSummary();
+            var subTotal = _invoice.SubTotal;
+            numDiscount.Maximum = Math.Max(0, subTotal);
+            numDiscount.Value = Math.Min(numDiscount.Maximum, Math.Max(0, _stockOutRequest.DiscountAmount));
 
+            RefreshInvoiceTotalsFromInputs();
+            numDiscount.ValueChanged += (s, e) => RefreshInvoiceTotalsFromInputs();
             numAmountPaid.ValueChanged += (s, e) => UpdatePaymentSummary();
+        }
+
+        private void RefreshInvoiceTotalsFromInputs()
+        {
+            if (!_isDraft || _stockOutRequest == null || _updatingTotals)
+                return;
+
+            _updatingTotals = true;
+            try
+            {
+                numDiscount.Maximum = Math.Max(0, _invoice.SubTotal > 0 ? _invoice.SubTotal : numDiscount.Maximum);
+                if (numDiscount.Value > numDiscount.Maximum)
+                    numDiscount.Value = numDiscount.Maximum;
+
+                _stockOutRequest.DiscountAmount = numDiscount.Value;
+                _invoice = _repository.BuildStockOutInvoicePreview(_stockOutRequest);
+                RenderInvoice();
+
+                numAmountPaid.Maximum = Math.Max(0, _invoice.TotalAmount);
+                if (numAmountPaid.Value > numAmountPaid.Maximum)
+                    numAmountPaid.Value = numAmountPaid.Maximum;
+
+                UpdatePaymentSummary();
+            }
+            finally
+            {
+                _updatingTotals = false;
+            }
         }
 
         private void UpdatePaymentSummary()
         {
+            if (_updatingTotals)
+                return;
+
             var total = _invoice.TotalAmount;
             var paid = numAmountPaid.Value;
             if (paid > total)
@@ -82,10 +116,12 @@ namespace Stock_Managemnet
             if (!_isDraft || _stockOutRequest == null)
                 return;
 
+            _stockOutRequest.DiscountAmount = numDiscount.Value;
             _stockOutRequest.AmountPaidAtSale = numAmountPaid.Value;
             _stockOutRequest.CashAccountId = numAmountPaid.Value > 0 && cmbCashAccount.SelectedValue is Guid accountId
                 ? accountId
                 : (Guid?)null;
+            _invoice = _repository.BuildStockOutInvoicePreview(_stockOutRequest);
             _invoice.AmountPaid = _stockOutRequest.AmountPaidAtSale;
         }
 
@@ -97,6 +133,19 @@ namespace Stock_Managemnet
         private void BtnSubmit_Click(object sender, EventArgs e)
         {
             ApplyPaymentToRequest();
+
+            var subTotal = _invoice.SubTotal;
+            var maxDiscount = Math.Round(subTotal * 0.10m, 2, MidpointRounding.AwayFromZero);
+            if (_stockOutRequest.DiscountAmount > maxDiscount)
+            {
+                MessageBox.Show(
+                    $"Discount cannot exceed 10% of the invoice amount.\nMaximum allowed discount: {maxDiscount:C2}.",
+                    Text,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                numDiscount.Focus();
+                return;
+            }
 
             var validationError = _repository.ValidateStockOut(_stockOutRequest);
             if (validationError != null)

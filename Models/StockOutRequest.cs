@@ -7,6 +7,7 @@ namespace Stock_Managemnet.Models
     {
         public Guid? CustomerId { get; set; }
         public string Notes { get; set; }
+        public decimal DiscountAmount { get; set; }
         public decimal AmountPaidAtSale { get; set; }
         public Guid? CashAccountId { get; set; }
         public List<StockOutLineItem> Lines { get; set; } = new List<StockOutLineItem>();

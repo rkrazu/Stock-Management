@@ -6,6 +6,8 @@ namespace Stock_Managemnet
         private System.Windows.Forms.Panel panelPreview;
         private Stock_Managemnet.Controls.InvoicePreviewControl invoicePreview;
         private System.Windows.Forms.Panel panelPayment;
+        private System.Windows.Forms.Label lblDiscountCaption;
+        private System.Windows.Forms.NumericUpDown numDiscount;
         private System.Windows.Forms.Label lblPaymentTotalCaption;
         private System.Windows.Forms.Label lblPaymentTotal;
         private System.Windows.Forms.Label lblAmountPaidCaption;
@@ -33,6 +35,8 @@ namespace Stock_Managemnet
             this.panelPreview = new System.Windows.Forms.Panel();
             this.invoicePreview = new Stock_Managemnet.Controls.InvoicePreviewControl();
             this.panelPayment = new System.Windows.Forms.Panel();
+            this.lblDiscountCaption = new System.Windows.Forms.Label();
+            this.numDiscount = new System.Windows.Forms.NumericUpDown();
             this.lblPaymentTotalCaption = new System.Windows.Forms.Label();
             this.lblPaymentTotal = new System.Windows.Forms.Label();
             this.lblAmountPaidCaption = new System.Windows.Forms.Label();
@@ -50,6 +54,7 @@ namespace Stock_Managemnet
             this.panelButtons.SuspendLayout();
             this.flowButtons.SuspendLayout();
             this.panelPayment.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numDiscount)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numAmountPaid)).BeginInit();
             this.SuspendLayout();
             //
@@ -65,6 +70,8 @@ namespace Stock_Managemnet
             //
             // panelPayment
             //
+            this.panelPayment.Controls.Add(this.lblDiscountCaption);
+            this.panelPayment.Controls.Add(this.numDiscount);
             this.panelPayment.Controls.Add(this.lblPaymentTotalCaption);
             this.panelPayment.Controls.Add(this.lblPaymentTotal);
             this.panelPayment.Controls.Add(this.lblAmountPaidCaption);
@@ -78,36 +85,50 @@ namespace Stock_Managemnet
             this.panelPayment.Padding = new System.Windows.Forms.Padding(12, 8, 12, 8);
             this.panelPayment.Visible = false;
             //
+            // lblDiscountCaption
+            //
+            this.lblDiscountCaption.AutoSize = true;
+            this.lblDiscountCaption.Location = new System.Drawing.Point(12, 18);
+            this.lblDiscountCaption.Text = "Discount:";
+            //
+            // numDiscount
+            //
+            this.numDiscount.DecimalPlaces = 2;
+            this.numDiscount.Location = new System.Drawing.Point(88, 15);
+            this.numDiscount.Maximum = new decimal(new int[] { 99999999, 0, 0, 0 });
+            this.numDiscount.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this.numDiscount.Size = new System.Drawing.Size(100, 27);
+            //
             // lblPaymentTotalCaption
             //
             this.lblPaymentTotalCaption.AutoSize = true;
-            this.lblPaymentTotalCaption.Location = new System.Drawing.Point(12, 18);
+            this.lblPaymentTotalCaption.Location = new System.Drawing.Point(204, 18);
             this.lblPaymentTotalCaption.Text = "Total:";
             //
             // lblPaymentTotal
             //
             this.lblPaymentTotal.AutoSize = true;
             this.lblPaymentTotal.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
-            this.lblPaymentTotal.Location = new System.Drawing.Point(58, 17);
+            this.lblPaymentTotal.Location = new System.Drawing.Point(250, 17);
             //
             // lblAmountPaidCaption
             //
             this.lblAmountPaidCaption.AutoSize = true;
-            this.lblAmountPaidCaption.Location = new System.Drawing.Point(170, 18);
+            this.lblAmountPaidCaption.Location = new System.Drawing.Point(360, 18);
             this.lblAmountPaidCaption.Text = "Paid now:";
             //
             // numAmountPaid
             //
             this.numAmountPaid.DecimalPlaces = 2;
-            this.numAmountPaid.Location = new System.Drawing.Point(240, 15);
+            this.numAmountPaid.Location = new System.Drawing.Point(440, 15);
             this.numAmountPaid.Maximum = new decimal(new int[] { 99999999, 0, 0, 0 });
             this.numAmountPaid.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
-            this.numAmountPaid.Size = new System.Drawing.Size(120, 27);
+            this.numAmountPaid.Size = new System.Drawing.Size(110, 27);
             //
             // lblBalanceDueCaption
             //
             this.lblBalanceDueCaption.AutoSize = true;
-            this.lblBalanceDueCaption.Location = new System.Drawing.Point(380, 18);
+            this.lblBalanceDueCaption.Location = new System.Drawing.Point(566, 18);
             this.lblBalanceDueCaption.Text = "Due:";
             //
             // lblBalanceDue
@@ -115,13 +136,13 @@ namespace Stock_Managemnet
             this.lblBalanceDue.AutoSize = true;
             this.lblBalanceDue.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.lblBalanceDue.ForeColor = System.Drawing.Color.FromArgb(153, 27, 27);
-            this.lblBalanceDue.Location = new System.Drawing.Point(420, 17);
+            this.lblBalanceDue.Location = new System.Drawing.Point(606, 17);
             //
             // lblCashAccountCaption
             //
             this.lblCashAccountCaption.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblCashAccountCaption.AutoSize = true;
-            this.lblCashAccountCaption.Location = new System.Drawing.Point(560, 18);
+            this.lblCashAccountCaption.Location = new System.Drawing.Point(700, 18);
             this.lblCashAccountCaption.Text = "Receive in:";
             //
             // cmbCashAccount
@@ -129,7 +150,7 @@ namespace Stock_Managemnet
             this.cmbCashAccount.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.cmbCashAccount.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbCashAccount.Enabled = false;
-            this.cmbCashAccount.Location = new System.Drawing.Point(640, 15);
+            this.cmbCashAccount.Location = new System.Drawing.Point(780, 15);
             this.cmbCashAccount.Size = new System.Drawing.Size(140, 27);
             //
             // panelButtons
@@ -196,7 +217,7 @@ namespace Stock_Managemnet
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(720, 520);
+            this.MinimumSize = new System.Drawing.Size(860, 520);
             this.Padding = new System.Windows.Forms.Padding(12);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Invoice";
@@ -206,6 +227,7 @@ namespace Stock_Managemnet
             this.flowButtons.PerformLayout();
             this.panelPayment.ResumeLayout(false);
             this.panelPayment.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numDiscount)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numAmountPaid)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();

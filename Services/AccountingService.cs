@@ -330,7 +330,12 @@ namespace Stock_Managemnet.Services
             payment.CashAccountName = cashAccount.Name;
 
             Invoice invoice = null;
-            if (payment.InvoiceId.HasValue)
+            if (payment.IsAdvance)
+            {
+                payment.InvoiceId = null;
+                payment.InvoiceNumber = "ADVANCE";
+            }
+            else if (payment.InvoiceId.HasValue)
             {
                 invoice = data.Invoices.FirstOrDefault(i => i.Id == payment.InvoiceId.Value);
                 if (invoice == null)
@@ -350,7 +355,7 @@ namespace Stock_Managemnet.Services
             else if (updateInvoiceAmounts)
             {
                 var openBalance = GetCustomerBalance(data, payment.CustomerId);
-                if (payment.Amount > openBalance)
+                if (openBalance > 0 && payment.Amount > openBalance)
                     return $"Payment exceeds customer balance ({openBalance:C2}).";
             }
 
@@ -364,9 +369,11 @@ namespace Stock_Managemnet.Services
                 ReferenceType = JournalReferenceType.Payment,
                 ReferenceId = payment.Id,
                 ReferenceNumber = payment.InvoiceNumber ?? payment.Reference,
-                Description = updateInvoiceAmounts
-                    ? $"Payment received - {customer.Name}"
-                    : $"Payment at sale - {customer.Name}",
+                Description = !updateInvoiceAmounts
+                    ? $"Payment at sale - {customer.Name}"
+                    : payment.IsAdvance
+                        ? $"Advance payment received - {customer.Name}"
+                        : $"Payment received - {customer.Name}",
                 CreatedAt = DateTime.Now,
                 Lines = new List<JournalLine>
                 {
@@ -379,6 +386,9 @@ namespace Stock_Managemnet.Services
             data.CustomerPayments.Insert(0, payment);
 
             if (!updateInvoiceAmounts)
+                return null;
+
+            if (payment.IsAdvance)
                 return null;
 
             if (invoice != null)
@@ -501,13 +511,19 @@ namespace Stock_Managemnet.Services
             return IsDebitNormal(account.Type) ? debits - credits : credits - debits;
         }
 
-        public decimal GetCustomerBalance(StockData data, Guid customerId) =>
-            data.Invoices
+        public decimal GetCustomerBalance(StockData data, Guid customerId)
+        {
+            var invoiced = data.Invoices
                 .Where(i => i.IsActive && i.CustomerId == customerId)
-                .Sum(i => i.BalanceDue);
+                .Sum(i => i.TotalAmount);
+            var paid = (data.CustomerPayments ?? Enumerable.Empty<CustomerPayment>())
+                .Where(p => p.IsActive && p.CustomerId == customerId)
+                .Sum(p => p.Amount);
+            return invoiced - paid;
+        }
 
         public decimal GetTotalOutstanding(StockData data) =>
-            data.Invoices.Where(i => i.IsActive).Sum(i => i.BalanceDue);
+            data.Customers.Sum(c => Math.Max(0, GetCustomerBalance(data, c.Id)));
 
         public IEnumerable<CustomerDueRow> GetCustomerDueReport(StockData data, string term = null)
         {
@@ -515,8 +531,10 @@ namespace Stock_Managemnet.Services
             {
                 var invoices = data.Invoices.Where(i => i.IsActive && i.CustomerId == customer.Id).ToList();
                 var totalInvoiced = invoices.Sum(i => i.TotalAmount);
-                var totalPaid = invoices.Sum(i => i.AmountPaid);
-                var balance = invoices.Sum(i => i.BalanceDue);
+                var totalPaid = (data.CustomerPayments ?? Enumerable.Empty<CustomerPayment>())
+                    .Where(p => p.IsActive && p.CustomerId == customer.Id)
+                    .Sum(p => p.Amount);
+                var balance = totalInvoiced - totalPaid;
                 return new CustomerDueRow
                 {
                     CustomerId = customer.Id,
@@ -527,7 +545,7 @@ namespace Stock_Managemnet.Services
                     BalanceDue = balance,
                     OpenInvoiceCount = invoices.Count(i => i.BalanceDue > 0)
                 };
-            }).Where(r => r.TotalInvoiced > 0 || r.BalanceDue > 0);
+            }).Where(r => r.TotalInvoiced > 0 || r.TotalPaid > 0 || r.BalanceDue != 0);
 
             if (!string.IsNullOrWhiteSpace(term))
             {
@@ -599,6 +617,9 @@ namespace Stock_Managemnet.Services
         private static string BuildPaymentDescription(CustomerPayment payment)
         {
             var method = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Payment" : payment.PaymentMethod;
+            if (payment.IsAdvance)
+                return $"{method} advance payment received";
+
             if (!string.IsNullOrWhiteSpace(payment.InvoiceNumber))
                 return $"{method} received against {payment.InvoiceNumber}";
 
@@ -609,6 +630,9 @@ namespace Stock_Managemnet.Services
         {
             if (!string.IsNullOrWhiteSpace(payment.Reference))
                 return payment.Reference;
+
+            if (payment.IsAdvance)
+                return "ADVANCE";
 
             if (!string.IsNullOrWhiteSpace(payment.InvoiceNumber))
                 return payment.InvoiceNumber;
@@ -849,11 +873,30 @@ namespace Stock_Managemnet.Services
                         continue;
                 }
 
-                foreach (var item in invoice.Items ?? Enumerable.Empty<InvoiceLineItem>())
+                var items = (invoice.Items ?? Enumerable.Empty<InvoiceLineItem>()).ToList();
+                var subTotal = items.Sum(i => i.LineTotal);
+                var discount = Math.Max(0, invoice.DiscountAmount);
+                decimal allocatedDiscount = 0;
+
+                for (var i = 0; i < items.Count; i++)
                 {
+                    var item = items[i];
                     var unitCost = ResolveLineUnitCost(data, item);
                     var costAmount = unitCost * item.Quantity;
-                    var profit = item.LineTotal - costAmount;
+                    decimal lineDiscount = 0;
+                    if (discount > 0 && subTotal > 0)
+                    {
+                        if (i == items.Count - 1)
+                            lineDiscount = discount - allocatedDiscount;
+                        else
+                        {
+                            lineDiscount = Math.Round(discount * (item.LineTotal / subTotal), 2, MidpointRounding.AwayFromZero);
+                            allocatedDiscount += lineDiscount;
+                        }
+                    }
+
+                    var saleAmount = Math.Max(0, item.LineTotal - lineDiscount);
+                    var profit = saleAmount - costAmount;
 
                     rows.Add(new SalesProfitLine
                     {
@@ -862,10 +905,10 @@ namespace Stock_Managemnet.Services
                         CustomerName = invoice.CustomerName ?? string.Empty,
                         ProductName = item.ProductName ?? item.ProductSku ?? string.Empty,
                         Quantity = item.Quantity,
-                        SaleAmount = item.LineTotal,
+                        SaleAmount = saleAmount,
                         CostAmount = costAmount,
                         Profit = profit,
-                        MarginPercent = item.LineTotal > 0 ? profit / item.LineTotal * 100 : 0
+                        MarginPercent = saleAmount > 0 ? profit / saleAmount * 100 : 0
                     });
                 }
             }

@@ -433,6 +433,22 @@ namespace Stock_Managemnet
                 }
 
                 var totalQty = (invoice.Items ?? Enumerable.Empty<InvoiceLineItem>()).Sum(i => i.Quantity);
+                var subTotal = (invoice.Items ?? Enumerable.Empty<InvoiceLineItem>()).Sum(i => i.LineTotal);
+                var discount = Math.Max(0, invoice.DiscountAmount);
+
+                if (discount > 0)
+                {
+                    FillBar(graphics, new Rectangle(0, y, width, layout.RowHeight), Color.FromArgb(250, 250, 250));
+                    DrawSummaryRow(graphics, layout, y, fonts.Label, fonts.Cell, "Subtotal", null, subTotal);
+                    graphics.DrawLine(borderPen, 0, y + layout.RowHeight, width, y + layout.RowHeight);
+                    y += layout.RowHeight;
+
+                    FillBar(graphics, new Rectangle(0, y, width, layout.RowHeight), Color.FromArgb(250, 250, 250));
+                    DrawSummaryRow(graphics, layout, y, fonts.Label, fonts.Cell, "Discount", null, -discount);
+                    graphics.DrawLine(borderPen, 0, y + layout.RowHeight, width, y + layout.RowHeight);
+                    y += layout.RowHeight;
+                }
+
                 FillBar(graphics, new Rectangle(0, y, width, layout.RowHeight), TotalRowColor);
                 DrawTotalRow(graphics, layout, y, fonts.Label, fonts.Cell, totalQty, invoice.TotalAmount);
                 graphics.DrawRectangle(borderPen, 0, layout.TableTop, width, y + layout.RowHeight - layout.TableTop);
@@ -514,11 +530,13 @@ namespace Stock_Managemnet
                 layout.MultilineFieldHeight + 2 +
                 layout.SectionBarHeight;
 
+            var discountRows = (invoice?.DiscountAmount ?? 0m) > 0 ? 2 : 0;
+
             layout.TotalHeight =
                 layout.TableTop +
                 layout.RowHeight +
                 (itemCount * layout.RowHeight) +
-                layout.RowHeight + layout.SectionGap +
+                ((1 + discountRows) * layout.RowHeight) + layout.SectionGap +
                 layout.SignatureHeight + layout.SectionGap +
                 layout.SectionGap + (isPrint ? 30 : 24) + 12;
 
@@ -579,6 +597,39 @@ namespace Stock_Managemnet
             x += layout.QtyWidth;
             if (layout.ShowPrices)
                 DrawCellText(graphics, totalAmount.ToString("C2"), fontBold, new Rectangle(x, y, layout.AmountWidth, layout.RowHeight), true, rightAlign: true);
+        }
+
+        private static void DrawSummaryRow(
+            Graphics graphics,
+            DocumentLayout layout,
+            int y,
+            Font fontBold,
+            Font font,
+            string label,
+            int? qty,
+            decimal amount)
+        {
+            DrawCellText(graphics, label, fontBold, new Rectangle(0, y, layout.ProductInfoWidth, layout.RowHeight), true);
+            var x = layout.ProductInfoWidth;
+            if (layout.ShowPrices)
+            {
+                DrawCellText(graphics, string.Empty, font, new Rectangle(x, y, layout.PriceWidth, layout.RowHeight));
+                x += layout.PriceWidth;
+            }
+
+            DrawCellText(
+                graphics,
+                qty.HasValue ? qty.Value.ToString() : string.Empty,
+                font,
+                new Rectangle(x, y, layout.QtyWidth, layout.RowHeight),
+                false,
+                rightAlign: true);
+            x += layout.QtyWidth;
+            if (layout.ShowPrices)
+            {
+                var text = amount < 0 ? $"-{Math.Abs(amount):C2}" : amount.ToString("C2");
+                DrawCellText(graphics, text, font, new Rectangle(x, y, layout.AmountWidth, layout.RowHeight), false, rightAlign: true);
+            }
         }
 
         private static string FormatProductInfo(int rowIndex, InvoiceLineItem item)

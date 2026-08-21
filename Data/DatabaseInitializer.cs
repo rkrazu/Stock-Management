@@ -514,6 +514,21 @@ END;",
             @"IF COL_LENGTH('dbo.SupplierPayments', 'ReceiptSha256') IS NULL
 BEGIN
     ALTER TABLE dbo.SupplierPayments ADD ReceiptSha256 NVARCHAR(64) NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.CustomerPayments', 'IsAdvance') IS NULL
+BEGIN
+    ALTER TABLE dbo.CustomerPayments ADD IsAdvance BIT NOT NULL CONSTRAINT DF_CustomerPayments_IsAdvance DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.SupplierPayments', 'IsAdvance') IS NULL
+BEGIN
+    ALTER TABLE dbo.SupplierPayments ADD IsAdvance BIT NOT NULL CONSTRAINT DF_SupplierPayments_IsAdvance DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.Invoices', 'DiscountAmount') IS NULL
+BEGIN
+    ALTER TABLE dbo.Invoices ADD DiscountAmount DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Invoices_DiscountAmount DEFAULT (0);
 END;"
         };
     }

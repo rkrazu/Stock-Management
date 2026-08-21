@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using Stock_Managemnet.Models;
@@ -67,22 +68,28 @@ namespace Stock_Managemnet
                 return;
             }
 
-            var invoices = _repository.GetOpenInvoices(customerId)
-                .Select(i => new
+            var items = new List<InvoiceComboItem>
+            {
+                new InvoiceComboItem { Id = Guid.Empty, Display = "Advance Payment" }
+            };
+
+            foreach (var invoice in _repository.GetOpenInvoices(customerId))
+            {
+                items.Add(new InvoiceComboItem
                 {
-                    i.Id,
-                    Display = $"{i.InvoiceNumber}  |  Due {i.BalanceDue:C2}"
-                })
-                .ToList();
+                    Id = invoice.Id,
+                    Display = $"{invoice.InvoiceNumber}  |  Due {invoice.BalanceDue:C2}"
+                });
+            }
 
             cmbInvoice.DisplayMember = "Display";
             cmbInvoice.ValueMember = "Id";
-            cmbInvoice.DataSource = invoices;
-            cmbInvoice.Enabled = invoices.Count > 0;
+            cmbInvoice.DataSource = items;
+            cmbInvoice.Enabled = true;
 
-            if (_defaultInvoiceId.HasValue && invoices.Any(i => i.Id == _defaultInvoiceId.Value))
+            if (_defaultInvoiceId.HasValue && items.Any(i => i.Id == _defaultInvoiceId.Value))
                 cmbInvoice.SelectedValue = _defaultInvoiceId.Value;
-            else if (invoices.Count > 0)
+            else
                 cmbInvoice.SelectedIndex = 0;
         }
 
@@ -91,7 +98,9 @@ namespace Stock_Managemnet
             if (cmbCustomer.SelectedValue is Guid customerId)
             {
                 var balance = _repository.GetCustomerBalance(customerId);
-                lblCustomerBalance.Text = $"Outstanding balance: {balance:C2}";
+                lblCustomerBalance.Text = balance >= 0
+                    ? $"Outstanding balance: {balance:C2}"
+                    : $"Advance / credit: {Math.Abs(balance):C2}";
             }
             else
             {
@@ -174,14 +183,19 @@ namespace Stock_Managemnet
             }
 
             Guid? invoiceId = null;
-            if (cmbInvoice.Enabled && cmbInvoice.SelectedValue is Guid selectedInvoiceId)
+            var isAdvance = true;
+            if (cmbInvoice.Enabled && cmbInvoice.SelectedValue is Guid selectedInvoiceId && selectedInvoiceId != Guid.Empty)
+            {
                 invoiceId = selectedInvoiceId;
+                isAdvance = false;
+            }
 
             var payment = new CustomerPayment
             {
                 Id = Guid.NewGuid(),
                 CustomerId = customerId,
                 InvoiceId = invoiceId,
+                IsAdvance = isAdvance,
                 CashAccountId = method.CashAccountId,
                 Amount = numAmount.Value,
                 PaymentMethod = method.Name,
@@ -215,6 +229,12 @@ namespace Stock_Managemnet
         {
             DialogResult = DialogResult.Cancel;
             Close();
+        }
+
+        private sealed class InvoiceComboItem
+        {
+            public Guid Id { get; set; }
+            public string Display { get; set; }
         }
     }
 }

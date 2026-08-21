@@ -1052,6 +1052,12 @@ namespace Stock_Managemnet
                     dgvCustomerDue.Rows[idx].Cells["BalanceDue"].Style.Font =
                         new Font(dgvCustomerDue.Font, FontStyle.Bold);
                 }
+                else if (row.BalanceDue < 0)
+                {
+                    dgvCustomerDue.Rows[idx].Cells["BalanceDue"].Style.ForeColor = Color.FromArgb(21, 128, 61);
+                    dgvCustomerDue.Rows[idx].Cells["BalanceDue"].Style.Font =
+                        new Font(dgvCustomerDue.Font, FontStyle.Bold);
+                }
             }
         }
 
@@ -1072,6 +1078,12 @@ namespace Stock_Managemnet
                 if (row.BalanceDue > 0)
                 {
                     dgvSupplierDue.Rows[idx].Cells["BalanceDue"].Style.ForeColor = Color.FromArgb(153, 27, 27);
+                    dgvSupplierDue.Rows[idx].Cells["BalanceDue"].Style.Font =
+                        new Font(dgvSupplierDue.Font, FontStyle.Bold);
+                }
+                else if (row.BalanceDue < 0)
+                {
+                    dgvSupplierDue.Rows[idx].Cells["BalanceDue"].Style.ForeColor = Color.FromArgb(21, 128, 61);
                     dgvSupplierDue.Rows[idx].Cells["BalanceDue"].Style.Font =
                         new Font(dgvSupplierDue.Font, FontStyle.Bold);
                 }

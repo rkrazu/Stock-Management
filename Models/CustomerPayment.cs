@@ -20,6 +20,8 @@ namespace Stock_Managemnet.Models
         [DataMember] public DateTime PaidAt { get; set; } = DateTime.Now;
         [DataMember] public bool IsVoided { get; set; }
         [DataMember] public DateTime? VoidedAt { get; set; }
+        /// <summary>Payment received before any invoice exists (customer advance).</summary>
+        [DataMember] public bool IsAdvance { get; set; }
         [DataMember] public string ReceiptRelativePath { get; set; }
         [DataMember] public string ReceiptOriginalName { get; set; }
         [DataMember] public string ReceiptContentType { get; set; }

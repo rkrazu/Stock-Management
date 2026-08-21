@@ -164,7 +164,11 @@ namespace Stock_Managemnet
             return
                 $"Supplier: {_dueRow.SupplierName}\r\n" +
                 $"Phone: {(string.IsNullOrWhiteSpace(_dueRow.Phone) ? "-" : _dueRow.Phone)}\r\n" +
-                $"Purchased: {_dueRow.TotalPurchased:C2}    Paid: {_dueRow.TotalPaid:C2}    Balance due: {_dueRow.BalanceDue:C2}    Purchases: {_dueRow.PurchaseCount}";
+                $"Purchased: {_dueRow.TotalPurchased:C2}    Paid: {_dueRow.TotalPaid:C2}    " +
+                (_dueRow.BalanceDue >= 0
+                    ? $"Balance due: {_dueRow.BalanceDue:C2}"
+                    : $"Advance / credit: {Math.Abs(_dueRow.BalanceDue):C2}") +
+                $"    Purchases: {_dueRow.PurchaseCount}";
         }
 
         private void ConfigureGrid()
