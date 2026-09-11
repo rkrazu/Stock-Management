@@ -19,6 +19,7 @@ namespace Stock_Managemnet
         private Panel panelAccountsBankAccounts;
         private Panel panelAccountsCashLedger;
         private Panel panelAccountsSalesProfit;
+        private Panel panelAccountsCogs;
         private Panel panelAccountsExpenses;
         private Label lblAccountsSummary;
         private DataGridView dgvAccountsChart;
@@ -57,6 +58,14 @@ namespace Stock_Managemnet
         private DateTimePicker dtpProfitTo;
         private CheckBox chkProfitDateRange;
         private DataGridView dgvSalesProfit;
+        private Label lblCogsSummary;
+        private TextBox txtCogsSearch;
+        private Button btnCogsSearch;
+        private Button btnCogsReset;
+        private DateTimePicker dtpCogsFrom;
+        private DateTimePicker dtpCogsTo;
+        private CheckBox chkCogsDateRange;
+        private DataGridView dgvCogs;
         private Label lblExpensesSummary;
         private ComboBox cmbExpenseCategory;
         private TextBox txtExpenseSearch;
@@ -98,6 +107,7 @@ namespace Stock_Managemnet
             {
                 "Chart of Accounts",
                 "Sales Profit",
+                "COGS",
                 "Expenses",
                 "Customer Due",
                 "Supplier Due",
@@ -108,6 +118,7 @@ namespace Stock_Managemnet
             panelAccountsContent = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16) };
             panelAccountsChart = CreateAccountsChartPanel();
             panelAccountsSalesProfit = CreateSalesProfitPanel();
+            panelAccountsCogs = CreateCogsPanel();
             panelAccountsExpenses = CreateExpensesPanel();
             panelAccountsCustomerDue = CreateCustomerDuePanel();
             panelAccountsSupplierDue = CreateSupplierDuePanel();
@@ -119,6 +130,7 @@ namespace Stock_Managemnet
             panelAccountsContent.Controls.Add(panelAccountsSupplierDue);
             panelAccountsContent.Controls.Add(panelAccountsCustomerDue);
             panelAccountsContent.Controls.Add(panelAccountsExpenses);
+            panelAccountsContent.Controls.Add(panelAccountsCogs);
             panelAccountsContent.Controls.Add(panelAccountsSalesProfit);
             panelAccountsContent.Controls.Add(panelAccountsChart);
 
@@ -175,6 +187,42 @@ namespace Stock_Managemnet
             dgvSalesProfit = CreateAccountsGrid();
 
             panel.Controls.Add(dgvSalesProfit);
+            panel.Controls.Add(summaryBar);
+            panel.Controls.Add(toolbar);
+            return panel;
+        }
+
+        private Panel CreateCogsPanel()
+        {
+            var panel = new Panel { Dock = DockStyle.Fill, Visible = false };
+
+            var toolbarRow = CreateToolbarFlow();
+            var lblSearch = CreateAccountsFieldLabel("Search:");
+            txtCogsSearch = new TextBox { Width = 200, Height = AccountsControlHeight };
+            btnCogsSearch = CreateAccountsButton("Search", 76);
+            btnCogsReset = CreateAccountsButton("Reset", 76);
+            chkCogsDateRange = CreateAccountsCheckBox("Date range");
+            var lblFrom = CreateAccountsFieldLabel("From:");
+            dtpCogsFrom = CreateAccountsDatePicker();
+            var lblTo = CreateAccountsFieldLabel("To:");
+            dtpCogsTo = CreateAccountsDatePicker();
+            AddToolbarItem(toolbarRow, lblSearch);
+            AddToolbarItem(toolbarRow, txtCogsSearch);
+            AddToolbarItem(toolbarRow, btnCogsSearch);
+            AddToolbarItem(toolbarRow, btnCogsReset);
+            AddToolbarItem(toolbarRow, chkCogsDateRange, AccountsToolbarGap * 2);
+            AddToolbarItem(toolbarRow, lblFrom);
+            AddToolbarItem(toolbarRow, dtpCogsFrom);
+            AddToolbarItem(toolbarRow, lblTo);
+            AddToolbarItem(toolbarRow, dtpCogsTo, 0);
+
+            var toolbar = CreateToolbarSection(toolbarRow);
+
+            lblCogsSummary = CreateAccountsSummaryLabel(Color.FromArgb(180, 83, 9));
+            var summaryBar = WrapAccountsSummary(lblCogsSummary);
+            dgvCogs = CreateAccountsGrid();
+
+            panel.Controls.Add(dgvCogs);
             panel.Controls.Add(summaryBar);
             panel.Controls.Add(toolbar);
             return panel;
@@ -633,6 +681,7 @@ namespace Stock_Managemnet
         {
             GridExportUi.Enable(dgvAccountsChart, "Chart of Accounts");
             GridExportUi.Enable(dgvSalesProfit, "Sales Profit");
+            GridExportUi.Enable(dgvCogs, "COGS");
             GridExportUi.Enable(dgvExpenses, "Expenses");
             GridExportUi.Enable(dgvCustomerDue, "Customer Due");
             GridExportUi.Enable(dgvSupplierDue, "Supplier Due");
@@ -727,6 +776,22 @@ namespace Stock_Managemnet
             dgvSalesProfit.Columns["CostAmount"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvSalesProfit.Columns["Profit"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvSalesProfit.Columns["MarginPercent"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+
+            dgvCogs.AutoGenerateColumns = false;
+            dgvCogs.Columns.Clear();
+            dgvCogs.Columns.Add("Date", "Date");
+            dgvCogs.Columns.Add("InvoiceNumber", "Invoice #");
+            dgvCogs.Columns.Add("CustomerName", "Customer");
+            dgvCogs.Columns.Add("ProductName", "Product");
+            dgvCogs.Columns.Add("Quantity", "Qty");
+            dgvCogs.Columns.Add("UnitCost", "Unit Cost");
+            dgvCogs.Columns.Add("CostAmount", "COGS");
+            dgvCogs.Columns["Date"].DefaultCellStyle.Format = "g";
+            dgvCogs.Columns["UnitCost"].DefaultCellStyle.Format = "C2";
+            dgvCogs.Columns["CostAmount"].DefaultCellStyle.Format = "C2";
+            dgvCogs.Columns["Quantity"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvCogs.Columns["UnitCost"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvCogs.Columns["CostAmount"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
             dgvExpenses.AutoGenerateColumns = false;
             dgvExpenses.Columns.Clear();
@@ -828,6 +893,25 @@ namespace Stock_Managemnet
             };
             dtpProfitFrom.ValueChanged += (s, e) => { if (chkProfitDateRange.Checked) RefreshSalesProfit(); };
             dtpProfitTo.ValueChanged += (s, e) => { if (chkProfitDateRange.Checked) RefreshSalesProfit(); };
+            btnCogsSearch.Click += (s, e) => RefreshCogs();
+            btnCogsReset.Click += (s, e) => ResetCogsFilters();
+            txtCogsSearch.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    RefreshCogs();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
+            chkCogsDateRange.CheckedChanged += (s, e) =>
+            {
+                dtpCogsFrom.Enabled = chkCogsDateRange.Checked;
+                dtpCogsTo.Enabled = chkCogsDateRange.Checked;
+                RefreshCogs();
+            };
+            dtpCogsFrom.ValueChanged += (s, e) => { if (chkCogsDateRange.Checked) RefreshCogs(); };
+            dtpCogsTo.ValueChanged += (s, e) => { if (chkCogsDateRange.Checked) RefreshCogs(); };
             btnRecordExpense.Click += BtnRecordExpense_Click;
             btnExpenseSearch.Click += (s, e) => RefreshExpenses();
             btnExpenseReset.Click += (s, e) => ResetExpenseFilters();
@@ -855,18 +939,20 @@ namespace Stock_Managemnet
         {
             panelAccountsChart.Visible = index == 0;
             panelAccountsSalesProfit.Visible = index == 1;
-            panelAccountsExpenses.Visible = index == 2;
-            panelAccountsCustomerDue.Visible = index == 3;
-            panelAccountsSupplierDue.Visible = index == 4;
-            panelAccountsBankAccounts.Visible = index == 5;
-            panelAccountsCashLedger.Visible = index == 6;
+            panelAccountsCogs.Visible = index == 2;
+            panelAccountsExpenses.Visible = index == 3;
+            panelAccountsCustomerDue.Visible = index == 4;
+            panelAccountsSupplierDue.Visible = index == 5;
+            panelAccountsBankAccounts.Visible = index == 6;
+            panelAccountsCashLedger.Visible = index == 7;
 
             if (index == 0) RefreshAccountsChart();
             else if (index == 1) RefreshSalesProfit();
-            else if (index == 2) RefreshExpenses();
-            else if (index == 3) RefreshCustomerDue();
-            else if (index == 4) RefreshSupplierDue();
-            else if (index == 5) RefreshBankAccounts();
+            else if (index == 2) RefreshCogs();
+            else if (index == 3) RefreshExpenses();
+            else if (index == 4) RefreshCustomerDue();
+            else if (index == 5) RefreshSupplierDue();
+            else if (index == 6) RefreshBankAccounts();
             else RefreshCashLedger();
 
             RelayoutAccountsToolbars(GetVisibleAccountsPanel(index));
@@ -878,10 +964,11 @@ namespace Stock_Managemnet
             {
                 case 0: return panelAccountsChart;
                 case 1: return panelAccountsSalesProfit;
-                case 2: return panelAccountsExpenses;
-                case 3: return panelAccountsCustomerDue;
-                case 4: return panelAccountsSupplierDue;
-                case 5: return panelAccountsBankAccounts;
+                case 2: return panelAccountsCogs;
+                case 3: return panelAccountsExpenses;
+                case 4: return panelAccountsCustomerDue;
+                case 5: return panelAccountsSupplierDue;
+                case 6: return panelAccountsBankAccounts;
                 default: return panelAccountsCashLedger;
             }
         }
@@ -927,7 +1014,7 @@ namespace Stock_Managemnet
             var profit = _repository.GetSalesProfitSummary();
             var expenses = _repository.GetTotalExpenses();
             lblAccountsSummary.Text =
-                $"Customer due: {outstanding:C2}  |  Cash: {cash:C2}  |  Bank: {bank:C2}  |  Gross profit: {profit.GrossProfit:C2}  |  Expenses: {expenses:C2}";
+                $"Customer due: {outstanding:C2}  |  Cash: {cash:C2}  |  Bank: {bank:C2}  |  COGS: {profit.TotalCost:C2}  |  Gross profit: {profit.GrossProfit:C2}  |  Expenses: {expenses:C2}";
         }
 
         private void RefreshSalesProfit()
@@ -978,6 +1065,51 @@ namespace Stock_Managemnet
             dtpProfitFrom.Enabled = false;
             dtpProfitTo.Enabled = false;
             RefreshSalesProfit();
+        }
+
+        private void RefreshCogs()
+        {
+            if (dtpCogsTo.Value == default(DateTime))
+            {
+                dtpCogsTo.Value = DateTime.Today;
+                dtpCogsFrom.Value = DateTime.Today.AddMonths(-1);
+            }
+
+            DateTime? from = chkCogsDateRange.Checked ? dtpCogsFrom.Value.Date : (DateTime?)null;
+            DateTime? to = chkCogsDateRange.Checked ? dtpCogsTo.Value.Date : (DateTime?)null;
+            var lines = _repository.GetSalesProfitLines(from, to, txtCogsSearch.Text).ToList();
+            var summary = _repository.GetSalesProfitSummary(from, to, txtCogsSearch.Text);
+            var totalQty = lines.Sum(r => r.Quantity);
+
+            lblCogsSummary.Text =
+                $"COGS: {summary.TotalCost:C2}  |  Qty sold: {totalQty}  |  Lines: {lines.Count}  |  Sales: {summary.TotalSales:C2}";
+
+            dgvCogs.Rows.Clear();
+            foreach (var row in lines)
+            {
+                var unitCost = row.Quantity > 0
+                    ? row.CostAmount / row.Quantity
+                    : 0m;
+                dgvCogs.Rows.Add(
+                    row.Date,
+                    row.InvoiceNumber,
+                    row.CustomerName,
+                    row.ProductName,
+                    row.Quantity,
+                    unitCost,
+                    row.CostAmount);
+            }
+        }
+
+        private void ResetCogsFilters()
+        {
+            txtCogsSearch.Clear();
+            chkCogsDateRange.Checked = false;
+            dtpCogsTo.Value = DateTime.Today;
+            dtpCogsFrom.Value = DateTime.Today.AddMonths(-1);
+            dtpCogsFrom.Enabled = false;
+            dtpCogsTo.Enabled = false;
+            RefreshCogs();
         }
 
         private void RefreshExpenses()
