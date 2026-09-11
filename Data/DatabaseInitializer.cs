@@ -529,6 +529,31 @@ END;",
             @"IF COL_LENGTH('dbo.Invoices', 'DiscountAmount') IS NULL
 BEGIN
     ALTER TABLE dbo.Invoices ADD DiscountAmount DECIMAL(18, 2) NOT NULL CONSTRAINT DF_Invoices_DiscountAmount DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.StockTransactions', 'StockInBatchId') IS NULL
+BEGIN
+    ALTER TABLE dbo.StockTransactions ADD StockInBatchId UNIQUEIDENTIFIER NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.StockTransactions', 'StockInNumber') IS NULL
+BEGIN
+    ALTER TABLE dbo.StockTransactions ADD StockInNumber NVARCHAR(20) NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.StockTransactions', 'Status') IS NULL
+BEGIN
+    ALTER TABLE dbo.StockTransactions ADD Status INT NOT NULL CONSTRAINT DF_StockTransactions_Status DEFAULT (0);
+END;",
+
+            @"IF COL_LENGTH('dbo.StockTransactions', 'VoidedAt') IS NULL
+BEGIN
+    ALTER TABLE dbo.StockTransactions ADD VoidedAt DATETIME2 NULL;
+END;",
+
+            @"IF COL_LENGTH('dbo.StockTransactions', 'VoidReason') IS NULL
+BEGIN
+    ALTER TABLE dbo.StockTransactions ADD VoidReason NVARCHAR(500) NULL;
 END;"
         };
     }

@@ -305,7 +305,11 @@ namespace Stock_Managemnet
                     e.SuppressKeyPress = true;
                 }
             };
-            dgvTransactions.SelectionChanged += (s, e) => GuardGridSelection(dgvTransactions);
+            dgvTransactions.SelectionChanged += (s, e) =>
+            {
+                GuardGridSelection(dgvTransactions);
+                UpdateTransactionButtons();
+            };
             dgvProducts.VisibleChanged += Grid_VisibleChanged;
             dgvCustomers.VisibleChanged += Grid_VisibleChanged;
             dgvSuppliers.VisibleChanged += Grid_VisibleChanged;
@@ -318,6 +322,8 @@ namespace Stock_Managemnet
             btnOpenReceiptsFolder.Click += BtnOpenReceiptsFolder_Click;
             lstSettingsNav.SelectedIndexChanged += LstSettingsNav_SelectedIndexChanged;
             btnChangePassword.Click += BtnChangePassword_Click;
+            btnVoidStockIn.Click += BtnVoidStockIn_Click;
+            btnRestoreStockIn.Click += BtnRestoreStockIn_Click;
         }
 
         private void Grid_VisibleChanged(object sender, EventArgs e)
@@ -641,13 +647,14 @@ namespace Stock_Managemnet
             dgvTransactions.AutoGenerateColumns = false;
             dgvTransactions.Columns.Clear();
             dgvTransactions.Columns.Add("Timestamp", "Date/Time");
-            dgvTransactions.Columns.Add("InvoiceNumber", "Invoice");
+            dgvTransactions.Columns.Add("Reference", "Ref");
             dgvTransactions.Columns.Add("Type", "Type");
             dgvTransactions.Columns.Add("ProductSku", "SKU");
             dgvTransactions.Columns.Add("ProductName", "Product");
             dgvTransactions.Columns.Add("Quantity", "Qty");
             dgvTransactions.Columns.Add("TotalValue", "Value");
-            dgvTransactions.Columns.Add("CustomerName", "Customer");
+            dgvTransactions.Columns.Add("PartyName", "Customer/Supplier");
+            dgvTransactions.Columns.Add("Status", "Status");
             dgvTransactions.Columns.Add("Notes", "Notes");
 
             dgvTransactions.Columns["Timestamp"].DefaultCellStyle.Format = "g";
@@ -1131,19 +1138,34 @@ namespace Stock_Managemnet
                 toDate))
             {
                 var typeLabel = t.Type == TransactionType.StockIn ? "IN" : "OUT";
-                dgvTransactions.Rows.Add(
+                var reference = t.IsSale
+                    ? (t.InvoiceNumber ?? string.Empty)
+                    : (!string.IsNullOrWhiteSpace(t.StockInNumber)
+                        ? t.StockInNumber
+                        : (t.InvoiceNumber ?? string.Empty));
+                var party = !string.IsNullOrWhiteSpace(t.CustomerName)
+                    ? t.CustomerName
+                    : (t.SupplierName ?? string.Empty);
+                var status = t.Type == TransactionType.StockIn && !t.IsSale
+                    ? (t.IsActive ? "Active" : "Voided")
+                    : string.Empty;
+
+                var idx = dgvTransactions.Rows.Add(
                     t.Timestamp,
-                    t.IsSale ? (t.InvoiceNumber ?? string.Empty) : string.Empty,
+                    reference,
                     typeLabel,
                     t.ProductSku,
                     t.ProductName,
                     t.Quantity,
                     t.TotalValue,
-                    t.CustomerName ?? string.Empty,
+                    party,
+                    status,
                     t.Notes);
+                dgvTransactions.Rows[idx].Tag = t;
             }
 
             ApplyNoSelection(dgvTransactions);
+            UpdateTransactionButtons();
         }
 
         private Product GetSelectedProduct()
@@ -1195,6 +1217,19 @@ namespace Stock_Managemnet
         {
             if (dgvRecipes.SelectedRows.Count == 0) return null;
             return dgvRecipes.SelectedRows[0].Tag as ProductionRecipe;
+        }
+
+        private StockTransaction GetSelectedTransaction()
+        {
+            if (dgvTransactions.SelectedRows.Count == 0) return null;
+            return dgvTransactions.SelectedRows[0].Tag as StockTransaction;
+        }
+
+        private void UpdateTransactionButtons()
+        {
+            var txn = GetSelectedTransaction();
+            btnVoidStockIn.Enabled = txn != null && _repository.CanVoidStockIn(txn);
+            btnRestoreStockIn.Enabled = txn != null && _repository.CanRestoreStockIn(txn);
         }
 
         private void UpdateActionButtons()
@@ -1577,6 +1612,102 @@ namespace Stock_Managemnet
                 return;
 
             var error = _repository.RestoreProduction(order.Id, "Undo mistaken reversal");
+            if (error != null)
+            {
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            RefreshAll();
+        }
+
+        private void BtnVoidStockIn_Click(object sender, EventArgs e)
+        {
+            var txn = GetSelectedTransaction();
+            if (txn == null)
+                return;
+
+            var latest = _repository.GetTransaction(txn.Id) ?? txn;
+            if (!_repository.CanVoidStockIn(latest))
+            {
+                MessageBox.Show(
+                    "Select an active stock-in entry to void.",
+                    Text,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                RefreshAll();
+                return;
+            }
+
+            var label = !string.IsNullOrWhiteSpace(latest.StockInNumber)
+                ? latest.StockInNumber
+                : latest.ProductName;
+            var batchNote = latest.StockInBatchId.HasValue
+                ? "\n- Void every line from the same stock-in batch"
+                : string.Empty;
+
+            var confirm = MessageBox.Show(
+                $"Void stock-in {label}?\n\n" +
+                "This will:\n" +
+                "- Remove the stocked quantity from inventory" +
+                batchNote + "\n" +
+                "- Remove the purchase from supplier dues (if a supplier was set)\n\n" +
+                "Then stock in again with the correct quantity.",
+                "Void Stock In",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var error = _repository.VoidStockIn(latest.Id, "Correcting mistake");
+            if (error != null)
+            {
+                MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            RefreshAll();
+            MessageBox.Show(
+                "Stock-in voided. Enter the correct quantity with Stock In.",
+                Text,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        private void BtnRestoreStockIn_Click(object sender, EventArgs e)
+        {
+            var txn = GetSelectedTransaction();
+            if (txn == null)
+                return;
+
+            var latest = _repository.GetTransaction(txn.Id) ?? txn;
+            if (!_repository.CanRestoreStockIn(latest))
+            {
+                MessageBox.Show(
+                    "Select a voided stock-in entry to restore.",
+                    Text,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                RefreshAll();
+                return;
+            }
+
+            var label = !string.IsNullOrWhiteSpace(latest.StockInNumber)
+                ? latest.StockInNumber
+                : latest.ProductName;
+
+            var confirm = MessageBox.Show(
+                $"Restore voided stock-in {label}?\n\n" +
+                "This puts the stocked quantity and supplier purchase back.",
+                "Restore Stock In",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var error = _repository.RestoreStockIn(latest.Id, "Undo mistaken void");
             if (error != null)
             {
                 MessageBox.Show(error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);

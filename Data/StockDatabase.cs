@@ -82,6 +82,7 @@ namespace Stock_Managemnet.Data
         {
             data.NextInvoiceNumber = 1;
             data.NextProductionNumber = 1;
+            data.NextStockInNumber = 1;
 
             using (var command = connection.CreateCommand())
             {
@@ -94,6 +95,7 @@ namespace Stock_Managemnet.Data
                         var value = reader.GetInt32(1);
                         if (key == "NextInvoiceNumber") data.NextInvoiceNumber = value;
                         if (key == "NextProductionNumber") data.NextProductionNumber = value;
+                        if (key == "NextStockInNumber") data.NextStockInNumber = value;
                     }
                 }
             }
@@ -188,7 +190,8 @@ namespace Stock_Managemnet.Data
             {
                 command.CommandText = @"
 SELECT Id, InvoiceNumber, IsSale, ProductId, ProductName, ProductSku, Type, Quantity,
-       UnitPrice, TotalValue, Notes, CustomerId, CustomerName, Timestamp, SupplierId, SupplierName
+       UnitPrice, TotalValue, Notes, CustomerId, CustomerName, Timestamp, SupplierId, SupplierName,
+       StockInBatchId, StockInNumber, Status, VoidedAt, VoidReason
 FROM StockTransactions";
                 using (var reader = command.ExecuteReader())
                 {
@@ -211,7 +214,14 @@ FROM StockTransactions";
                             CustomerName = reader.IsDBNull(12) ? null : reader.GetString(12),
                             Timestamp = reader.GetDateTime(13),
                             SupplierId = reader.FieldCount > 14 && !reader.IsDBNull(14) ? (Guid?)reader.GetGuid(14) : null,
-                            SupplierName = reader.FieldCount > 15 && !reader.IsDBNull(15) ? reader.GetString(15) : null
+                            SupplierName = reader.FieldCount > 15 && !reader.IsDBNull(15) ? reader.GetString(15) : null,
+                            StockInBatchId = reader.FieldCount > 16 && !reader.IsDBNull(16) ? (Guid?)reader.GetGuid(16) : null,
+                            StockInNumber = reader.FieldCount > 17 && !reader.IsDBNull(17) ? reader.GetString(17) : null,
+                            Status = reader.FieldCount > 18 && !reader.IsDBNull(18)
+                                ? (OperationalStatus)reader.GetInt32(18)
+                                : OperationalStatus.Active,
+                            VoidedAt = reader.FieldCount > 19 && !reader.IsDBNull(19) ? (DateTime?)reader.GetDateTime(19) : null,
+                            VoidReason = reader.FieldCount > 20 && !reader.IsDBNull(20) ? reader.GetString(20) : null
                         });
                     }
                 }
@@ -732,6 +742,7 @@ DELETE FROM AppSettings;";
         {
             InsertSetting(connection, transaction, "NextInvoiceNumber", data.NextInvoiceNumber);
             InsertSetting(connection, transaction, "NextProductionNumber", data.NextProductionNumber);
+            InsertSetting(connection, transaction, "NextStockInNumber", data.NextStockInNumber);
         }
 
         private static void InsertSetting(SqlConnection connection, SqlTransaction transaction, string key, int value)
@@ -823,10 +834,12 @@ VALUES (@Id, @Name, @Address, @Phone, @Email, @CreatedAt)";
                     command.CommandText = @"
 INSERT INTO StockTransactions
     (Id, InvoiceNumber, IsSale, ProductId, ProductName, ProductSku, Type, Quantity,
-     UnitPrice, TotalValue, Notes, CustomerId, CustomerName, Timestamp, SupplierId, SupplierName)
+     UnitPrice, TotalValue, Notes, CustomerId, CustomerName, Timestamp, SupplierId, SupplierName,
+     StockInBatchId, StockInNumber, Status, VoidedAt, VoidReason)
 VALUES
     (@Id, @InvoiceNumber, @IsSale, @ProductId, @ProductName, @ProductSku, @Type, @Quantity,
-     @UnitPrice, @TotalValue, @Notes, @CustomerId, @CustomerName, @Timestamp, @SupplierId, @SupplierName)";
+     @UnitPrice, @TotalValue, @Notes, @CustomerId, @CustomerName, @Timestamp, @SupplierId, @SupplierName,
+     @StockInBatchId, @StockInNumber, @Status, @VoidedAt, @VoidReason)";
                     command.Parameters.AddWithValue("@Id", txn.Id);
                     command.Parameters.AddWithValue("@InvoiceNumber", (object)txn.InvoiceNumber ?? DBNull.Value);
                     command.Parameters.AddWithValue("@IsSale", txn.IsSale);
@@ -843,6 +856,11 @@ VALUES
                     command.Parameters.AddWithValue("@Timestamp", txn.Timestamp);
                     command.Parameters.AddWithValue("@SupplierId", (object)txn.SupplierId ?? DBNull.Value);
                     command.Parameters.AddWithValue("@SupplierName", (object)txn.SupplierName ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@StockInBatchId", (object)txn.StockInBatchId ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@StockInNumber", (object)txn.StockInNumber ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@Status", (int)txn.Status);
+                    command.Parameters.AddWithValue("@VoidedAt", (object)txn.VoidedAt ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@VoidReason", (object)txn.VoidReason ?? DBNull.Value);
                     command.ExecuteNonQuery();
                 }
             }

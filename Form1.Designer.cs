@@ -130,6 +130,8 @@ namespace Stock_Managemnet
         private System.Windows.Forms.Label lblTxnTo;
         private System.Windows.Forms.DateTimePicker dtpTxnTo;
         private System.Windows.Forms.CheckBox chkTxnDateRange;
+        private System.Windows.Forms.Button btnVoidStockIn;
+        private System.Windows.Forms.Button btnRestoreStockIn;
         private System.Windows.Forms.DataGridView dgvTransactions;
 
         protected override void Dispose(bool disposing)
@@ -229,6 +231,8 @@ namespace Stock_Managemnet
             this.lblTxnTo = new System.Windows.Forms.Label();
             this.dtpTxnTo = new System.Windows.Forms.DateTimePicker();
             this.chkTxnDateRange = new System.Windows.Forms.CheckBox();
+            this.btnVoidStockIn = new System.Windows.Forms.Button();
+            this.btnRestoreStockIn = new System.Windows.Forms.Button();
             this.tabSettings = new System.Windows.Forms.TabPage();
             this.panelSettings = new System.Windows.Forms.Panel();
             this.panelSettingsNav = new System.Windows.Forms.Panel();
@@ -937,7 +941,7 @@ namespace Stock_Managemnet
             this.tlpTransactions.Controls.Add(this.dgvTransactions, 0, 1);
             this.tlpTransactions.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tlpTransactions.RowCount = 2;
-            this.tlpTransactions.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tlpTransactions.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 88F));
             this.tlpTransactions.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             //
             // panelTransactionToolbar
@@ -954,6 +958,8 @@ namespace Stock_Managemnet
             this.panelTransactionToolbar.Controls.Add(this.lblTxnTo);
             this.panelTransactionToolbar.Controls.Add(this.dtpTxnTo);
             this.panelTransactionToolbar.Controls.Add(this.chkTxnDateRange);
+            this.panelTransactionToolbar.Controls.Add(this.btnVoidStockIn);
+            this.panelTransactionToolbar.Controls.Add(this.btnRestoreStockIn);
             //
             // txtTxnSearch
             //
@@ -1020,6 +1026,22 @@ namespace Stock_Managemnet
             this.chkTxnDateRange.Location = new System.Drawing.Point(790, 14);
             this.chkTxnDateRange.Text = "Date range";
             this.chkTxnDateRange.UseVisualStyleBackColor = true;
+            //
+            // btnVoidStockIn
+            //
+            this.btnVoidStockIn.Location = new System.Drawing.Point(11, 48);
+            this.btnVoidStockIn.Size = new System.Drawing.Size(110, 27);
+            this.btnVoidStockIn.Text = "Void Stock In";
+            this.btnVoidStockIn.Enabled = false;
+            this.btnVoidStockIn.UseVisualStyleBackColor = true;
+            //
+            // btnRestoreStockIn
+            //
+            this.btnRestoreStockIn.Location = new System.Drawing.Point(127, 48);
+            this.btnRestoreStockIn.Size = new System.Drawing.Size(125, 27);
+            this.btnRestoreStockIn.Text = "Restore Stock In";
+            this.btnRestoreStockIn.Enabled = false;
+            this.btnRestoreStockIn.UseVisualStyleBackColor = true;
             //
             // dgvTransactions
             //

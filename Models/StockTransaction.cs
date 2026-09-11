@@ -27,6 +27,13 @@ namespace Stock_Managemnet.Models
         [DataMember] public string CustomerName { get; set; }
         [DataMember] public Guid? SupplierId { get; set; }
         [DataMember] public string SupplierName { get; set; }
+        [DataMember] public Guid? StockInBatchId { get; set; }
+        [DataMember] public string StockInNumber { get; set; }
+        [DataMember] public OperationalStatus Status { get; set; } = OperationalStatus.Active;
+        [DataMember] public DateTime? VoidedAt { get; set; }
+        [DataMember] public string VoidReason { get; set; }
         [DataMember] public DateTime Timestamp { get; set; } = DateTime.Now;
+
+        public bool IsActive => Status == OperationalStatus.Active;
     }
 }

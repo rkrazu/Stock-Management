@@ -21,5 +21,6 @@ namespace Stock_Managemnet.Models
         [DataMember] public List<BusinessExpense> BusinessExpenses { get; set; } = new List<BusinessExpense>();
         [DataMember] public int NextInvoiceNumber { get; set; } = 1;
         [DataMember] public int NextProductionNumber { get; set; } = 1;
+        [DataMember] public int NextStockInNumber { get; set; } = 1;
     }
 }

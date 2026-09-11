@@ -36,6 +36,7 @@ namespace Stock_Managemnet.Services
                 if (Data.BusinessExpenses == null) Data.BusinessExpenses = new List<BusinessExpense>();
                 if (Data.NextInvoiceNumber < 1) Data.NextInvoiceNumber = 1;
                 if (Data.NextProductionNumber < 1) Data.NextProductionNumber = 1;
+                if (Data.NextStockInNumber < 1) Data.NextStockInNumber = 1;
 
                 var accountsBefore = Data.Accounts.Count;
                 var journalsBefore = Data.JournalEntries.Count;
@@ -45,6 +46,7 @@ namespace Stock_Managemnet.Services
 
                 EnsureInvoiceSequence();
                 EnsureProductionSequence();
+                EnsureStockInSequence();
                 ReceiptStorageService.EnsureRootExists();
             }
             catch (Exception ex)
@@ -713,6 +715,9 @@ namespace Stock_Managemnet.Services
             if (lineList.Count == 0)
                 return "Add at least one product to stock in.";
 
+            var batchId = Guid.NewGuid();
+            var stockInNumber = GenerateStockInNumber();
+
             foreach (var line in lineList)
             {
                 var error = ApplyStockChange(
@@ -720,7 +725,9 @@ namespace Stock_Managemnet.Services
                     TransactionType.StockIn,
                     line.Quantity,
                     notes,
-                    supplierId: supplierId);
+                    supplierId: supplierId,
+                    stockInBatchId: batchId,
+                    stockInNumber: stockInNumber);
                 if (error != null)
                     return error;
             }
@@ -739,7 +746,9 @@ namespace Stock_Managemnet.Services
             Guid? customerId = null,
             string customerName = null,
             Guid? supplierId = null,
-            string supplierName = null)
+            string supplierName = null,
+            Guid? stockInBatchId = null,
+            string stockInNumber = null)
         {
             if (quantity <= 0)
                 return "Quantity must be greater than zero.";
@@ -790,6 +799,9 @@ namespace Stock_Managemnet.Services
                 CustomerName = customer?.Name ?? customerName,
                 SupplierId = supplier?.Id ?? supplierId,
                 SupplierName = supplier?.Name ?? supplierName,
+                StockInBatchId = type == TransactionType.StockIn ? stockInBatchId : null,
+                StockInNumber = type == TransactionType.StockIn ? stockInNumber : null,
+                Status = OperationalStatus.Active,
                 Timestamp = DateTime.Now
             });
 
@@ -976,7 +988,7 @@ namespace Stock_Managemnet.Services
         public decimal GetSupplierBalance(Guid supplierId)
         {
             var purchased = Data.Transactions
-                .Where(t => t.Type == TransactionType.StockIn && t.SupplierId == supplierId)
+                .Where(t => IsActivePurchaseStockIn(t) && t.SupplierId == supplierId)
                 .Sum(t => t.TotalValue);
             var paid = Data.SupplierPayments
                 .Where(p => p.IsActive && p.SupplierId == supplierId)
@@ -989,7 +1001,7 @@ namespace Stock_Managemnet.Services
             var rows = Data.Suppliers.Select(supplier =>
             {
                 var purchases = Data.Transactions
-                    .Where(t => t.Type == TransactionType.StockIn && t.SupplierId == supplier.Id)
+                    .Where(t => IsActivePurchaseStockIn(t) && t.SupplierId == supplier.Id)
                     .ToList();
                 var totalPurchased = purchases.Sum(t => t.TotalValue);
                 var totalPaid = Data.SupplierPayments
@@ -1023,14 +1035,16 @@ namespace Stock_Managemnet.Services
             var entries = new List<(DateTime SortDate, int SortOrder, SupplierLedgerRow Row)>();
 
             foreach (var txn in Data.Transactions.Where(t =>
-                t.Type == TransactionType.StockIn && t.SupplierId == supplierId))
+                IsActivePurchaseStockIn(t) && t.SupplierId == supplierId))
             {
                 entries.Add((txn.Timestamp, 0, new SupplierLedgerRow
                 {
                     Date = txn.Timestamp,
                     EntryType = "Debit",
                     Description = $"Stock in: {txn.ProductName} x{txn.Quantity}",
-                    Reference = txn.ProductSku ?? string.Empty,
+                    Reference = !string.IsNullOrWhiteSpace(txn.StockInNumber)
+                        ? txn.StockInNumber
+                        : (txn.ProductSku ?? string.Empty),
                     Debit = txn.TotalValue,
                     Credit = 0
                 }));
@@ -1341,9 +1355,11 @@ namespace Stock_Managemnet.Services
                 term = term.Trim();
                 query = query.Where(t =>
                     (t.InvoiceNumber != null && t.InvoiceNumber.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (t.StockInNumber != null && t.StockInNumber.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
                     (t.ProductSku != null && t.ProductSku.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
                     (t.ProductName != null && t.ProductName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
                     (t.CustomerName != null && t.CustomerName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (t.SupplierName != null && t.SupplierName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
                     (t.Notes != null && t.Notes.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0));
             }
 
@@ -1806,6 +1822,148 @@ namespace Stock_Managemnet.Services
             return null;
         }
 
+        public StockTransaction GetTransaction(Guid id) =>
+            Data.Transactions.FirstOrDefault(t => t.Id == id);
+
+        public bool CanVoidStockIn(StockTransaction transaction) =>
+            IsUserPurchaseStockIn(transaction) && transaction.IsActive;
+
+        public bool CanRestoreStockIn(StockTransaction transaction) =>
+            IsUserPurchaseStockIn(transaction) && !transaction.IsActive;
+
+        public string VoidStockIn(Guid transactionId, string reason)
+        {
+            var seed = GetTransaction(transactionId);
+            if (seed == null)
+                return "Stock-in transaction not found.";
+
+            if (!IsUserPurchaseStockIn(seed))
+                return "Only stock-in entries can be voided.";
+
+            if (!seed.IsActive)
+                return "This stock-in is already voided. Restore it first before voiding again.";
+
+            var lines = GetStockInVoidGroup(seed).Where(t => t.IsActive).ToList();
+            if (lines.Count == 0)
+                return "No active stock-in lines to void.";
+
+            foreach (var line in lines)
+            {
+                var product = GetProduct(line.ProductId);
+                if (product == null)
+                    return $"Product not found for '{line.ProductName}'.";
+
+                if (product.Quantity < line.Quantity)
+                {
+                    return $"Cannot void stock-in: only {product.Quantity} of {line.Quantity} remain for '{product.Name}'. " +
+                           "Reverse related production first if materials were already used.";
+                }
+            }
+
+            var label = !string.IsNullOrWhiteSpace(seed.StockInNumber)
+                ? seed.StockInNumber
+                : "stock-in";
+            var voidNote = $"Void {label}";
+
+            foreach (var line in lines)
+            {
+                var stockError = ApplyStockChange(
+                    line.ProductId,
+                    TransactionType.StockOut,
+                    line.Quantity,
+                    voidNote);
+                if (stockError != null)
+                    return stockError;
+
+                line.Status = OperationalStatus.Voided;
+                line.VoidedAt = DateTime.Now;
+                line.VoidReason = reason?.Trim() ?? string.Empty;
+            }
+
+            Save();
+            return null;
+        }
+
+        public string RestoreStockIn(Guid transactionId, string reason)
+        {
+            var seed = GetTransaction(transactionId);
+            if (seed == null)
+                return "Stock-in transaction not found.";
+
+            if (!IsUserPurchaseStockIn(seed))
+                return "Only stock-in entries can be restored.";
+
+            if (seed.IsActive)
+                return "Only voided stock-in entries can be restored.";
+
+            var lines = GetStockInVoidGroup(seed).Where(t => !t.IsActive).ToList();
+            if (lines.Count == 0)
+                return "No voided stock-in lines to restore.";
+
+            var label = !string.IsNullOrWhiteSpace(seed.StockInNumber)
+                ? seed.StockInNumber
+                : "stock-in";
+            var restoreNote = $"Restore {label}";
+
+            foreach (var line in lines)
+            {
+                var stockError = ApplyStockChange(
+                    line.ProductId,
+                    TransactionType.StockIn,
+                    line.Quantity,
+                    restoreNote);
+                if (stockError != null)
+                    return stockError;
+
+                line.Status = OperationalStatus.Active;
+                line.VoidedAt = null;
+                line.VoidReason = null;
+            }
+
+            Save();
+            return null;
+        }
+
+        private static bool IsActivePurchaseStockIn(StockTransaction transaction) =>
+            IsUserPurchaseStockIn(transaction) && transaction.IsActive;
+
+        private static bool IsUserPurchaseStockIn(StockTransaction transaction)
+        {
+            if (transaction == null)
+                return false;
+
+            if (transaction.Type != TransactionType.StockIn || transaction.IsSale)
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(transaction.InvoiceNumber))
+                return false;
+
+            return !IsSystemGeneratedStockNote(transaction.Notes);
+        }
+
+        private static bool IsSystemGeneratedStockNote(string notes)
+        {
+            if (string.IsNullOrWhiteSpace(notes))
+                return false;
+
+            return notes.StartsWith("Reversal of ", StringComparison.OrdinalIgnoreCase) ||
+                   notes.StartsWith("Restore ", StringComparison.OrdinalIgnoreCase) ||
+                   notes.StartsWith("Void ", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private List<StockTransaction> GetStockInVoidGroup(StockTransaction seed)
+        {
+            if (seed.StockInBatchId.HasValue)
+            {
+                return Data.Transactions
+                    .Where(t => t.StockInBatchId == seed.StockInBatchId && IsUserPurchaseStockIn(t))
+                    .OrderBy(t => t.Timestamp)
+                    .ToList();
+            }
+
+            return new List<StockTransaction> { seed };
+        }
+
         private string GenerateProductionNumber()
         {
             string productionNumber;
@@ -1818,6 +1976,45 @@ namespace Stock_Managemnet.Services
                 string.Equals(o.ProductionNumber, productionNumber, StringComparison.OrdinalIgnoreCase)));
 
             return productionNumber;
+        }
+
+        private string GenerateStockInNumber()
+        {
+            string stockInNumber;
+            do
+            {
+                stockInNumber = $"SIN-{Data.NextStockInNumber:D6}";
+                Data.NextStockInNumber++;
+            }
+            while (Data.Transactions.Any(t =>
+                string.Equals(t.StockInNumber, stockInNumber, StringComparison.OrdinalIgnoreCase)));
+
+            return stockInNumber;
+        }
+
+        private void EnsureStockInSequence()
+        {
+            var max = 0;
+            foreach (var transaction in Data.Transactions)
+            {
+                if (TryParsePrefixedSequence(transaction.StockInNumber, "SIN-", out var sequence) && sequence > max)
+                    max = sequence;
+            }
+
+            if (Data.NextStockInNumber <= max)
+                Data.NextStockInNumber = max + 1;
+        }
+
+        private static bool TryParsePrefixedSequence(string value, string prefix, out int sequence)
+        {
+            sequence = 0;
+            if (string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(prefix))
+                return false;
+
+            if (!value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return int.TryParse(value.Substring(prefix.Length), out sequence);
         }
 
         private void EnsureProductionSequence()
