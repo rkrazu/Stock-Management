@@ -354,7 +354,7 @@ namespace Stock_Managemnet
                 var halfWidth = contentWidth / 2;
                 var rightHalfWidth = contentWidth - halfWidth;
                 DrawLabelValue(graphics, fonts.Label, fonts.Text, "INVOICE NO:", invoiceNo, pad, y, halfWidth);
-                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Date:", invoice.CreatedAt.ToString("dd-MMM-yyyy"), pad + halfWidth, y, rightHalfWidth, rightAlign: true);
+                DrawLabelValue(graphics, fonts.Label, fonts.Text, "Date:", invoice.CreatedAt.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture), pad + halfWidth, y, rightHalfWidth, rightAlign: true);
                 y += layout.MetaRowHeight;
                 graphics.DrawLine(borderPen, 0, y, width, y);
 
@@ -678,7 +678,7 @@ namespace Stock_Managemnet
         }
 
         private static string FormatDateTime12Hour(DateTime value) =>
-            value.ToString("dd-MMM-yyyy hh:mm:ss tt");
+            value.ToString("dd-MMM-yyyy hh:mm:ss tt", CultureInfo.InvariantCulture);
 
         private static void DrawLabelValue(
             Graphics graphics,
