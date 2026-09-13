@@ -1186,16 +1186,24 @@ namespace Stock_Managemnet
         private void RefreshCashLedger()
         {
             var selectedAccountId = cmbCashLedgerAccount.SelectedValue as Guid?;
-            var accounts = _repository.GetCashAndBankAccounts().ToList();
+            var liquidAccounts = _repository.GetCashAndBankAccounts().ToList();
+            var accounts = new System.Collections.Generic.List<object>
+            {
+                new { Id = Guid.Empty, Name = "All" }
+            };
+            accounts.AddRange(liquidAccounts.Select(a => new { a.Id, a.Name }));
+
             _cashLedgerAccountLoading = true;
             try
             {
                 cmbCashLedgerAccount.DisplayMember = "Name";
                 cmbCashLedgerAccount.ValueMember = "Id";
                 cmbCashLedgerAccount.DataSource = accounts;
-                if (selectedAccountId.HasValue && accounts.Any(a => a.Id == selectedAccountId.Value))
+                if (selectedAccountId.HasValue
+                    && selectedAccountId.Value != Guid.Empty
+                    && liquidAccounts.Any(a => a.Id == selectedAccountId.Value))
                     cmbCashLedgerAccount.SelectedValue = selectedAccountId.Value;
-                else if (accounts.Count > 0)
+                else
                     cmbCashLedgerAccount.SelectedIndex = 0;
             }
             finally
@@ -1222,7 +1230,10 @@ namespace Stock_Managemnet
             }
 
             dgvCashLedger.Rows.Clear();
-            Guid? accountId = cmbCashLedgerAccount.SelectedValue as Guid?;
+            Guid? accountId = null;
+            if (cmbCashLedgerAccount.SelectedValue is Guid selectedId && selectedId != Guid.Empty)
+                accountId = selectedId;
+
             DateTime? from = chkCashLedgerDateRange.Checked ? dtpCashLedgerFrom.Value.Date : (DateTime?)null;
             DateTime? to = chkCashLedgerDateRange.Checked ? dtpCashLedgerTo.Value.Date : (DateTime?)null;
             Guid? expenseAccountId = null;
@@ -1231,12 +1242,14 @@ namespace Stock_Managemnet
 
             Guid? customerId = cashLedgerCustomerSelect.SelectedCustomer?.Id;
 
-            foreach (var row in _repository.GetCashLedger(
+            var ledgerRows = _repository.GetCashLedger(
                 accountId,
                 from,
                 to,
                 customerId,
-                expenseAccountId))
+                expenseAccountId).ToList();
+
+            foreach (var row in ledgerRows)
             {
                 dgvCashLedger.Rows.Add(
                     row.Date,
@@ -1248,15 +1261,17 @@ namespace Stock_Managemnet
                     row.RunningBalance);
             }
 
-            if (accountId.HasValue)
-                lblCashBalance.Text = $"Balance: {_repository.GetCashOrBankDisplayBalance(accountId.Value):C2}";
-            else
-                lblCashBalance.Text = string.Empty;
+            var balance = ledgerRows.Count > 0
+                ? ledgerRows[ledgerRows.Count - 1].RunningBalance
+                : 0m;
+            lblCashBalance.Text = $"Balance: {balance:C2}";
         }
 
         private void ResetCashLedgerFilters()
         {
             cashLedgerCustomerSelect.ClearSelection();
+            if (cmbCashLedgerAccount.Items.Count > 0)
+                cmbCashLedgerAccount.SelectedIndex = 0;
             if (cmbCashLedgerExpense.Items.Count > 0)
                 cmbCashLedgerExpense.SelectedIndex = 0;
             chkCashLedgerDateRange.Checked = false;
