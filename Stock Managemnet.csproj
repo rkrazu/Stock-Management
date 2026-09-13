@@ -299,6 +299,9 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Controls\GridExportUi.cs" />
+    <Compile Include="Controls\CogsReportControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="UiStyles.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -58,14 +58,11 @@ namespace Stock_Managemnet
         private DateTimePicker dtpProfitTo;
         private CheckBox chkProfitDateRange;
         private DataGridView dgvSalesProfit;
-        private Label lblCogsSummary;
-        private TextBox txtCogsSearch;
-        private Button btnCogsSearch;
         private Button btnCogsReset;
         private DateTimePicker dtpCogsFrom;
         private DateTimePicker dtpCogsTo;
         private CheckBox chkCogsDateRange;
-        private DataGridView dgvCogs;
+        private CogsReportControl cogsReport;
         private Label lblExpensesSummary;
         private ComboBox cmbExpenseCategory;
         private TextBox txtExpenseSearch;
@@ -194,36 +191,27 @@ namespace Stock_Managemnet
 
         private Panel CreateCogsPanel()
         {
-            var panel = new Panel { Dock = DockStyle.Fill, Visible = false };
+            var panel = new Panel { Dock = DockStyle.Fill, Visible = false, BackColor = Color.White };
 
             var toolbarRow = CreateToolbarFlow();
-            var lblSearch = CreateAccountsFieldLabel("Search:");
-            txtCogsSearch = new TextBox { Width = 200, Height = AccountsControlHeight };
-            btnCogsSearch = CreateAccountsButton("Search", 76);
-            btnCogsReset = CreateAccountsButton("Reset", 76);
             chkCogsDateRange = CreateAccountsCheckBox("Date range");
             var lblFrom = CreateAccountsFieldLabel("From:");
             dtpCogsFrom = CreateAccountsDatePicker();
             var lblTo = CreateAccountsFieldLabel("To:");
             dtpCogsTo = CreateAccountsDatePicker();
-            AddToolbarItem(toolbarRow, lblSearch);
-            AddToolbarItem(toolbarRow, txtCogsSearch);
-            AddToolbarItem(toolbarRow, btnCogsSearch);
-            AddToolbarItem(toolbarRow, btnCogsReset);
-            AddToolbarItem(toolbarRow, chkCogsDateRange, AccountsToolbarGap * 2);
+            btnCogsReset = CreateAccountsButton("Reset", 76);
+            AddToolbarItem(toolbarRow, chkCogsDateRange);
             AddToolbarItem(toolbarRow, lblFrom);
             AddToolbarItem(toolbarRow, dtpCogsFrom);
             AddToolbarItem(toolbarRow, lblTo);
-            AddToolbarItem(toolbarRow, dtpCogsTo, 0);
+            AddToolbarItem(toolbarRow, dtpCogsTo);
+            AddToolbarItem(toolbarRow, btnCogsReset, 0);
 
             var toolbar = CreateToolbarSection(toolbarRow);
 
-            lblCogsSummary = CreateAccountsSummaryLabel(Color.FromArgb(180, 83, 9));
-            var summaryBar = WrapAccountsSummary(lblCogsSummary);
-            dgvCogs = CreateAccountsGrid();
+            cogsReport = new CogsReportControl { Dock = DockStyle.Fill };
 
-            panel.Controls.Add(dgvCogs);
-            panel.Controls.Add(summaryBar);
+            panel.Controls.Add(cogsReport);
             panel.Controls.Add(toolbar);
             return panel;
         }
@@ -681,7 +669,6 @@ namespace Stock_Managemnet
         {
             GridExportUi.Enable(dgvAccountsChart, "Chart of Accounts");
             GridExportUi.Enable(dgvSalesProfit, "Sales Profit");
-            GridExportUi.Enable(dgvCogs, "COGS");
             GridExportUi.Enable(dgvExpenses, "Expenses");
             GridExportUi.Enable(dgvCustomerDue, "Customer Due");
             GridExportUi.Enable(dgvSupplierDue, "Supplier Due");
@@ -776,22 +763,6 @@ namespace Stock_Managemnet
             dgvSalesProfit.Columns["CostAmount"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvSalesProfit.Columns["Profit"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             dgvSalesProfit.Columns["MarginPercent"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-
-            dgvCogs.AutoGenerateColumns = false;
-            dgvCogs.Columns.Clear();
-            dgvCogs.Columns.Add("Date", "Date");
-            dgvCogs.Columns.Add("InvoiceNumber", "Invoice #");
-            dgvCogs.Columns.Add("CustomerName", "Customer");
-            dgvCogs.Columns.Add("ProductName", "Product");
-            dgvCogs.Columns.Add("Quantity", "Qty");
-            dgvCogs.Columns.Add("UnitCost", "Unit Cost");
-            dgvCogs.Columns.Add("CostAmount", "COGS");
-            dgvCogs.Columns["Date"].DefaultCellStyle.Format = "g";
-            dgvCogs.Columns["UnitCost"].DefaultCellStyle.Format = "C2";
-            dgvCogs.Columns["CostAmount"].DefaultCellStyle.Format = "C2";
-            dgvCogs.Columns["Quantity"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-            dgvCogs.Columns["UnitCost"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-            dgvCogs.Columns["CostAmount"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
             dgvExpenses.AutoGenerateColumns = false;
             dgvExpenses.Columns.Clear();
@@ -893,17 +864,7 @@ namespace Stock_Managemnet
             };
             dtpProfitFrom.ValueChanged += (s, e) => { if (chkProfitDateRange.Checked) RefreshSalesProfit(); };
             dtpProfitTo.ValueChanged += (s, e) => { if (chkProfitDateRange.Checked) RefreshSalesProfit(); };
-            btnCogsSearch.Click += (s, e) => RefreshCogs();
             btnCogsReset.Click += (s, e) => ResetCogsFilters();
-            txtCogsSearch.KeyDown += (s, e) =>
-            {
-                if (e.KeyCode == Keys.Enter)
-                {
-                    RefreshCogs();
-                    e.Handled = true;
-                    e.SuppressKeyPress = true;
-                }
-            };
             chkCogsDateRange.CheckedChanged += (s, e) =>
             {
                 dtpCogsFrom.Enabled = chkCogsDateRange.Checked;
@@ -1077,33 +1038,13 @@ namespace Stock_Managemnet
 
             DateTime? from = chkCogsDateRange.Checked ? dtpCogsFrom.Value.Date : (DateTime?)null;
             DateTime? to = chkCogsDateRange.Checked ? dtpCogsTo.Value.Date : (DateTime?)null;
-            var lines = _repository.GetSalesProfitLines(from, to, txtCogsSearch.Text).ToList();
-            var summary = _repository.GetSalesProfitSummary(from, to, txtCogsSearch.Text);
-            var totalQty = lines.Sum(r => r.Quantity);
-
-            lblCogsSummary.Text =
-                $"COGS: {summary.TotalCost:C2}  |  Qty sold: {totalQty}  |  Lines: {lines.Count}  |  Sales: {summary.TotalSales:C2}";
-
-            dgvCogs.Rows.Clear();
-            foreach (var row in lines)
-            {
-                var unitCost = row.Quantity > 0
-                    ? row.CostAmount / row.Quantity
-                    : 0m;
-                dgvCogs.Rows.Add(
-                    row.Date,
-                    row.InvoiceNumber,
-                    row.CustomerName,
-                    row.ProductName,
-                    row.Quantity,
-                    unitCost,
-                    row.CostAmount);
-            }
+            var summary = _repository.GetSalesProfitSummary(from, to);
+            var expenses = _repository.GetTotalExpenses(from, to);
+            cogsReport.SetAmounts(summary.TotalSales, summary.TotalCost, summary.GrossProfit, expenses);
         }
 
         private void ResetCogsFilters()
         {
-            txtCogsSearch.Clear();
             chkCogsDateRange.Checked = false;
             dtpCogsTo.Value = DateTime.Today;
             dtpCogsFrom.Value = DateTime.Today.AddMonths(-1);
