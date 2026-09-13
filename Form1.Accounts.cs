@@ -1076,11 +1076,11 @@ namespace Stock_Managemnet
             if (cmbExpenseCategory.SelectedValue is Guid selectedId && selectedId != Guid.Empty)
                 categoryId = selectedId;
 
-            var total = _repository.GetTotalExpenses(from, to);
-            lblExpensesSummary.Text = $"Total expenses: {total:C2}";
+            var rows = _repository.GetBusinessExpenses(from, to, txtExpenseSearch.Text, categoryId).ToList();
+            lblExpensesSummary.Text = $"Total expenses: {rows.Sum(r => r.Amount):C2}";
 
             dgvExpenses.Rows.Clear();
-            foreach (var row in _repository.GetBusinessExpenses(from, to, txtExpenseSearch.Text, categoryId))
+            foreach (var row in rows)
             {
                 dgvExpenses.Rows.Add(
                     row.PaidAt,
