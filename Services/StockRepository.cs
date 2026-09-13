@@ -650,6 +650,29 @@ namespace Stock_Managemnet.Services
             return null;
         }
 
+        public string TransferBetweenAccounts(
+            Guid fromAccountId,
+            Guid toAccountId,
+            decimal amount,
+            DateTime transferredAt,
+            string reference,
+            string notes)
+        {
+            var error = _accounting.TransferBetweenAccounts(
+                Data,
+                fromAccountId,
+                toAccountId,
+                amount,
+                transferredAt,
+                reference,
+                notes);
+            if (error != null)
+                return error;
+
+            Save();
+            return null;
+        }
+
         public IEnumerable<Account> GetExpenseAccounts() =>
             _accounting.GetExpenseAccounts(Data);
 

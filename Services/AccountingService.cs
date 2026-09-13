@@ -439,6 +439,59 @@ namespace Stock_Managemnet.Services
             return null;
         }
 
+        public string TransferBetweenAccounts(
+            StockData data,
+            Guid fromAccountId,
+            Guid toAccountId,
+            decimal amount,
+            DateTime transferredAt,
+            string reference,
+            string notes)
+        {
+            if (amount <= 0)
+                return "Transfer amount must be greater than zero.";
+
+            if (fromAccountId == toAccountId)
+                return "Select two different accounts.";
+
+            var fromAccount = GetAccount(data, fromAccountId);
+            if (fromAccount == null || !IsCashOrBankAccount(data, fromAccount.Id))
+                return "Select a valid From account.";
+
+            var toAccount = GetAccount(data, toAccountId);
+            if (toAccount == null || !IsCashOrBankAccount(data, toAccount.Id))
+                return "Select a valid To account.";
+
+            var available = GetBankDisplayBalance(data, fromAccountId);
+            if (amount > available)
+                return $"Insufficient balance in {fromAccount.Name}. Available: {available:C2}";
+
+            reference = reference?.Trim() ?? string.Empty;
+            notes = notes?.Trim() ?? string.Empty;
+            var transferId = Guid.NewGuid();
+            var description = $"Transfer - {fromAccount.Name} → {toAccount.Name}";
+            if (!string.IsNullOrWhiteSpace(notes))
+                description += $" ({notes})";
+
+            var entry = new JournalEntry
+            {
+                EntryDate = transferredAt,
+                ReferenceType = JournalReferenceType.Transfer,
+                ReferenceId = transferId,
+                ReferenceNumber = string.IsNullOrWhiteSpace(reference) ? null : reference,
+                Description = description,
+                CreatedAt = DateTime.Now,
+                Lines = new List<JournalLine>
+                {
+                    CreateLine(toAccount, null, null, amount, 0),
+                    CreateLine(fromAccount, null, null, 0, amount)
+                }
+            };
+
+            data.JournalEntries.Insert(0, entry);
+            return null;
+        }
+
         public IEnumerable<Account> GetExpenseAccounts(StockData data) =>
             data.Accounts
                 .Where(a => a.IsActive && a.Type == AccountType.Expense)

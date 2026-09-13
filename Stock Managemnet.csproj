@@ -263,6 +263,12 @@
     <Compile Include="RecordExpenseForm.Designer.cs">
       <DependentUpon>RecordExpenseForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="TransferFundsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TransferFundsForm.Designer.cs">
+      <DependentUpon>TransferFundsForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="RecordSupplierPaymentForm.cs">
       <SubType>Form</SubType>
     </Compile>

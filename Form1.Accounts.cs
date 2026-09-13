@@ -36,6 +36,7 @@ namespace Stock_Managemnet
         private Button btnViewSupplierBalanceSheet;
         private DataGridView dgvSupplierDue;
         private Button btnAddBankAccount;
+        private Button btnTransferFunds;
         private Button btnEditBankAccount;
         private Button btnDeleteBankAccount;
         private Button btnViewBankLedger;
@@ -327,18 +328,21 @@ namespace Stock_Managemnet
             var panel = new Panel { Dock = DockStyle.Fill, Visible = false };
 
             btnAddBankAccount = CreateAccountsPrimaryButton("+ Add Bank", 130);
+            btnTransferFunds = CreateAccountsPrimaryButton("Transfer", 110);
             btnEditBankAccount = CreateAccountsButton("Edit", 80);
             btnDeleteBankAccount = CreateAccountsButton("Delete", 80);
             btnViewBankLedger = CreateAccountsButton("Ledger", 100);
             btnEditBankAccount.Margin = new Padding(0, AccountsToolbarRowPadding, 10, AccountsToolbarRowPadding);
             btnDeleteBankAccount.Margin = new Padding(0, AccountsToolbarRowPadding, 10, AccountsToolbarRowPadding);
             btnViewBankLedger.Margin = new Padding(0, AccountsToolbarRowPadding, 10, AccountsToolbarRowPadding);
+            btnTransferFunds.Margin = new Padding(0, AccountsToolbarRowPadding, 10, AccountsToolbarRowPadding);
 
             var actionsPanel = CreateToolbarFlow();
             actionsPanel.WrapContents = false;
             actionsPanel.Controls.Add(btnViewBankLedger);
             actionsPanel.Controls.Add(btnEditBankAccount);
             actionsPanel.Controls.Add(btnDeleteBankAccount);
+            actionsPanel.Controls.Add(btnTransferFunds);
             actionsPanel.Controls.Add(btnAddBankAccount);
 
             var toolbar = CreateToolbarSection(actionsPanel);
@@ -810,6 +814,7 @@ namespace Stock_Managemnet
             btnRecordSupplierPayment.Click += BtnRecordSupplierPayment_Click;
             btnViewSupplierBalanceSheet.Click += BtnViewSupplierBalanceSheet_Click;
             btnAddBankAccount.Click += BtnAddBankAccount_Click;
+            btnTransferFunds.Click += BtnTransferFunds_Click;
             btnEditBankAccount.Click += BtnEditBankAccount_Click;
             btnDeleteBankAccount.Click += BtnDeleteBankAccount_Click;
             btnViewBankLedger.Click += BtnViewBankLedger_Click;
@@ -1343,6 +1348,24 @@ namespace Stock_Managemnet
         private void BtnAddBankAccount_Click(object sender, EventArgs e)
         {
             using (var form = new BankAccountEditForm(_repository))
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                    RefreshAll();
+            }
+        }
+
+        private void BtnTransferFunds_Click(object sender, EventArgs e)
+        {
+            Guid? preferredFrom = null;
+            var row = GetSelectedBankAccountRow();
+            if (row != null)
+            {
+                var bank = _repository.GetBankAccount(row.BankAccountId);
+                if (bank != null)
+                    preferredFrom = bank.GlAccountId;
+            }
+
+            using (var form = new TransferFundsForm(_repository, preferredFrom))
             {
                 if (form.ShowDialog(this) == DialogResult.OK)
                     RefreshAll();
