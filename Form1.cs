@@ -37,6 +37,7 @@ namespace Stock_Managemnet
             ConfigureProductionGrids();
             ConfigureTransactionGrid();
             ConfigureTransactionFilters();
+            ConfigureProductionFilters();
             ConfigureGridExports();
             WireEvents();
             WireAccountsEvents();
@@ -262,6 +263,14 @@ namespace Stock_Managemnet
             };
             btnProductionSearch.Click += (s, e) => RefreshProduction(preserveSelection: false);
             btnProductionReset.Click += (s, e) => ResetProductionFilters();
+            chkProductionDateRange.CheckedChanged += ChkProductionDateRange_CheckedChanged;
+            dtpProductionFrom.ValueChanged += (s, e) => { if (chkProductionDateRange.Checked) RefreshProduction(preserveSelection: false); };
+            dtpProductionTo.ValueChanged += (s, e) => { if (chkProductionDateRange.Checked) RefreshProduction(preserveSelection: false); };
+            btnProductionHistorySearch.Click += (s, e) => RefreshProductionHistory();
+            btnProductionHistoryReset.Click += (s, e) => ResetProductionHistoryFilters();
+            chkProductionHistoryDateRange.CheckedChanged += ChkProductionHistoryDateRange_CheckedChanged;
+            dtpProductionHistoryFrom.ValueChanged += (s, e) => { if (chkProductionHistoryDateRange.Checked) RefreshProductionHistory(); };
+            dtpProductionHistoryTo.ValueChanged += (s, e) => { if (chkProductionHistoryDateRange.Checked) RefreshProductionHistory(); };
             btnAddRecipe.Click += BtnAddRecipe_Click;
             btnEditRecipe.Click += BtnEditRecipe_Click;
             btnDeleteRecipe.Click += BtnDeleteRecipe_Click;
@@ -284,6 +293,15 @@ namespace Stock_Managemnet
                 if (e.KeyCode == Keys.Enter)
                 {
                     RefreshProduction(preserveSelection: false);
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
+            txtProductionHistorySearch.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    RefreshProductionHistory();
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                 }
@@ -677,13 +695,97 @@ namespace Stock_Managemnet
         private void ResetProductionFilters()
         {
             txtProductionSearch.Clear();
+            chkProductionDateRange.Checked = false;
+            ResetProductionDateDefaults();
             RefreshProduction(preserveSelection: false);
+        }
+
+        private void ResetProductionHistoryFilters()
+        {
+            txtProductionHistorySearch.Clear();
+            chkProductionHistoryDateRange.Checked = false;
+            ResetProductionHistoryDateDefaults();
+            RefreshProductionHistory();
+        }
+
+        private void ResetProductionDateDefaults()
+        {
+            dtpProductionTo.Value = DateTime.Today;
+            dtpProductionFrom.Value = DateTime.Today.AddMonths(-1);
+            dtpProductionFrom.Enabled = false;
+            dtpProductionTo.Enabled = false;
+        }
+
+        private void ResetProductionHistoryDateDefaults()
+        {
+            dtpProductionHistoryTo.Value = DateTime.Today;
+            dtpProductionHistoryFrom.Value = DateTime.Today.AddMonths(-1);
+            dtpProductionHistoryFrom.Enabled = false;
+            dtpProductionHistoryTo.Enabled = false;
+        }
+
+        private void ChkProductionDateRange_CheckedChanged(object sender, EventArgs e)
+        {
+            dtpProductionFrom.Enabled = chkProductionDateRange.Checked;
+            dtpProductionTo.Enabled = chkProductionDateRange.Checked;
+            RefreshProduction(preserveSelection: false);
+        }
+
+        private void ChkProductionHistoryDateRange_CheckedChanged(object sender, EventArgs e)
+        {
+            dtpProductionHistoryFrom.Enabled = chkProductionHistoryDateRange.Checked;
+            dtpProductionHistoryTo.Enabled = chkProductionHistoryDateRange.Checked;
+            RefreshProductionHistory();
+        }
+
+        private bool TryGetProductionDateRange(out DateTime? fromDate, out DateTime? toDate)
+        {
+            fromDate = null;
+            toDate = null;
+
+            if (!chkProductionDateRange.Checked)
+                return true;
+
+            if (dtpProductionFrom.Value.Date > dtpProductionTo.Value.Date)
+            {
+                MessageBox.Show("'From' date cannot be after 'To' date.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            fromDate = dtpProductionFrom.Value.Date;
+            toDate = dtpProductionTo.Value.Date;
+            return true;
+        }
+
+        private bool TryGetProductionHistoryDateRange(out DateTime? fromDate, out DateTime? toDate)
+        {
+            fromDate = null;
+            toDate = null;
+
+            if (!chkProductionHistoryDateRange.Checked)
+                return true;
+
+            if (dtpProductionHistoryFrom.Value.Date > dtpProductionHistoryTo.Value.Date)
+            {
+                MessageBox.Show("'From' date cannot be after 'To' date.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            fromDate = dtpProductionHistoryFrom.Value.Date;
+            toDate = dtpProductionHistoryTo.Value.Date;
+            return true;
         }
 
         private void ConfigureTransactionFilters()
         {
             ResetTransactionDateDefaults();
             UpdateFilterButtonStyles();
+        }
+
+        private void ConfigureProductionFilters()
+        {
+            ResetProductionDateDefaults();
+            ResetProductionHistoryDateDefaults();
         }
 
         private void ConfigureProductFilters()
@@ -1069,11 +1171,14 @@ namespace Stock_Managemnet
 
         private void RefreshProduction(bool preserveSelection = true)
         {
+            if (!TryGetProductionDateRange(out var fromDate, out var toDate))
+                return;
+
             var selectedId = preserveSelection ? GetSelectedRecipe()?.Id : null;
             var term = txtProductionSearch.Text;
 
             dgvRecipes.Rows.Clear();
-            foreach (var recipe in _repository.SearchRecipes(term))
+            foreach (var recipe in _repository.SearchRecipes(term, fromDate, toDate))
             {
                 var materialCount = recipe.Materials?.Count ?? 0;
                 var idx = dgvRecipes.Rows.Add(recipe.Name, recipe.OutputProductSku, recipe.OutputProductName, materialCount);
@@ -1102,8 +1207,18 @@ namespace Stock_Managemnet
                 ApplyNoSelection(dgvRecipes);
             }
 
+            UpdateProductionButtons();
+            RefreshProductionHistory();
+        }
+
+        private void RefreshProductionHistory()
+        {
+            if (!TryGetProductionHistoryDateRange(out var fromDate, out var toDate))
+                return;
+
+            var term = txtProductionHistorySearch.Text;
             dgvProductionOrders.Rows.Clear();
-            foreach (var order in _repository.SearchProductionOrders(term))
+            foreach (var order in _repository.SearchProductionOrders(term, fromDate, toDate))
             {
                 var idx = dgvProductionOrders.Rows.Add(
                     order.Timestamp,
@@ -1120,7 +1235,6 @@ namespace Stock_Managemnet
 
             ApplyNoSelection(dgvProductionOrders);
             UpdateProductionHistoryButtons();
-            UpdateProductionButtons();
         }
 
         private void RefreshTransactions()

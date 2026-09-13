@@ -10,6 +10,7 @@ namespace Stock_Managemnet
         private System.Windows.Forms.TabPage tabInvoices;
         private System.Windows.Forms.TabPage tabAccounts;
         private System.Windows.Forms.TabPage tabProduction;
+        private System.Windows.Forms.TabPage tabProductionHistory;
         private System.Windows.Forms.TabPage tabTransactions;
         private System.Windows.Forms.TabPage tabSettings;
         private System.Windows.Forms.Panel panelSettings;
@@ -106,17 +107,30 @@ namespace Stock_Managemnet
         private System.Windows.Forms.TextBox txtProductionSearch;
         private System.Windows.Forms.Button btnProductionSearch;
         private System.Windows.Forms.Button btnProductionReset;
+        private System.Windows.Forms.Label lblProductionFrom;
+        private System.Windows.Forms.DateTimePicker dtpProductionFrom;
+        private System.Windows.Forms.Label lblProductionTo;
+        private System.Windows.Forms.DateTimePicker dtpProductionTo;
+        private System.Windows.Forms.CheckBox chkProductionDateRange;
         private System.Windows.Forms.Button btnAddRecipe;
         private System.Windows.Forms.Button btnEditRecipe;
         private System.Windows.Forms.Button btnDeleteRecipe;
         private System.Windows.Forms.Button btnRunProduction;
         private System.Windows.Forms.Button btnReverseProduction;
         private System.Windows.Forms.Button btnRestoreProduction;
-        private System.Windows.Forms.Panel panelProductionHistoryActions;
+        private System.Windows.Forms.TableLayoutPanel tlpProductionHistory;
         private System.Windows.Forms.Panel panelProductionHistoryToolbar;
+        private System.Windows.Forms.TextBox txtProductionHistorySearch;
+        private System.Windows.Forms.Button btnProductionHistorySearch;
+        private System.Windows.Forms.Button btnProductionHistoryReset;
+        private System.Windows.Forms.Label lblProductionHistoryFrom;
+        private System.Windows.Forms.DateTimePicker dtpProductionHistoryFrom;
+        private System.Windows.Forms.Label lblProductionHistoryTo;
+        private System.Windows.Forms.DateTimePicker dtpProductionHistoryTo;
+        private System.Windows.Forms.CheckBox chkProductionHistoryDateRange;
+        private System.Windows.Forms.Panel panelProductionHistoryActions;
         private System.Windows.Forms.Label lblRecipes;
         private System.Windows.Forms.DataGridView dgvRecipes;
-        private System.Windows.Forms.Label lblProductionHistory;
         private System.Windows.Forms.DataGridView dgvProductionOrders;
         private System.Windows.Forms.TableLayoutPanel tlpTransactions;
         private System.Windows.Forms.Panel panelTransactionToolbar;
@@ -205,17 +219,31 @@ namespace Stock_Managemnet
             this.txtProductionSearch = new System.Windows.Forms.TextBox();
             this.btnProductionSearch = new System.Windows.Forms.Button();
             this.btnProductionReset = new System.Windows.Forms.Button();
+            this.lblProductionFrom = new System.Windows.Forms.Label();
+            this.dtpProductionFrom = new System.Windows.Forms.DateTimePicker();
+            this.lblProductionTo = new System.Windows.Forms.Label();
+            this.dtpProductionTo = new System.Windows.Forms.DateTimePicker();
+            this.chkProductionDateRange = new System.Windows.Forms.CheckBox();
             this.btnAddRecipe = new System.Windows.Forms.Button();
             this.btnEditRecipe = new System.Windows.Forms.Button();
             this.btnDeleteRecipe = new System.Windows.Forms.Button();
             this.btnRunProduction = new System.Windows.Forms.Button();
-            this.btnReverseProduction = new System.Windows.Forms.Button();
-            this.btnRestoreProduction = new System.Windows.Forms.Button();
             this.lblRecipes = new System.Windows.Forms.Label();
             this.dgvRecipes = new System.Windows.Forms.DataGridView();
+            this.tabProductionHistory = new System.Windows.Forms.TabPage();
+            this.tlpProductionHistory = new System.Windows.Forms.TableLayoutPanel();
             this.panelProductionHistoryToolbar = new System.Windows.Forms.Panel();
+            this.txtProductionHistorySearch = new System.Windows.Forms.TextBox();
+            this.btnProductionHistorySearch = new System.Windows.Forms.Button();
+            this.btnProductionHistoryReset = new System.Windows.Forms.Button();
+            this.lblProductionHistoryFrom = new System.Windows.Forms.Label();
+            this.dtpProductionHistoryFrom = new System.Windows.Forms.DateTimePicker();
+            this.lblProductionHistoryTo = new System.Windows.Forms.Label();
+            this.dtpProductionHistoryTo = new System.Windows.Forms.DateTimePicker();
+            this.chkProductionHistoryDateRange = new System.Windows.Forms.CheckBox();
             this.panelProductionHistoryActions = new System.Windows.Forms.Panel();
-            this.lblProductionHistory = new System.Windows.Forms.Label();
+            this.btnReverseProduction = new System.Windows.Forms.Button();
+            this.btnRestoreProduction = new System.Windows.Forms.Button();
             this.dgvProductionOrders = new System.Windows.Forms.DataGridView();
             this.tabTransactions = new System.Windows.Forms.TabPage();
             this.tlpTransactions = new System.Windows.Forms.TableLayoutPanel();
@@ -297,6 +325,10 @@ namespace Stock_Managemnet
             this.tlpProduction.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvRecipes)).BeginInit();
             this.panelProductionToolbar.SuspendLayout();
+            this.tabProductionHistory.SuspendLayout();
+            this.tlpProductionHistory.SuspendLayout();
+            this.panelProductionHistoryToolbar.SuspendLayout();
+            this.panelProductionHistoryActions.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvProductionOrders)).BeginInit();
             this.tabTransactions.SuspendLayout();
             this.tabSettings.SuspendLayout();
@@ -325,6 +357,7 @@ namespace Stock_Managemnet
             this.tabMain.Controls.Add(this.tabInvoices);
             this.tabMain.Controls.Add(this.tabAccounts);
             this.tabMain.Controls.Add(this.tabProduction);
+            this.tabMain.Controls.Add(this.tabProductionHistory);
             this.tabMain.Controls.Add(this.tabTransactions);
             this.tabMain.Controls.Add(this.tabSettings);
             this.tabMain.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -787,15 +820,11 @@ namespace Stock_Managemnet
             this.tlpProduction.Controls.Add(this.panelProductionToolbar, 0, 0);
             this.tlpProduction.Controls.Add(this.lblRecipes, 0, 1);
             this.tlpProduction.Controls.Add(this.dgvRecipes, 0, 2);
-            this.tlpProduction.Controls.Add(this.panelProductionHistoryToolbar, 0, 3);
-            this.tlpProduction.Controls.Add(this.dgvProductionOrders, 0, 4);
             this.tlpProduction.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tlpProduction.RowCount = 5;
-            this.tlpProduction.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tlpProduction.RowCount = 3;
+            this.tlpProduction.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 88F));
             this.tlpProduction.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 24F));
-            this.tlpProduction.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 45F));
-            this.tlpProduction.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 36F));
-            this.tlpProduction.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 55F));
+            this.tlpProduction.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             //
             // panelProductionToolbar
             //
@@ -804,6 +833,11 @@ namespace Stock_Managemnet
             this.panelProductionToolbar.Controls.Add(this.txtProductionSearch);
             this.panelProductionToolbar.Controls.Add(this.btnProductionSearch);
             this.panelProductionToolbar.Controls.Add(this.btnProductionReset);
+            this.panelProductionToolbar.Controls.Add(this.lblProductionFrom);
+            this.panelProductionToolbar.Controls.Add(this.dtpProductionFrom);
+            this.panelProductionToolbar.Controls.Add(this.lblProductionTo);
+            this.panelProductionToolbar.Controls.Add(this.dtpProductionTo);
+            this.panelProductionToolbar.Controls.Add(this.chkProductionDateRange);
             this.panelProductionToolbar.Controls.Add(this.btnAddRecipe);
             this.panelProductionToolbar.Controls.Add(this.btnEditRecipe);
             this.panelProductionToolbar.Controls.Add(this.btnDeleteRecipe);
@@ -828,70 +862,66 @@ namespace Stock_Managemnet
             this.btnProductionReset.Text = "Reset";
             this.btnProductionReset.UseVisualStyleBackColor = true;
             //
+            // lblProductionFrom
+            //
+            this.lblProductionFrom.AutoSize = true;
+            this.lblProductionFrom.Location = new System.Drawing.Point(390, 14);
+            this.lblProductionFrom.Text = "From:";
+            //
+            // dtpProductionFrom
+            //
+            this.dtpProductionFrom.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpProductionFrom.Location = new System.Drawing.Point(435, 11);
+            this.dtpProductionFrom.Size = new System.Drawing.Size(105, 23);
+            this.dtpProductionFrom.Enabled = false;
+            //
+            // lblProductionTo
+            //
+            this.lblProductionTo.AutoSize = true;
+            this.lblProductionTo.Location = new System.Drawing.Point(548, 14);
+            this.lblProductionTo.Text = "To:";
+            //
+            // dtpProductionTo
+            //
+            this.dtpProductionTo.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpProductionTo.Location = new System.Drawing.Point(575, 11);
+            this.dtpProductionTo.Size = new System.Drawing.Size(105, 23);
+            this.dtpProductionTo.Enabled = false;
+            //
+            // chkProductionDateRange
+            //
+            this.chkProductionDateRange.AutoSize = true;
+            this.chkProductionDateRange.Location = new System.Drawing.Point(690, 14);
+            this.chkProductionDateRange.Text = "Date range";
+            this.chkProductionDateRange.UseVisualStyleBackColor = true;
+            //
             // btnAddRecipe
             //
-            this.btnAddRecipe.Location = new System.Drawing.Point(390, 10);
-            this.btnAddRecipe.Size = new System.Drawing.Size(95, 27);
+            this.btnAddRecipe.Location = new System.Drawing.Point(11, 48);
+            this.btnAddRecipe.Size = new System.Drawing.Size(130, 27);
             this.btnAddRecipe.Text = "+ Add Production";
             this.btnAddRecipe.UseVisualStyleBackColor = true;
             //
             // btnEditRecipe
             //
-            this.btnEditRecipe.Location = new System.Drawing.Point(491, 10);
+            this.btnEditRecipe.Location = new System.Drawing.Point(147, 48);
             this.btnEditRecipe.Size = new System.Drawing.Size(75, 27);
             this.btnEditRecipe.Text = "Edit";
             this.btnEditRecipe.Enabled = false;
             //
             // btnDeleteRecipe
             //
-            this.btnDeleteRecipe.Location = new System.Drawing.Point(572, 10);
+            this.btnDeleteRecipe.Location = new System.Drawing.Point(228, 48);
             this.btnDeleteRecipe.Size = new System.Drawing.Size(75, 27);
             this.btnDeleteRecipe.Text = "Delete";
             this.btnDeleteRecipe.Enabled = false;
             //
             // btnRunProduction
             //
-            this.btnRunProduction.Location = new System.Drawing.Point(653, 10);
-            this.btnRunProduction.Size = new System.Drawing.Size(105, 27);
+            this.btnRunProduction.Location = new System.Drawing.Point(309, 48);
+            this.btnRunProduction.Size = new System.Drawing.Size(120, 27);
             this.btnRunProduction.Text = "Run Production";
             this.btnRunProduction.Enabled = false;
-            //
-            // panelProductionHistoryToolbar
-            //
-            this.panelProductionHistoryToolbar.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelProductionHistoryToolbar.Padding = new System.Windows.Forms.Padding(8, 2, 8, 2);
-            this.panelProductionHistoryToolbar.Controls.Add(this.lblProductionHistory);
-            this.panelProductionHistoryToolbar.Controls.Add(this.panelProductionHistoryActions);
-            //
-            // panelProductionHistoryActions
-            //
-            this.panelProductionHistoryActions.Controls.Add(this.btnRestoreProduction);
-            this.panelProductionHistoryActions.Controls.Add(this.btnReverseProduction);
-            this.panelProductionHistoryActions.Dock = System.Windows.Forms.DockStyle.Right;
-            this.panelProductionHistoryActions.Size = new System.Drawing.Size(310, 28);
-            //
-            // lblProductionHistory
-            //
-            this.lblProductionHistory.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblProductionHistory.Padding = new System.Windows.Forms.Padding(0, 6, 8, 0);
-            this.lblProductionHistory.Text = "Production History";
-            this.lblProductionHistory.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            //
-            // btnReverseProduction
-            //
-            this.btnReverseProduction.Location = new System.Drawing.Point(0, 0);
-            this.btnReverseProduction.Size = new System.Drawing.Size(150, 27);
-            this.btnReverseProduction.Text = "Reverse Production";
-            this.btnReverseProduction.Enabled = false;
-            this.btnReverseProduction.UseVisualStyleBackColor = true;
-            //
-            // btnRestoreProduction
-            //
-            this.btnRestoreProduction.Location = new System.Drawing.Point(158, 0);
-            this.btnRestoreProduction.Size = new System.Drawing.Size(150, 27);
-            this.btnRestoreProduction.Text = "Restore Production";
-            this.btnRestoreProduction.Enabled = false;
-            this.btnRestoreProduction.UseVisualStyleBackColor = true;
             //
             // dgvRecipes
             //
@@ -913,6 +943,112 @@ namespace Stock_Managemnet
             this.lblRecipes.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblRecipes.Padding = new System.Windows.Forms.Padding(8, 4, 0, 0);
             this.lblRecipes.Text = "Productions";
+            //
+            // tabProductionHistory
+            //
+            this.tabProductionHistory.Controls.Add(this.tlpProductionHistory);
+            this.tabProductionHistory.Text = "Production History";
+            this.tabProductionHistory.UseVisualStyleBackColor = true;
+            //
+            // tlpProductionHistory
+            //
+            this.tlpProductionHistory.ColumnCount = 1;
+            this.tlpProductionHistory.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tlpProductionHistory.Controls.Add(this.panelProductionHistoryToolbar, 0, 0);
+            this.tlpProductionHistory.Controls.Add(this.dgvProductionOrders, 0, 1);
+            this.tlpProductionHistory.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tlpProductionHistory.RowCount = 2;
+            this.tlpProductionHistory.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tlpProductionHistory.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            //
+            // panelProductionHistoryToolbar
+            //
+            this.panelProductionHistoryToolbar.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelProductionHistoryToolbar.Padding = new System.Windows.Forms.Padding(8, 8, 8, 4);
+            this.panelProductionHistoryToolbar.Controls.Add(this.txtProductionHistorySearch);
+            this.panelProductionHistoryToolbar.Controls.Add(this.btnProductionHistorySearch);
+            this.panelProductionHistoryToolbar.Controls.Add(this.btnProductionHistoryReset);
+            this.panelProductionHistoryToolbar.Controls.Add(this.lblProductionHistoryFrom);
+            this.panelProductionHistoryToolbar.Controls.Add(this.dtpProductionHistoryFrom);
+            this.panelProductionHistoryToolbar.Controls.Add(this.lblProductionHistoryTo);
+            this.panelProductionHistoryToolbar.Controls.Add(this.dtpProductionHistoryTo);
+            this.panelProductionHistoryToolbar.Controls.Add(this.chkProductionHistoryDateRange);
+            this.panelProductionHistoryToolbar.Controls.Add(this.panelProductionHistoryActions);
+            //
+            // txtProductionHistorySearch
+            //
+            this.txtProductionHistorySearch.Location = new System.Drawing.Point(11, 12);
+            this.txtProductionHistorySearch.Size = new System.Drawing.Size(200, 23);
+            //
+            // btnProductionHistorySearch
+            //
+            this.btnProductionHistorySearch.Location = new System.Drawing.Point(217, 10);
+            this.btnProductionHistorySearch.Size = new System.Drawing.Size(65, 27);
+            this.btnProductionHistorySearch.Text = "Search";
+            this.btnProductionHistorySearch.UseVisualStyleBackColor = true;
+            //
+            // btnProductionHistoryReset
+            //
+            this.btnProductionHistoryReset.Location = new System.Drawing.Point(288, 10);
+            this.btnProductionHistoryReset.Size = new System.Drawing.Size(65, 27);
+            this.btnProductionHistoryReset.Text = "Reset";
+            this.btnProductionHistoryReset.UseVisualStyleBackColor = true;
+            //
+            // lblProductionHistoryFrom
+            //
+            this.lblProductionHistoryFrom.AutoSize = true;
+            this.lblProductionHistoryFrom.Location = new System.Drawing.Point(370, 14);
+            this.lblProductionHistoryFrom.Text = "From:";
+            //
+            // dtpProductionHistoryFrom
+            //
+            this.dtpProductionHistoryFrom.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpProductionHistoryFrom.Location = new System.Drawing.Point(415, 11);
+            this.dtpProductionHistoryFrom.Size = new System.Drawing.Size(105, 23);
+            this.dtpProductionHistoryFrom.Enabled = false;
+            //
+            // lblProductionHistoryTo
+            //
+            this.lblProductionHistoryTo.AutoSize = true;
+            this.lblProductionHistoryTo.Location = new System.Drawing.Point(528, 14);
+            this.lblProductionHistoryTo.Text = "To:";
+            //
+            // dtpProductionHistoryTo
+            //
+            this.dtpProductionHistoryTo.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpProductionHistoryTo.Location = new System.Drawing.Point(555, 11);
+            this.dtpProductionHistoryTo.Size = new System.Drawing.Size(105, 23);
+            this.dtpProductionHistoryTo.Enabled = false;
+            //
+            // chkProductionHistoryDateRange
+            //
+            this.chkProductionHistoryDateRange.AutoSize = true;
+            this.chkProductionHistoryDateRange.Location = new System.Drawing.Point(670, 14);
+            this.chkProductionHistoryDateRange.Text = "Date range";
+            this.chkProductionHistoryDateRange.UseVisualStyleBackColor = true;
+            //
+            // panelProductionHistoryActions
+            //
+            this.panelProductionHistoryActions.Controls.Add(this.btnRestoreProduction);
+            this.panelProductionHistoryActions.Controls.Add(this.btnReverseProduction);
+            this.panelProductionHistoryActions.Dock = System.Windows.Forms.DockStyle.Right;
+            this.panelProductionHistoryActions.Size = new System.Drawing.Size(310, 40);
+            //
+            // btnReverseProduction
+            //
+            this.btnReverseProduction.Location = new System.Drawing.Point(0, 8);
+            this.btnReverseProduction.Size = new System.Drawing.Size(150, 27);
+            this.btnReverseProduction.Text = "Reverse Production";
+            this.btnReverseProduction.Enabled = false;
+            this.btnReverseProduction.UseVisualStyleBackColor = true;
+            //
+            // btnRestoreProduction
+            //
+            this.btnRestoreProduction.Location = new System.Drawing.Point(158, 8);
+            this.btnRestoreProduction.Size = new System.Drawing.Size(150, 27);
+            this.btnRestoreProduction.Text = "Restore Production";
+            this.btnRestoreProduction.Enabled = false;
+            this.btnRestoreProduction.UseVisualStyleBackColor = true;
             //
             // dgvProductionOrders
             //
@@ -1404,6 +1540,11 @@ namespace Stock_Managemnet
             ((System.ComponentModel.ISupportInitialize)(this.dgvRecipes)).EndInit();
             this.panelProductionToolbar.ResumeLayout(false);
             this.panelProductionToolbar.PerformLayout();
+            this.tabProductionHistory.ResumeLayout(false);
+            this.tlpProductionHistory.ResumeLayout(false);
+            this.panelProductionHistoryToolbar.ResumeLayout(false);
+            this.panelProductionHistoryToolbar.PerformLayout();
+            this.panelProductionHistoryActions.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dgvProductionOrders)).EndInit();
             this.tabTransactions.ResumeLayout(false);
             this.tabSettings.ResumeLayout(false);

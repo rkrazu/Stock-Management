@@ -1444,33 +1444,47 @@ namespace Stock_Managemnet.Services
             Save();
         }
 
-        public IEnumerable<ProductionRecipe> SearchRecipes(string term)
+        public IEnumerable<ProductionRecipe> SearchRecipes(string term, DateTime? from = null, DateTime? to = null)
         {
-            if (string.IsNullOrWhiteSpace(term))
-                return Data.ProductionRecipes.OrderBy(r => r.Name);
+            IEnumerable<ProductionRecipe> query = Data.ProductionRecipes;
 
-            term = term.Trim();
-            return Data.ProductionRecipes
-                .Where(r =>
+            if (from.HasValue)
+                query = query.Where(r => r.CreatedAt.Date >= from.Value.Date);
+            if (to.HasValue)
+                query = query.Where(r => r.CreatedAt.Date <= to.Value.Date);
+
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                term = term.Trim();
+                query = query.Where(r =>
                     (r.Name != null && r.Name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
                     (r.OutputProductSku != null && r.OutputProductSku.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (r.OutputProductName != null && r.OutputProductName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0))
-                .OrderBy(r => r.Name);
+                    (r.OutputProductName != null && r.OutputProductName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0));
+            }
+
+            return query.OrderBy(r => r.Name);
         }
 
-        public IEnumerable<ProductionOrder> SearchProductionOrders(string term)
+        public IEnumerable<ProductionOrder> SearchProductionOrders(string term, DateTime? from = null, DateTime? to = null)
         {
-            if (string.IsNullOrWhiteSpace(term))
-                return Data.ProductionOrders.OrderByDescending(o => o.Timestamp);
+            IEnumerable<ProductionOrder> query = Data.ProductionOrders;
 
-            term = term.Trim();
-            return Data.ProductionOrders
-                .Where(o =>
+            if (from.HasValue)
+                query = query.Where(o => o.Timestamp.Date >= from.Value.Date);
+            if (to.HasValue)
+                query = query.Where(o => o.Timestamp.Date <= to.Value.Date);
+
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                term = term.Trim();
+                query = query.Where(o =>
                     (o.ProductionNumber != null && o.ProductionNumber.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
                     (o.RecipeName != null && o.RecipeName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
                     (o.OutputProductSku != null && o.OutputProductSku.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (o.OutputProductName != null && o.OutputProductName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0))
-                .OrderByDescending(o => o.Timestamp);
+                    (o.OutputProductName != null && o.OutputProductName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0));
+            }
+
+            return query.OrderByDescending(o => o.Timestamp);
         }
 
         public string RunProduction(ProductionRecipe recipe, int batchQuantity, string notes)

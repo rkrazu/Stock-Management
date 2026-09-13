@@ -40,8 +40,8 @@ namespace Stock_Managemnet
    - Accounts Receivable and Sales Revenue are reversed.
    - Any payment on that invoice is reversed too.
 
-2) REVERSE PRODUCTION (Production tab)
-   - Select the production run in history and click Reverse Production.
+2) REVERSE PRODUCTION (Production History tab)
+   - Select the production run and click Reverse Production.
    - Finished goods are removed from stock.
    - Raw materials used in that run are returned.
    - Product unit cost is restored to the value before that run.
@@ -68,7 +68,7 @@ Notes
 Undo a wrong void/reverse
 - Transaction History: select a Voided stock-in -> Restore Stock In.
 - Invoices tab: select a Voided invoice -> Restore Sale.
-- Production tab: select a Reversed run -> Restore Production.
+- Production History tab: select a Reversed run -> Restore Production.
 - Restore only works if enough stock/materials are available."
             };
 
