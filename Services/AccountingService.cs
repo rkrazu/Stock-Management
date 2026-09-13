@@ -18,9 +18,14 @@ namespace Stock_Managemnet.Services
             if (data.Accounts.Count == 0)
                 SeedChartOfAccounts(data);
             else
+            {
+                EnsureCoreAccounts(data);
                 EnsureExpenseAccounts(data);
+            }
 
             BackfillSalePostings(data);
+            BackfillPurchasePostings(data);
+            BackfillSupplierPaymentPostings(data);
         }
 
         public void SeedChartOfAccounts(StockData data)
@@ -30,10 +35,23 @@ namespace Stock_Managemnet.Services
                 CreateAccount(SystemAccounts.CashId, SystemAccounts.CashCode, "Cash", AccountType.Asset),
                 CreateAccount(SystemAccounts.BankId, SystemAccounts.BankCode, "Bank", AccountType.Asset),
                 CreateAccount(SystemAccounts.AccountsReceivableId, SystemAccounts.AccountsReceivableCode, "Accounts Receivable", AccountType.Asset),
+                CreateAccount(SystemAccounts.InventoryId, SystemAccounts.InventoryCode, "Inventory", AccountType.Asset),
+                CreateAccount(SystemAccounts.AccountsPayableId, SystemAccounts.AccountsPayableCode, "Accounts Payable", AccountType.Liability),
                 CreateAccount(SystemAccounts.OwnerEquityId, SystemAccounts.OwnerEquityCode, "Owner Equity", AccountType.Equity),
                 CreateAccount(SystemAccounts.SalesRevenueId, SystemAccounts.SalesRevenueCode, "Sales Revenue", AccountType.Income)
             });
             EnsureExpenseAccounts(data);
+        }
+
+        public void EnsureCoreAccounts(StockData data)
+        {
+            AddAccountIfMissing(data, SystemAccounts.CashId, SystemAccounts.CashCode, "Cash", AccountType.Asset);
+            AddAccountIfMissing(data, SystemAccounts.BankId, SystemAccounts.BankCode, "Bank", AccountType.Asset);
+            AddAccountIfMissing(data, SystemAccounts.AccountsReceivableId, SystemAccounts.AccountsReceivableCode, "Accounts Receivable", AccountType.Asset);
+            AddAccountIfMissing(data, SystemAccounts.InventoryId, SystemAccounts.InventoryCode, "Inventory", AccountType.Asset);
+            AddAccountIfMissing(data, SystemAccounts.AccountsPayableId, SystemAccounts.AccountsPayableCode, "Accounts Payable", AccountType.Liability);
+            AddAccountIfMissing(data, SystemAccounts.OwnerEquityId, SystemAccounts.OwnerEquityCode, "Owner Equity", AccountType.Equity);
+            AddAccountIfMissing(data, SystemAccounts.SalesRevenueId, SystemAccounts.SalesRevenueCode, "Sales Revenue", AccountType.Income);
         }
 
         public void EnsureExpenseAccounts(StockData data)
@@ -45,12 +63,15 @@ namespace Stock_Managemnet.Services
             AddExpenseAccountIfMissing(data, SystemAccounts.OtherExpenseId, SystemAccounts.OtherExpenseCode, "Other Expense");
         }
 
-        private static void AddExpenseAccountIfMissing(StockData data, Guid id, string code, string name)
+        private static void AddExpenseAccountIfMissing(StockData data, Guid id, string code, string name) =>
+            AddAccountIfMissing(data, id, code, name, AccountType.Expense);
+
+        private static void AddAccountIfMissing(StockData data, Guid id, string code, string name, AccountType type)
         {
             if (data.Accounts.Any(a => a.Id == id))
                 return;
 
-            data.Accounts.Add(CreateAccount(id, code, name, AccountType.Expense));
+            data.Accounts.Add(CreateAccount(id, code, name, type));
         }
 
         private static Account CreateAccount(Guid id, string code, string name, AccountType type) =>
@@ -462,7 +483,7 @@ namespace Stock_Managemnet.Services
             if (toAccount == null || !IsCashOrBankAccount(data, toAccount.Id))
                 return "Select a valid To account.";
 
-            var available = GetBankDisplayBalance(data, fromAccountId);
+            var available = GetAccountBalance(data, fromAccountId);
             if (amount > available)
                 return $"Insufficient balance in {fromAccount.Name}. Available: {available:C2}";
 
@@ -490,6 +511,268 @@ namespace Stock_Managemnet.Services
 
             data.JournalEntries.Insert(0, entry);
             return null;
+        }
+
+        public string RecordSupplierPayment(StockData data, SupplierPayment payment)
+        {
+            if (payment == null)
+                return "Invalid payment.";
+
+            if (payment.Amount <= 0)
+                return "Payment amount must be greater than zero.";
+
+            var cashAccount = GetAccount(data, payment.CashAccountId);
+            if (cashAccount == null || !IsCashOrBankAccount(data, cashAccount.Id))
+                return "Select a cash or bank account.";
+
+            var ap = GetAccount(data, SystemAccounts.AccountsPayableId);
+            if (ap == null)
+                return "Accounts Payable account is missing.";
+
+            payment.CashAccountName = cashAccount.Name;
+
+            var error = PostSupplierPaymentJournal(data, payment);
+            if (error != null)
+                return error;
+
+            return null;
+        }
+
+        public string VoidSupplierPayment(StockData data, SupplierPayment payment, string reason)
+        {
+            if (payment == null)
+                return "Payment not found.";
+
+            if (!payment.IsActive)
+                return "Payment is already voided.";
+
+            if (HasUnsettledSupplierPaymentVoid(data, payment.Id))
+                return "Payment has already been reversed in accounts.";
+
+            if (HasJournalForReference(data, JournalReferenceType.SupplierPayment, payment.Id))
+            {
+                var cashAccount = GetAccount(data, payment.CashAccountId);
+                var ap = GetAccount(data, SystemAccounts.AccountsPayableId);
+                if (cashAccount == null || ap == null)
+                    return "Required accounts are missing.";
+
+                var entry = new JournalEntry
+                {
+                    EntryDate = DateTime.Now,
+                    ReferenceType = JournalReferenceType.SupplierPaymentVoid,
+                    ReferenceId = payment.Id,
+                    ReferenceNumber = payment.Reference,
+                    Description = $"Void supplier payment - {payment.SupplierName}" +
+                                  (string.IsNullOrWhiteSpace(reason) ? string.Empty : $" ({reason.Trim()})"),
+                    CreatedAt = DateTime.Now,
+                    Lines = new List<JournalLine>
+                    {
+                        CreateLine(cashAccount, null, null, payment.Amount, 0),
+                        CreateLine(ap, null, null, 0, payment.Amount)
+                    }
+                };
+                data.JournalEntries.Insert(0, entry);
+            }
+
+            payment.IsVoided = true;
+            payment.VoidedAt = DateTime.Now;
+            return null;
+        }
+
+        public string PostSupplierPaymentJournal(StockData data, SupplierPayment payment)
+        {
+            if (payment == null || payment.Amount <= 0)
+                return null;
+
+            if (HasJournalForReference(data, JournalReferenceType.SupplierPayment, payment.Id))
+                return null;
+
+            var cashAccount = GetAccount(data, payment.CashAccountId);
+            var ap = GetAccount(data, SystemAccounts.AccountsPayableId);
+            if (cashAccount == null || ap == null)
+                return "Required accounts are missing.";
+
+            var method = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Payment" : payment.PaymentMethod;
+            var entry = new JournalEntry
+            {
+                EntryDate = payment.PaidAt,
+                ReferenceType = JournalReferenceType.SupplierPayment,
+                ReferenceId = payment.Id,
+                ReferenceNumber = payment.Reference,
+                Description = $"{method} paid to supplier {payment.SupplierName}",
+                CreatedAt = DateTime.Now,
+                Lines = new List<JournalLine>
+                {
+                    CreateLine(ap, null, null, payment.Amount, 0),
+                    CreateLine(cashAccount, null, null, 0, payment.Amount)
+                }
+            };
+
+            data.JournalEntries.Insert(0, entry);
+            return null;
+        }
+
+        public void PostPurchase(
+            StockData data,
+            Guid purchaseReferenceId,
+            string referenceNumber,
+            string supplierName,
+            decimal amount,
+            DateTime entryDate)
+        {
+            if (amount <= 0)
+                return;
+
+            if (HasJournalForReference(data, JournalReferenceType.Purchase, purchaseReferenceId))
+                return;
+
+            var inventory = GetAccount(data, SystemAccounts.InventoryId);
+            var ap = GetAccount(data, SystemAccounts.AccountsPayableId);
+            if (inventory == null || ap == null)
+                return;
+
+            var supplierLabel = string.IsNullOrWhiteSpace(supplierName) ? "supplier" : supplierName;
+            var entry = new JournalEntry
+            {
+                EntryDate = entryDate,
+                ReferenceType = JournalReferenceType.Purchase,
+                ReferenceId = purchaseReferenceId,
+                ReferenceNumber = referenceNumber,
+                Description = $"Purchase from {supplierLabel}",
+                CreatedAt = DateTime.Now,
+                Lines = new List<JournalLine>
+                {
+                    CreateLine(inventory, null, null, amount, 0),
+                    CreateLine(ap, null, null, 0, amount)
+                }
+            };
+
+            data.JournalEntries.Insert(0, entry);
+        }
+
+        public string VoidPurchase(StockData data, Guid purchaseReferenceId, string referenceNumber, string reason)
+        {
+            if (!HasJournalForReference(data, JournalReferenceType.Purchase, purchaseReferenceId))
+                return null;
+
+            if (HasUnsettledPurchaseVoid(data, purchaseReferenceId))
+                return null;
+
+            var inventory = GetAccount(data, SystemAccounts.InventoryId);
+            var ap = GetAccount(data, SystemAccounts.AccountsPayableId);
+            if (inventory == null || ap == null)
+                return "Required accounts are missing.";
+
+            var purchase = data.JournalEntries.FirstOrDefault(e =>
+                e.ReferenceType == JournalReferenceType.Purchase && e.ReferenceId == purchaseReferenceId);
+            var amount = purchase?.Lines?.Sum(l => l.Debit) ?? 0m;
+            if (amount <= 0)
+                return null;
+
+            var entry = new JournalEntry
+            {
+                EntryDate = DateTime.Now,
+                ReferenceType = JournalReferenceType.PurchaseVoid,
+                ReferenceId = purchaseReferenceId,
+                ReferenceNumber = referenceNumber,
+                Description = $"Void purchase {referenceNumber}" +
+                              (string.IsNullOrWhiteSpace(reason) ? string.Empty : $" ({reason.Trim()})"),
+                CreatedAt = DateTime.Now,
+                Lines = new List<JournalLine>
+                {
+                    CreateLine(ap, null, null, amount, 0),
+                    CreateLine(inventory, null, null, 0, amount)
+                }
+            };
+
+            data.JournalEntries.Insert(0, entry);
+            return null;
+        }
+
+        public string ReinstatePurchase(StockData data, Guid purchaseReferenceId, string referenceNumber, string reason)
+        {
+            if (!HasUnsettledPurchaseVoid(data, purchaseReferenceId))
+                return null;
+
+            var inventory = GetAccount(data, SystemAccounts.InventoryId);
+            var ap = GetAccount(data, SystemAccounts.AccountsPayableId);
+            if (inventory == null || ap == null)
+                return "Required accounts are missing.";
+
+            var purchase = data.JournalEntries.FirstOrDefault(e =>
+                e.ReferenceType == JournalReferenceType.Purchase && e.ReferenceId == purchaseReferenceId);
+            var amount = purchase?.Lines?.Sum(l => l.Debit) ?? 0m;
+            if (amount <= 0)
+                return null;
+
+            var entry = new JournalEntry
+            {
+                EntryDate = DateTime.Now,
+                ReferenceType = JournalReferenceType.PurchaseReinstate,
+                ReferenceId = purchaseReferenceId,
+                ReferenceNumber = referenceNumber,
+                Description = $"Restore purchase {referenceNumber}" +
+                              (string.IsNullOrWhiteSpace(reason) ? string.Empty : $" ({reason.Trim()})"),
+                CreatedAt = DateTime.Now,
+                Lines = new List<JournalLine>
+                {
+                    CreateLine(inventory, null, null, amount, 0),
+                    CreateLine(ap, null, null, 0, amount)
+                }
+            };
+
+            data.JournalEntries.Insert(0, entry);
+            return null;
+        }
+
+        public void BackfillPurchasePostings(StockData data)
+        {
+            if (data.Transactions == null)
+                return;
+
+            var purchaseGroups = data.Transactions
+                .Where(t => IsPurchaseStockInForJournal(t) && t.IsActive && t.SupplierId.HasValue && t.TotalValue > 0)
+                .GroupBy(t => t.StockInBatchId ?? t.Id);
+
+            foreach (var group in purchaseGroups)
+            {
+                var first = group.OrderBy(t => t.Timestamp).First();
+                PostPurchase(
+                    data,
+                    group.Key,
+                    first.StockInNumber,
+                    first.SupplierName,
+                    group.Sum(t => t.TotalValue),
+                    first.Timestamp);
+            }
+        }
+
+        public void BackfillSupplierPaymentPostings(StockData data)
+        {
+            foreach (var payment in (data.SupplierPayments ?? Enumerable.Empty<SupplierPayment>())
+                .Where(p => p.IsActive && p.Amount > 0 && p.CashAccountId != Guid.Empty))
+            {
+                PostSupplierPaymentJournal(data, payment);
+            }
+        }
+
+        private static bool IsPurchaseStockInForJournal(StockTransaction transaction)
+        {
+            if (transaction == null)
+                return false;
+
+            if (transaction.Type != TransactionType.StockIn || transaction.IsSale)
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(transaction.InvoiceNumber))
+                return false;
+
+            if (string.IsNullOrWhiteSpace(transaction.Notes))
+                return true;
+
+            return !transaction.Notes.StartsWith("Reversal of ", StringComparison.OrdinalIgnoreCase) &&
+                   !transaction.Notes.StartsWith("Restore ", StringComparison.OrdinalIgnoreCase) &&
+                   !transaction.Notes.StartsWith("Void ", StringComparison.OrdinalIgnoreCase);
         }
 
         public IEnumerable<Account> GetExpenseAccounts(StockData data) =>
@@ -746,37 +1029,6 @@ namespace Stock_Managemnet.Services
                 }
             }
 
-            // Supplier payments are record-only (no AP journal) but still leave the bank/cash.
-            // Skip when customer/expense filters are active — those views are journal-only.
-            if (!customerId.HasValue
-                && (!expenseAccountId.HasValue || expenseAccountId.Value == Guid.Empty))
-            {
-                foreach (var payment in (data.SupplierPayments ?? Enumerable.Empty<SupplierPayment>())
-                    .Where(p => p.IsActive && p.Amount > 0 && cashAccountIds.Contains(p.CashAccountId)))
-                {
-                    if (from.HasValue && payment.PaidAt.Date < from.Value.Date)
-                        continue;
-                    if (to.HasValue && payment.PaidAt.Date > to.Value.Date)
-                        continue;
-
-                    string accountName;
-                    if (!accountNames.TryGetValue(payment.CashAccountId, out accountName)
-                        || string.IsNullOrWhiteSpace(accountName))
-                        accountName = payment.CashAccountName ?? "Cash/Bank";
-
-                    var method = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Payment" : payment.PaymentMethod;
-                    rows.Add((payment.PaidAt, 1, new CashLedgerRow
-                    {
-                        Date = payment.PaidAt,
-                        AccountName = accountName,
-                        Description = $"{method} paid to supplier {payment.SupplierName}",
-                        Reference = payment.Reference ?? string.Empty,
-                        Debit = 0,
-                        Credit = payment.Amount
-                    }));
-                }
-            }
-
             decimal running = 0;
             var ordered = rows.OrderBy(r => r.Date).ThenBy(r => r.Sort).Select(r => r.Row).ToList();
             foreach (var row in ordered)
@@ -844,24 +1096,6 @@ namespace Stock_Managemnet.Services
                 }
             }
 
-            // Supplier payments are record-only (no AP journal) but still reduce bank cash.
-            foreach (var payment in (data.SupplierPayments ?? Enumerable.Empty<SupplierPayment>())
-                .Where(p => p.IsActive && p.CashAccountId == glAccountId && p.Amount > 0))
-            {
-                var method = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Payment" : payment.PaymentMethod;
-                rows.Add((payment.PaidAt, 1, new BankLedgerRow
-                {
-                    Date = payment.PaidAt,
-                    EntryType = "Out",
-                    Description = $"{method} to supplier {payment.SupplierName}",
-                    Reference = string.IsNullOrWhiteSpace(payment.Reference)
-                        ? payment.Id.ToString("N").Substring(0, 8).ToUpperInvariant()
-                        : payment.Reference,
-                    Debit = 0,
-                    Credit = payment.Amount
-                }));
-            }
-
             decimal running = 0;
             var ordered = rows.OrderBy(r => r.Date).ThenBy(r => r.Sort).Select(r => r.Row).ToList();
             foreach (var row in ordered)
@@ -873,14 +1107,8 @@ namespace Stock_Managemnet.Services
             return ordered;
         }
 
-        public decimal GetBankDisplayBalance(StockData data, Guid glAccountId)
-        {
-            var journalBalance = GetAccountBalance(data, glAccountId);
-            var supplierOut = (data.SupplierPayments ?? Enumerable.Empty<SupplierPayment>())
-                .Where(p => p.IsActive && p.CashAccountId == glAccountId)
-                .Sum(p => p.Amount);
-            return journalBalance - supplierOut;
-        }
+        public decimal GetBankDisplayBalance(StockData data, Guid glAccountId) =>
+            GetAccountBalance(data, glAccountId);
 
         public IEnumerable<Invoice> GetOpenInvoices(StockData data, Guid customerId) =>
             data.Invoices
@@ -1031,6 +1259,16 @@ namespace Stock_Managemnet.Services
         {
             var voidCount = CountJournalsForReference(data, JournalReferenceType.PaymentVoid, paymentId);
             var reinstateCount = CountJournalsForReference(data, JournalReferenceType.PaymentReinstate, paymentId);
+            return voidCount > reinstateCount;
+        }
+
+        private static bool HasUnsettledSupplierPaymentVoid(StockData data, Guid paymentId) =>
+            CountJournalsForReference(data, JournalReferenceType.SupplierPaymentVoid, paymentId) > 0;
+
+        private static bool HasUnsettledPurchaseVoid(StockData data, Guid purchaseId)
+        {
+            var voidCount = CountJournalsForReference(data, JournalReferenceType.PurchaseVoid, purchaseId);
+            var reinstateCount = CountJournalsForReference(data, JournalReferenceType.PurchaseReinstate, purchaseId);
             return voidCount > reinstateCount;
         }
 

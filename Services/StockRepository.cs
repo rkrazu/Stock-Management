@@ -725,6 +725,26 @@ namespace Stock_Managemnet.Services
             if (error != null)
                 return error;
 
+            if (type == TransactionType.StockIn && supplierId.HasValue)
+            {
+                var txn = Data.Transactions.FirstOrDefault(t =>
+                    t.ProductId == productId &&
+                    t.Type == TransactionType.StockIn &&
+                    t.IsActive &&
+                    t.SupplierId == supplierId &&
+                    !t.StockInBatchId.HasValue);
+                if (txn != null && txn.TotalValue > 0)
+                {
+                    _accounting.PostPurchase(
+                        Data,
+                        txn.Id,
+                        txn.StockInNumber,
+                        txn.SupplierName,
+                        txn.TotalValue,
+                        txn.Timestamp);
+                }
+            }
+
             Save();
             return null;
         }
@@ -753,6 +773,24 @@ namespace Stock_Managemnet.Services
                     stockInNumber: stockInNumber);
                 if (error != null)
                     return error;
+            }
+
+            if (supplierId.HasValue)
+            {
+                var batchLines = Data.Transactions
+                    .Where(t => t.StockInBatchId == batchId && t.IsActive)
+                    .ToList();
+                if (batchLines.Count > 0)
+                {
+                    var first = batchLines.OrderBy(t => t.Timestamp).First();
+                    _accounting.PostPurchase(
+                        Data,
+                        batchId,
+                        stockInNumber,
+                        first.SupplierName,
+                        batchLines.Sum(t => t.TotalValue),
+                        first.Timestamp);
+                }
             }
 
             Save();
@@ -1126,6 +1164,10 @@ namespace Stock_Managemnet.Services
             if (!payment.IsAdvance && balance > 0 && payment.Amount > balance)
                 return $"Payment exceeds supplier due ({balance:C2}).";
 
+            var available = GetCashOrBankDisplayBalance(payment.CashAccountId);
+            if (payment.Amount > available)
+                return $"Insufficient balance in {cashAccount.Name}. Available: {available:C2}";
+
             payment.Id = payment.Id == Guid.Empty ? Guid.NewGuid() : payment.Id;
             payment.SupplierName = supplier.Name;
             payment.CashAccountName = cashAccount.Name;
@@ -1133,6 +1175,10 @@ namespace Stock_Managemnet.Services
             payment.VoidedAt = null;
             if (payment.PaidAt == default)
                 payment.PaidAt = DateTime.Now;
+
+            var error = _accounting.RecordSupplierPayment(Data, payment);
+            if (error != null)
+                return error;
 
             Data.SupplierPayments.Insert(0, payment);
             Save();
@@ -1160,11 +1206,10 @@ namespace Stock_Managemnet.Services
             if (payment == null)
                 return "Payment not found.";
 
-            if (!payment.IsActive)
-                return "Payment is already voided.";
+            var error = _accounting.VoidSupplierPayment(Data, payment, reason);
+            if (error != null)
+                return error;
 
-            payment.IsVoided = true;
-            payment.VoidedAt = DateTime.Now;
             if (!string.IsNullOrWhiteSpace(reason))
             {
                 var note = reason.Trim();
@@ -1917,6 +1962,11 @@ namespace Stock_Managemnet.Services
                 line.VoidReason = reason?.Trim() ?? string.Empty;
             }
 
+            var purchaseId = seed.StockInBatchId ?? seed.Id;
+            var journalError = _accounting.VoidPurchase(Data, purchaseId, label, reason);
+            if (journalError != null)
+                return journalError;
+
             Save();
             return null;
         }
@@ -1955,6 +2005,22 @@ namespace Stock_Managemnet.Services
                 line.Status = OperationalStatus.Active;
                 line.VoidedAt = null;
                 line.VoidReason = null;
+            }
+
+            var purchaseId = seed.StockInBatchId ?? seed.Id;
+            if (seed.SupplierId.HasValue)
+            {
+                var journalError = _accounting.ReinstatePurchase(Data, purchaseId, label, reason);
+                if (journalError != null)
+                    return journalError;
+
+                _accounting.PostPurchase(
+                    Data,
+                    purchaseId,
+                    seed.StockInNumber,
+                    seed.SupplierName,
+                    lines.Sum(t => t.TotalValue),
+                    DateTime.Now);
             }
 
             Save();

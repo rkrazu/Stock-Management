@@ -975,8 +975,9 @@ namespace Stock_Managemnet
 
             var outstanding = _repository.GetTotalOutstanding();
             var cash = _repository.GetAccountBalance(SystemAccounts.CashId);
-            var bank = _repository.GetBankAccountRows().Sum(b => b.Balance)
-                + _repository.GetAccountBalance(SystemAccounts.BankId);
+            var bank = _repository.GetCashAndBankAccounts()
+                .Where(a => a.Id != SystemAccounts.CashId)
+                .Sum(a => _repository.GetAccountBalance(a.Id));
             var profit = _repository.GetSalesProfitSummary();
             var expenses = _repository.GetTotalExpenses();
             lblAccountsSummary.Text =

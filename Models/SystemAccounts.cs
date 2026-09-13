@@ -7,6 +7,8 @@ namespace Stock_Managemnet.Models
         public static readonly Guid CashId = new Guid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAA0001");
         public static readonly Guid BankId = new Guid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAA0002");
         public static readonly Guid AccountsReceivableId = new Guid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAA0010");
+        public static readonly Guid InventoryId = new Guid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAA0012");
+        public static readonly Guid AccountsPayableId = new Guid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAA0021");
         public static readonly Guid SalesRevenueId = new Guid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAA0020");
         public static readonly Guid OwnerEquityId = new Guid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAA0030");
         public static readonly Guid FactoryRentId = new Guid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAA0051");
@@ -18,6 +20,8 @@ namespace Stock_Managemnet.Models
         public const string CashCode = "1000";
         public const string BankCode = "1010";
         public const string AccountsReceivableCode = "1100";
+        public const string InventoryCode = "1200";
+        public const string AccountsPayableCode = "2000";
         public const string SalesRevenueCode = "4000";
         public const string OwnerEquityCode = "3000";
         public const string FactoryRentCode = "5100";

@@ -11,6 +11,11 @@ namespace Stock_Managemnet.Models
         PaymentVoid = 6,
         InvoiceReinstate = 7,
         PaymentReinstate = 8,
-        Transfer = 9
+        Transfer = 9,
+        SupplierPayment = 10,
+        SupplierPaymentVoid = 11,
+        Purchase = 12,
+        PurchaseVoid = 13,
+        PurchaseReinstate = 14
     }
 }
