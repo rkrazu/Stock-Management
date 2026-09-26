@@ -51,6 +51,9 @@ namespace Stock_Managemnet
         private Button btnCashLedgerReset;
         private DataGridView dgvCashLedger;
         private Label lblCashBalance;
+        private Label lblCustomerDueSummary;
+        private Label lblSupplierDueSummary;
+        private Label lblBankAccountsBalance;
         private Label lblSalesProfitSummary;
         private TextBox txtProfitSearch;
         private Button btnProfitSearch;
@@ -285,9 +288,12 @@ namespace Stock_Managemnet
             actionsPanel.Controls.Add(btnReceivePayment);
 
             var toolbar = CreateToolbarSplitSection(searchRow, actionsPanel);
+            lblCustomerDueSummary = CreateAccountsSummaryLabel(Color.FromArgb(37, 99, 235));
+            var summaryBar = WrapAccountsSummary(lblCustomerDueSummary);
 
             dgvCustomerDue = CreateAccountsGrid();
             panel.Controls.Add(dgvCustomerDue);
+            panel.Controls.Add(summaryBar);
             panel.Controls.Add(toolbar);
             return panel;
         }
@@ -316,9 +322,12 @@ namespace Stock_Managemnet
             actionsPanel.Controls.Add(btnRecordSupplierPayment);
 
             var toolbar = CreateToolbarSplitSection(searchRow, actionsPanel);
+            lblSupplierDueSummary = CreateAccountsSummaryLabel(Color.FromArgb(37, 99, 235));
+            var summaryBar = WrapAccountsSummary(lblSupplierDueSummary);
 
             dgvSupplierDue = CreateAccountsGrid();
             panel.Controls.Add(dgvSupplierDue);
+            panel.Controls.Add(summaryBar);
             panel.Controls.Add(toolbar);
             return panel;
         }
@@ -345,7 +354,8 @@ namespace Stock_Managemnet
             actionsPanel.Controls.Add(btnTransferFunds);
             actionsPanel.Controls.Add(btnAddBankAccount);
 
-            var toolbar = CreateToolbarSection(actionsPanel);
+            lblBankAccountsBalance = CreateAccountsSummaryLabel(Color.FromArgb(37, 99, 235));
+            var toolbar = CreateToolbarSplitSection(actionsPanel, lblBankAccountsBalance);
 
             dgvBankAccounts = CreateAccountsGrid();
             panel.Controls.Add(dgvBankAccounts);
@@ -396,10 +406,12 @@ namespace Stock_Managemnet
             };
 
             var filterBar = CreateToolbarSection(customerRow);
-            var accountBar = CreateToolbarSplitSection(accountRow, lblCashBalance);
+            var accountBar = CreateToolbarSection(accountRow);
+            var totalsBar = CreateToolbarSplitSection(CreateToolbarFlow(), lblCashBalance);
 
             dgvCashLedger = CreateAccountsGrid();
             panel.Controls.Add(dgvCashLedger);
+            panel.Controls.Add(totalsBar);
             panel.Controls.Add(accountBar);
             panel.Controls.Add(filterBar);
             return panel;
@@ -1114,8 +1126,12 @@ namespace Stock_Managemnet
 
         private void RefreshCustomerDue()
         {
+            var rows = _repository.GetCustomerDueReport(txtAccountsSearch.Text).ToList();
+            lblCustomerDueSummary.Text =
+                $"Invoiced: {rows.Sum(r => r.TotalInvoiced):C2}    Paid: {rows.Sum(r => r.TotalPaid):C2}    Due: {rows.Sum(r => r.BalanceDue):C2}    Open Inv.: {rows.Sum(r => r.OpenInvoiceCount)}";
+
             dgvCustomerDue.Rows.Clear();
-            foreach (var row in _repository.GetCustomerDueReport(txtAccountsSearch.Text))
+            foreach (var row in rows)
             {
                 var idx = dgvCustomerDue.Rows.Add(
                     row.CustomerName,
@@ -1143,8 +1159,12 @@ namespace Stock_Managemnet
 
         private void RefreshSupplierDue()
         {
+            var rows = _repository.GetSupplierDueReport(txtSupplierDueSearch.Text).ToList();
+            lblSupplierDueSummary.Text =
+                $"Paid: {rows.Sum(r => r.TotalPaid):C2}    Due: {rows.Sum(r => r.BalanceDue):C2}    Purchased: {rows.Sum(r => r.TotalPurchased):C2}    Purchases: {rows.Sum(r => r.PurchaseCount)}";
+
             dgvSupplierDue.Rows.Clear();
-            foreach (var row in _repository.GetSupplierDueReport(txtSupplierDueSearch.Text))
+            foreach (var row in rows)
             {
                 var idx = dgvSupplierDue.Rows.Add(
                     row.SupplierName,
@@ -1172,8 +1192,11 @@ namespace Stock_Managemnet
 
         private void RefreshBankAccounts()
         {
+            var rows = _repository.GetBankAccountRows().ToList();
+            lblBankAccountsBalance.Text = $"Balance: {rows.Sum(r => r.Balance):C2}";
+
             dgvBankAccounts.Rows.Clear();
-            foreach (var row in _repository.GetBankAccountRows())
+            foreach (var row in rows)
             {
                 var idx = dgvBankAccounts.Rows.Add(
                     row.Name,

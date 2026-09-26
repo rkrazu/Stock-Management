@@ -705,7 +705,7 @@ namespace Stock_Managemnet
             this.tlpInvoices.Controls.Add(this.dgvInvoices, 0, 1);
             this.tlpInvoices.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tlpInvoices.RowCount = 2;
-            this.tlpInvoices.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tlpInvoices.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 84F));
             this.tlpInvoices.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             //
             // panelInvoiceToolbar

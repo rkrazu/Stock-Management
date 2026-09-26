@@ -22,6 +22,7 @@ namespace Stock_Managemnet
         private bool _filterInActive;
         private bool _filterOutActive;
         private bool _suppressCategoryFilterChange;
+        private Label _lblInvoiceSummary;
         private readonly HashSet<Guid> _fgSelectedProductIds = new HashSet<Guid>();
         private bool _suppressFgCheckboxEvents;
         private bool? _selectAllHeaderState;
@@ -238,6 +239,16 @@ namespace Stock_Managemnet
                     e.SuppressKeyPress = true;
                 }
             };
+            _lblInvoiceSummary = new Label
+            {
+                AutoSize = true,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(37, 99, 235),
+                Text = string.Empty
+            };
+            panelInvoiceToolbar.Controls.Add(_lblInvoiceSummary);
+            panelInvoiceToolbar.Resize += (s, e) => PositionInvoiceSummary();
+
             btnInvoiceSearch.Click += (s, e) => RefreshInvoices(preserveSelection: false);
             btnInvoiceReset.Click += (s, e) => ResetInvoiceFilters();
             btnViewInvoice.Click += BtnViewInvoice_Click;
@@ -1116,9 +1127,15 @@ namespace Stock_Managemnet
         private void RefreshInvoices(bool preserveSelection = true)
         {
             var selectedId = preserveSelection ? GetSelectedInvoice()?.Id : null;
+            var invoices = _repository.SearchInvoices(txtInvoiceSearch.Text).ToList();
+            var activeInvoices = invoices.Where(i => i.IsActive).ToList();
+            _lblInvoiceSummary.Text =
+                $"Invoiced: {activeInvoices.Sum(i => i.TotalAmount):C2}    Paid: {activeInvoices.Sum(i => i.AmountPaid):C2}    Due: {activeInvoices.Sum(i => i.BalanceDue):C2}";
+            PositionInvoiceSummary();
+
             dgvInvoices.Rows.Clear();
 
-            foreach (var invoice in _repository.SearchInvoices(txtInvoiceSearch.Text))
+            foreach (var invoice in invoices)
             {
                 var idx = dgvInvoices.Rows.Add(
                     invoice.CreatedAt,
@@ -1156,6 +1173,17 @@ namespace Stock_Managemnet
             }
 
             UpdateInvoiceButtons();
+        }
+
+        private void PositionInvoiceSummary()
+        {
+            if (_lblInvoiceSummary == null)
+                return;
+
+            var right = panelInvoiceToolbar.ClientSize.Width - panelInvoiceToolbar.Padding.Right;
+            _lblInvoiceSummary.Left = Math.Max(8, right - _lblInvoiceSummary.PreferredSize.Width - 8);
+            _lblInvoiceSummary.Top = 46;
+            _lblInvoiceSummary.BringToFront();
         }
 
         private static string FormatInvoiceProductSummary(Invoice invoice)
