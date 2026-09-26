@@ -870,28 +870,30 @@ namespace Stock_Managemnet
             //
             // dtpProductionFrom
             //
-            this.dtpProductionFrom.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpProductionFrom.CustomFormat = "dd-MMM-yyyy";
+            this.dtpProductionFrom.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dtpProductionFrom.Location = new System.Drawing.Point(435, 11);
-            this.dtpProductionFrom.Size = new System.Drawing.Size(105, 23);
+            this.dtpProductionFrom.Size = new System.Drawing.Size(128, 23);
             this.dtpProductionFrom.Enabled = false;
             //
             // lblProductionTo
             //
             this.lblProductionTo.AutoSize = true;
-            this.lblProductionTo.Location = new System.Drawing.Point(548, 14);
+            this.lblProductionTo.Location = new System.Drawing.Point(571, 14);
             this.lblProductionTo.Text = "To:";
             //
             // dtpProductionTo
             //
-            this.dtpProductionTo.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            this.dtpProductionTo.Location = new System.Drawing.Point(575, 11);
-            this.dtpProductionTo.Size = new System.Drawing.Size(105, 23);
+            this.dtpProductionTo.CustomFormat = "dd-MMM-yyyy";
+            this.dtpProductionTo.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
+            this.dtpProductionTo.Location = new System.Drawing.Point(598, 11);
+            this.dtpProductionTo.Size = new System.Drawing.Size(128, 23);
             this.dtpProductionTo.Enabled = false;
             //
             // chkProductionDateRange
             //
             this.chkProductionDateRange.AutoSize = true;
-            this.chkProductionDateRange.Location = new System.Drawing.Point(690, 14);
+            this.chkProductionDateRange.Location = new System.Drawing.Point(736, 14);
             this.chkProductionDateRange.Text = "Date range";
             this.chkProductionDateRange.UseVisualStyleBackColor = true;
             //
@@ -1002,28 +1004,30 @@ namespace Stock_Managemnet
             //
             // dtpProductionHistoryFrom
             //
-            this.dtpProductionHistoryFrom.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpProductionHistoryFrom.CustomFormat = "dd-MMM-yyyy";
+            this.dtpProductionHistoryFrom.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dtpProductionHistoryFrom.Location = new System.Drawing.Point(415, 11);
-            this.dtpProductionHistoryFrom.Size = new System.Drawing.Size(105, 23);
+            this.dtpProductionHistoryFrom.Size = new System.Drawing.Size(128, 23);
             this.dtpProductionHistoryFrom.Enabled = false;
             //
             // lblProductionHistoryTo
             //
             this.lblProductionHistoryTo.AutoSize = true;
-            this.lblProductionHistoryTo.Location = new System.Drawing.Point(528, 14);
+            this.lblProductionHistoryTo.Location = new System.Drawing.Point(551, 14);
             this.lblProductionHistoryTo.Text = "To:";
             //
             // dtpProductionHistoryTo
             //
-            this.dtpProductionHistoryTo.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            this.dtpProductionHistoryTo.Location = new System.Drawing.Point(555, 11);
-            this.dtpProductionHistoryTo.Size = new System.Drawing.Size(105, 23);
+            this.dtpProductionHistoryTo.CustomFormat = "dd-MMM-yyyy";
+            this.dtpProductionHistoryTo.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
+            this.dtpProductionHistoryTo.Location = new System.Drawing.Point(578, 11);
+            this.dtpProductionHistoryTo.Size = new System.Drawing.Size(128, 23);
             this.dtpProductionHistoryTo.Enabled = false;
             //
             // chkProductionHistoryDateRange
             //
             this.chkProductionHistoryDateRange.AutoSize = true;
-            this.chkProductionHistoryDateRange.Location = new System.Drawing.Point(670, 14);
+            this.chkProductionHistoryDateRange.Location = new System.Drawing.Point(716, 14);
             this.chkProductionHistoryDateRange.Text = "Date range";
             this.chkProductionHistoryDateRange.UseVisualStyleBackColor = true;
             //
@@ -1138,28 +1142,30 @@ namespace Stock_Managemnet
             //
             // dtpTxnFrom
             //
-            this.dtpTxnFrom.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpTxnFrom.CustomFormat = "dd-MMM-yyyy";
+            this.dtpTxnFrom.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dtpTxnFrom.Location = new System.Drawing.Point(535, 11);
-            this.dtpTxnFrom.Size = new System.Drawing.Size(105, 23);
+            this.dtpTxnFrom.Size = new System.Drawing.Size(128, 23);
             this.dtpTxnFrom.Enabled = false;
             //
             // lblTxnTo
             //
             this.lblTxnTo.AutoSize = true;
-            this.lblTxnTo.Location = new System.Drawing.Point(648, 14);
+            this.lblTxnTo.Location = new System.Drawing.Point(671, 14);
             this.lblTxnTo.Text = "To:";
             //
             // dtpTxnTo
             //
-            this.dtpTxnTo.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            this.dtpTxnTo.Location = new System.Drawing.Point(675, 11);
-            this.dtpTxnTo.Size = new System.Drawing.Size(105, 23);
+            this.dtpTxnTo.CustomFormat = "dd-MMM-yyyy";
+            this.dtpTxnTo.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
+            this.dtpTxnTo.Location = new System.Drawing.Point(698, 11);
+            this.dtpTxnTo.Size = new System.Drawing.Size(128, 23);
             this.dtpTxnTo.Enabled = false;
             //
             // chkTxnDateRange
             //
             this.chkTxnDateRange.AutoSize = true;
-            this.chkTxnDateRange.Location = new System.Drawing.Point(790, 14);
+            this.chkTxnDateRange.Location = new System.Drawing.Point(836, 14);
             this.chkTxnDateRange.Text = "Date range";
             this.chkTxnDateRange.UseVisualStyleBackColor = true;
             //

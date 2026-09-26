@@ -88,7 +88,7 @@ namespace Stock_Managemnet.Services
                 name = name.Substring(0, name.Length - 5);
 
             var now = DateTime.Now;
-            var stamp = now.ToString("yyyy-MM-dd_hh-mm-ss", CultureInfo.InvariantCulture)
+            var stamp = now.ToString("dd-MMM-yyyy_hh-mm-ss", CultureInfo.InvariantCulture)
                 + "-"
                 + now.ToString("tt", CultureInfo.InvariantCulture).ToLowerInvariant();
             return name + "_" + stamp + ".xlsx";

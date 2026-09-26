@@ -615,8 +615,9 @@ namespace Stock_Managemnet
             return new DateTimePicker
             {
                 Enabled = false,
-                Format = DateTimePickerFormat.Short,
-                Width = 120,
+                Format = DateTimePickerFormat.Custom,
+                CustomFormat = "dd-MMM-yyyy",
+                Width = 140,
                 Height = AccountsControlHeight
             };
         }

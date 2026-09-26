@@ -57,6 +57,13 @@ namespace Stock_Managemnet
             culture.NumberFormat.CurrencyPositivePattern = 2;  // ৳ n
             culture.NumberFormat.CurrencyNegativePattern = 12; // ৳ -n
 
+            var englishDates = CultureInfo.InvariantCulture.DateTimeFormat;
+            culture.DateTimeFormat.MonthNames = (string[])englishDates.MonthNames.Clone();
+            culture.DateTimeFormat.MonthGenitiveNames = (string[])englishDates.MonthGenitiveNames.Clone();
+            culture.DateTimeFormat.AbbreviatedMonthNames = (string[])englishDates.AbbreviatedMonthNames.Clone();
+            culture.DateTimeFormat.AbbreviatedMonthGenitiveNames = (string[])englishDates.AbbreviatedMonthGenitiveNames.Clone();
+            culture.DateTimeFormat.ShortDatePattern = "dd-MMM-yyyy";
+
             CultureInfo.DefaultThreadCurrentCulture = culture;
             CultureInfo.DefaultThreadCurrentUICulture = culture;
             Thread.CurrentThread.CurrentCulture = culture;
