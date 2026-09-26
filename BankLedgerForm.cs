@@ -16,6 +16,9 @@ namespace Stock_Managemnet
         private readonly StockRepository _repository;
         private readonly BankAccountRow _bankRow;
         private readonly DataGridView _grid;
+        private readonly Panel _summaryPanel;
+        private readonly Label _lblSummary;
+        private readonly Label _lblTotals;
 
         public BankLedgerForm(StockRepository repository, BankAccountRow bankRow)
         {
@@ -31,22 +34,34 @@ namespace Stock_Managemnet
             MinimumSize = new Size(1000, 520);
             UiStyles.Apply(this);
 
-            var lblSummary = new Label
+            _lblSummary = new Label
             {
                 Dock = DockStyle.Fill,
                 Font = SummaryFont,
                 Padding = new Padding(4, 8, 4, 4),
-                Text = BuildSummaryText()
+                Text = BuildAccountText()
             };
 
-            var summaryPanel = new Panel
+            _lblTotals = new Label
+            {
+                AutoSize = true,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(37, 99, 235),
+                BackColor = Color.FromArgb(249, 250, 251),
+                Text = FormatTotals(0, 0, _bankRow.Balance)
+            };
+
+            _summaryPanel = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 80,
                 Padding = new Padding(16, 12, 16, 8),
                 BackColor = Color.FromArgb(249, 250, 251)
             };
-            summaryPanel.Controls.Add(lblSummary);
+            _summaryPanel.Controls.Add(_lblSummary);
+            _summaryPanel.Controls.Add(_lblTotals);
+            _summaryPanel.Resize += (s, e) => LayoutTotals();
 
             _grid = new DataGridView
             {
@@ -112,7 +127,7 @@ namespace Stock_Managemnet
                 Padding = new Padding(16, 0, 16, 0)
             };
             content.Controls.Add(_grid);
-            content.Controls.Add(summaryPanel);
+            content.Controls.Add(_summaryPanel);
             GridExportUi.Enable(_grid, GetExportBaseName());
 
             Controls.Add(content);
@@ -128,13 +143,25 @@ namespace Stock_Managemnet
             return $"Bank Ledger - {name}";
         }
 
-        private string BuildSummaryText()
+        private string BuildAccountText()
         {
             return
                 $"Account: {_bankRow.Name}\r\n" +
                 $"Account no: {(string.IsNullOrWhiteSpace(_bankRow.AccountNumber) ? "-" : _bankRow.AccountNumber)}    " +
-                $"Branch: {(string.IsNullOrWhiteSpace(_bankRow.Branch) ? "-" : _bankRow.Branch)}    " +
-                $"Balance: {_bankRow.Balance:C2}";
+                $"Branch: {(string.IsNullOrWhiteSpace(_bankRow.Branch) ? "-" : _bankRow.Branch)}";
+        }
+
+        private static string FormatTotals(decimal totalIn, decimal totalOut, decimal balance)
+        {
+            return $"In: {totalIn:C2}    Out: {totalOut:C2}    Balance: {balance:C2}";
+        }
+
+        private void LayoutTotals()
+        {
+            _lblTotals.BringToFront();
+            var right = _summaryPanel.Padding.Right;
+            _lblTotals.Left = Math.Max(0, _summaryPanel.ClientSize.Width - _lblTotals.PreferredSize.Width - right);
+            _lblTotals.Top = Math.Max(0, (_summaryPanel.Height - _lblTotals.Height) / 2);
         }
 
         private void ConfigureGrid()
@@ -171,8 +198,14 @@ namespace Stock_Managemnet
         private void LoadLedger()
         {
             _grid.Rows.Clear();
+            decimal totalIn = 0;
+            decimal totalOut = 0;
+            decimal balance = _bankRow.Balance;
             foreach (var row in _repository.GetBankLedger(_bankRow.BankAccountId))
             {
+                totalIn += row.Debit;
+                totalOut += row.Credit;
+                balance = row.Balance;
                 var idx = _grid.Rows.Add(
                     row.Date,
                     row.EntryType,
@@ -194,6 +227,8 @@ namespace Stock_Managemnet
                 }
             }
 
+            _lblTotals.Text = FormatTotals(totalIn, totalOut, balance);
+            LayoutTotals();
             _grid.ClearSelection();
         }
     }

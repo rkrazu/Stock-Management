@@ -1261,10 +1261,18 @@ namespace Stock_Managemnet
                     row.RunningBalance);
             }
 
+            decimal totalIn = 0;
+            decimal totalOut = 0;
+            foreach (var row in ledgerRows)
+            {
+                totalIn += row.Debit;
+                totalOut += row.Credit;
+            }
+
             var balance = ledgerRows.Count > 0
                 ? ledgerRows[ledgerRows.Count - 1].RunningBalance
                 : 0m;
-            lblCashBalance.Text = $"Balance: {balance:C2}";
+            lblCashBalance.Text = $"In: {totalIn:C2}    Out: {totalOut:C2}    Balance: {balance:C2}";
         }
 
         private void ResetCashLedgerFilters()
