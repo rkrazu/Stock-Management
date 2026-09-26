@@ -84,10 +84,14 @@ namespace Stock_Managemnet.Services
             foreach (var invalid in System.IO.Path.GetInvalidFileNameChars())
                 name = name.Replace(invalid, '_');
 
-            if (!name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
-                name += ".xlsx";
+            if (name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+                name = name.Substring(0, name.Length - 5);
 
-            return name;
+            var now = DateTime.Now;
+            var stamp = now.ToString("yyyy-MM-dd_hh-mm-ss", CultureInfo.InvariantCulture)
+                + "-"
+                + now.ToString("tt", CultureInfo.InvariantCulture).ToLowerInvariant();
+            return name + "_" + stamp + ".xlsx";
         }
 
         private static string SanitizeSheetName(string name)
