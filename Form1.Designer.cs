@@ -1297,7 +1297,7 @@ namespace Stock_Managemnet
             this.lblSoftwareVersionValue.AutoSize = true;
             this.lblSoftwareVersionValue.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.lblSoftwareVersionValue.Location = new System.Drawing.Point(120, 68);
-            this.lblSoftwareVersionValue.Text = "1.92";
+            this.lblSoftwareVersionValue.Text = "1.93";
             //
             // grpDeveloperInfo
             //
