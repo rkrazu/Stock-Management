@@ -9,11 +9,15 @@ using System.Windows.Forms;
 
 namespace Stock_Managemnet.Controls
 {
-    public sealed class CogsReportControl : Control
+    public sealed class CogsReportControl : ScrollableControl
     {
         private static readonly Color SalesCostColor = Color.FromArgb(59, 130, 246);
         private static readonly Color ExpenseColor = Color.FromArgb(239, 68, 68);
         private static readonly Color NetProfitColor = Color.FromArgb(34, 197, 94);
+        private static readonly Color RawStockColor = Color.FromArgb(245, 158, 11);
+        private static readonly Color FgStockColor = Color.FromArgb(16, 185, 129);
+        private static readonly Color CustomerDueColor = Color.FromArgb(99, 102, 241);
+        private static readonly Color SupplierPayableColor = Color.FromArgb(244, 63, 94);
         private static readonly Color EmptyPieColor = Color.FromArgb(229, 231, 235);
 
         private decimal _totalSales;
@@ -21,6 +25,10 @@ namespace Stock_Managemnet.Controls
         private decimal _totalProfit;
         private decimal _totalExpense;
         private decimal _netProfit;
+        private decimal _rawStockValue;
+        private decimal _fgStockValue;
+        private decimal _customerDue;
+        private decimal _supplierPayable;
 
         public CogsReportControl()
         {
@@ -29,6 +37,7 @@ namespace Stock_Managemnet.Controls
                      ControlStyles.ResizeRedraw |
                      ControlStyles.UserPaint |
                      ControlStyles.SupportsTransparentBackColor, true);
+            AutoScroll = true;
             BackColor = Color.White;
             Font = new Font("Segoe UI", 14F);
         }
@@ -43,67 +52,79 @@ namespace Stock_Managemnet.Controls
             Invalidate();
         }
 
+        public void SetInvestment(decimal rawStockValue, decimal fgStockValue, decimal customerDue, decimal supplierPayable)
+        {
+            _rawStockValue = rawStockValue;
+            _fgStockValue = fgStockValue;
+            _customerDue = customerDue;
+            _supplierPayable = supplierPayable;
+            Invalidate();
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
             g.Clear(BackColor);
+            g.TranslateTransform(AutoScrollPosition.X, AutoScrollPosition.Y);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-            using (var titleFont = new Font(Font.FontFamily, 36F, FontStyle.Bold))
+            using (var titleFont = new Font(Font.FontFamily, 22F, FontStyle.Bold))
             using (var bodyFont = new Font(Font.FontFamily, 15F))
+            using (var totalFont = new Font(Font.FontFamily, 15F, FontStyle.Bold))
             using (var legendFont = new Font(Font.FontFamily, 12.5F))
             using (var ink = new SolidBrush(Color.Black))
+            using (var titleFill = new SolidBrush(BackColor))
             using (var borderPen = new Pen(Color.Black, 2F))
             using (var rulePen = new Pen(Color.Black, 1.5F))
             using (var measureFormat = CreateMeasureFormat())
             using (var nearFormat = CreateNearFormat())
             using (var farFormat = CreateFarFormat())
             {
-                const float boxWidth = 620f;
-                const float boxHeight = 310f;
-                const float pieSize = 250f;
-                const float gap = 64f;
-                const float pieColumnWidth = 360f;
-                const float padLeft = 40f;
+                const float boxWidth = 980f;
+                const float padLeft = 36f;
                 const float padRight = 28f;
-                const float netProfitLabelGap = 10f;
+                const float padBottom = 28f;
+                const float contentTop = 36f;
+                const float pieSize = 210f;
+                const float pieColumnWidth = 340f;
+                const float columnGap = 28f;
+                const float cardGap = 40f;
+                const float pieLegendGap = 24f;
+                const float legendLineHeight = 28f;
+                const float lineHeight = 38f;
 
-                var titleSize = g.MeasureString("COGS", titleFont, int.MaxValue, measureFormat);
+                var titleSize = g.MeasureString("Investment", titleFont, int.MaxValue, measureFormat);
                 var resultLabel = _netProfit < 0 ? "Net Loss" : "Net Profit";
-                var netProfitLabelWidth = g.MeasureString(resultLabel, bodyFont, int.MaxValue, measureFormat).Width;
-                var compositionWidth = boxWidth + gap + pieColumnWidth;
-                var compositionHeight = titleSize.Height + 28f + Math.Max(boxHeight, pieSize + 120f);
+                var titleHang = titleSize.Height / 2f;
+                var cogsPieHeight = pieSize + pieLegendGap + legendLineHeight * 3f;
+                var investmentPieHeight = pieSize + pieLegendGap + legendLineHeight * 4f;
+                var cogsCalcHeight = 34f + lineHeight * 4f + 54f;
+                var investmentCalcHeight = 28f + lineHeight * 4f + 36f;
+                var cogsBoxHeight = contentTop + Math.Max(cogsCalcHeight, cogsPieHeight) + padBottom;
+                var investmentBoxHeight = contentTop + Math.Max(investmentCalcHeight, investmentPieHeight) + padBottom;
+                var compositionHeight = titleHang + cogsBoxHeight + cardGap + investmentBoxHeight;
 
-                var originX = Math.Max(16f, (ClientSize.Width - compositionWidth) / 2f);
+                var originX = Math.Max(16f, (ClientSize.Width - boxWidth) / 2f);
                 var originY = Math.Max(16f, (ClientSize.Height - compositionHeight) / 2f);
 
-                var boxX = originX;
-                var boxY = originY + titleSize.Height + 28f;
-                var pieX = boxX + boxWidth + gap;
-                var pieY = boxY + 10f;
+                var cogsBox = new RectangleF(originX, originY + titleHang, boxWidth, cogsBoxHeight);
+                DrawTitledCard(g, titleFont, ink, titleFill, borderPen, measureFormat, nearFormat, cogsBox, "COGS");
 
-                // Title centered across the full composition (card + pie).
-                g.DrawString(
-                    "COGS",
-                    titleFont,
-                    ink,
-                    originX + (compositionWidth - titleSize.Width) / 2f,
-                    originY,
-                    nearFormat);
-
-                var box = new RectangleF(boxX, boxY, boxWidth, boxHeight);
-                using (var path = CreateRoundedRectangle(box, 30f))
-                    g.DrawPath(borderPen, path);
-
-                // Amounts share one right edge; result label sits further right after that edge.
-                var labelLeft = boxX + padLeft;
-                var amountRight = boxX + boxWidth - padRight - netProfitLabelWidth - netProfitLabelGap;
-                var equalsX = labelLeft + 250f;
-                var amountLeft = equalsX + 28f;
-                var lineHeight = 38f;
-                var y = boxY + 34f;
+                var calcRight = cogsBox.Right - padRight - pieColumnWidth - columnGap;
+                var pieX = cogsBox.Right - padRight - pieColumnWidth;
+                var pieY = cogsBox.Y + contentTop;
+                var labelLeft = cogsBox.X + padLeft;
+                var labelColumn = MeasureLabelColumn(
+                    g, totalFont, measureFormat,
+                    resultLabel, "Total Sales", "Total Sales Cost (-)", "Total Profit", "Total Expense (-)",
+                    "Total Raw Stock Value", "Total FG Stock Value", "Total Customer Due Value",
+                    "Payable to Supplier (-)", "Total Investment");
+                var equalsX = labelLeft + labelColumn + 18f;
+                var amountLeft = equalsX + 22f;
+                var amountRight = calcRight;
+                var y = cogsBox.Y + contentTop + 8f;
 
                 DrawLabeledAmount(g, bodyFont, ink, nearFormat, farFormat, "Total Sales", _totalSales, labelLeft, equalsX, amountLeft, amountRight, y);
                 y += lineHeight;
@@ -117,15 +138,108 @@ namespace Stock_Managemnet.Controls
                 y += lineHeight + 4f;
                 DrawAmountRule(g, rulePen, amountLeft, amountRight, y);
                 y += 16f;
-                DrawNetResult(g, bodyFont, ink, nearFormat, farFormat, _netProfit, resultLabel, amountLeft, amountRight, netProfitLabelGap, y);
+                DrawLabeledAmount(g, totalFont, ink, nearFormat, farFormat, resultLabel, _netProfit, labelLeft, equalsX, amountLeft, amountRight, y);
 
-                DrawPieChart(g, legendFont, ink, nearFormat, pieX, pieY, pieSize);
+                DrawPieChart(g, legendFont, ink, nearFormat, pieX, pieY, pieSize, BuildSlices(), BuildEmptyLegend());
+
+                var investmentBox = new RectangleF(originX, cogsBox.Bottom + cardGap, boxWidth, investmentBoxHeight);
+                DrawTitledCard(g, titleFont, ink, titleFill, borderPen, measureFormat, nearFormat, investmentBox, "Investment");
+                DrawInvestmentAmounts(
+                    g, bodyFont, totalFont, ink, rulePen, nearFormat, farFormat,
+                    investmentBox, labelLeft, equalsX, amountLeft, amountRight);
+                DrawPieChart(
+                    g, legendFont, ink, nearFormat,
+                    pieX, investmentBox.Y + contentTop, pieSize,
+                    BuildInvestmentSlices(),
+                    BuildEmptyInvestmentLegend());
+
+                var scrollSize = new Size(
+                    (int)Math.Ceiling(boxWidth + 32f),
+                    (int)Math.Ceiling(compositionHeight + 32f));
+                if (AutoScrollMinSize != scrollSize)
+                    AutoScrollMinSize = scrollSize;
             }
         }
 
-        private void DrawPieChart(Graphics g, Font legendFont, Brush ink, StringFormat nearFormat, float x, float y, float size)
+        private static void DrawTitledCard(
+            Graphics g,
+            Font titleFont,
+            Brush ink,
+            Brush titleFill,
+            Pen borderPen,
+            StringFormat measureFormat,
+            StringFormat nearFormat,
+            RectangleF box,
+            string title)
         {
-            var slices = BuildSlices().ToList();
+            using (var path = CreateRoundedRectangle(box, 30f))
+                g.DrawPath(borderPen, path);
+
+            var titleSize = g.MeasureString(title, titleFont, int.MaxValue, measureFormat);
+            var titleX = box.X + (box.Width - titleSize.Width) / 2f;
+            var titleY = box.Y - titleSize.Height / 2f;
+            var wipe = new RectangleF(titleX - 12f, titleY, titleSize.Width + 24f, titleSize.Height);
+            g.FillRectangle(titleFill, wipe);
+            g.DrawString(title, titleFont, ink, titleX, titleY, nearFormat);
+        }
+
+        private void DrawInvestmentAmounts(
+            Graphics g,
+            Font bodyFont,
+            Font totalFont,
+            Brush ink,
+            Pen rulePen,
+            StringFormat nearFormat,
+            StringFormat farFormat,
+            RectangleF box,
+            float labelLeft,
+            float equalsX,
+            float amountLeft,
+            float amountRight)
+        {
+            var lineHeight = 38f;
+            var y = box.Y + 44f;
+
+            DrawLabeledAmount(g, bodyFont, ink, nearFormat, farFormat, "Total Raw Stock Value", _rawStockValue, labelLeft, equalsX, amountLeft, amountRight, y);
+            y += lineHeight;
+            DrawLabeledAmount(g, bodyFont, ink, nearFormat, farFormat, "Total FG Stock Value", _fgStockValue, labelLeft, equalsX, amountLeft, amountRight, y);
+            y += lineHeight;
+            DrawLabeledAmount(g, bodyFont, ink, nearFormat, farFormat, "Total Customer Due Value", _customerDue, labelLeft, equalsX, amountLeft, amountRight, y);
+            y += lineHeight;
+            DrawLabeledAmount(g, bodyFont, ink, nearFormat, farFormat, "Payable to Supplier (-)", _supplierPayable, labelLeft, equalsX, amountLeft, amountRight, y);
+            y += lineHeight + 4f;
+            DrawAmountRule(g, rulePen, amountLeft, amountRight, y);
+            y += 16f;
+            DrawLabeledAmount(
+                g, totalFont, ink, nearFormat, farFormat,
+                "Total Investment",
+                _rawStockValue + _fgStockValue + _customerDue - _supplierPayable,
+                labelLeft, equalsX, amountLeft, amountRight, y);
+        }
+
+        private static float MeasureLabelColumn(
+            Graphics g,
+            Font font,
+            StringFormat measureFormat,
+            params string[] labels)
+        {
+            var width = 0f;
+            foreach (var label in labels)
+                width = Math.Max(width, g.MeasureString(label, font, int.MaxValue, measureFormat).Width);
+            return width;
+        }
+
+        private static void DrawPieChart(
+            Graphics g,
+            Font legendFont,
+            Brush ink,
+            StringFormat nearFormat,
+            float x,
+            float y,
+            float size,
+            IList<PieSlice> slices,
+            IEnumerable<PieSlice> emptyLegend)
+        {
             var pieRectF = new RectangleF(x, y, size, size);
             var pieRect = Rectangle.Round(pieRectF);
             var sliceTotal = slices.Sum(s => s.Value);
@@ -160,7 +274,7 @@ namespace Stock_Managemnet.Controls
                 }
             }
 
-            var legendItems = slices.Count > 0 ? slices : BuildEmptyLegend().ToList();
+            var legendItems = slices.Count > 0 ? slices : emptyLegend.ToList();
             var legendX = x;
             var legendY = y + size + 24f;
             var swatch = 16f;
@@ -201,6 +315,34 @@ namespace Stock_Managemnet.Controls
             yield return new PieSlice("Net Profit", 0m, NetProfitColor);
         }
 
+        private List<PieSlice> BuildInvestmentSlices()
+        {
+            var slices = new List<PieSlice>();
+            var raw = Math.Max(0m, _rawStockValue);
+            var fg = Math.Max(0m, _fgStockValue);
+            var due = Math.Max(0m, _customerDue);
+            var payable = Math.Max(0m, _supplierPayable);
+
+            if (raw > 0)
+                slices.Add(new PieSlice("Raw Stock", raw, RawStockColor));
+            if (fg > 0)
+                slices.Add(new PieSlice("FG Stock", fg, FgStockColor));
+            if (due > 0)
+                slices.Add(new PieSlice("Customer Due", due, CustomerDueColor));
+            if (payable > 0)
+                slices.Add(new PieSlice("Supplier Payable", payable, SupplierPayableColor));
+
+            return slices;
+        }
+
+        private static IEnumerable<PieSlice> BuildEmptyInvestmentLegend()
+        {
+            yield return new PieSlice("Raw Stock", 0m, RawStockColor);
+            yield return new PieSlice("FG Stock", 0m, FgStockColor);
+            yield return new PieSlice("Customer Due", 0m, CustomerDueColor);
+            yield return new PieSlice("Supplier Payable", 0m, SupplierPayableColor);
+        }
+
         private static void DrawLabeledAmount(
             Graphics g,
             Font font,
@@ -220,24 +362,6 @@ namespace Stock_Managemnet.Controls
 
             var amountRect = new RectangleF(amountLeft, y, amountRight - amountLeft, font.Height + 4f);
             g.DrawString(FormatAmount(amount), font, ink, amountRect, farFormat);
-        }
-
-        private static void DrawNetResult(
-            Graphics g,
-            Font font,
-            Brush ink,
-            StringFormat nearFormat,
-            StringFormat farFormat,
-            decimal amount,
-            string resultLabel,
-            float amountLeft,
-            float amountRight,
-            float labelGap,
-            float y)
-        {
-            var amountRect = new RectangleF(amountLeft, y, amountRight - amountLeft, font.Height + 4f);
-            g.DrawString(FormatAmount(amount), font, ink, amountRect, farFormat);
-            g.DrawString(resultLabel, font, ink, amountRight + labelGap, y, nearFormat);
         }
 
         private static void DrawAmountRule(Graphics g, Pen pen, float amountLeft, float amountRight, float y)

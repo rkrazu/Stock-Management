@@ -1060,6 +1060,11 @@ namespace Stock_Managemnet
             var summary = _repository.GetSalesProfitSummary(from, to);
             var expenses = _repository.GetTotalExpenses(from, to);
             cogsReport.SetAmounts(summary.TotalSales, summary.TotalCost, summary.GrossProfit, expenses);
+            cogsReport.SetInvestment(
+                _repository.SearchProducts(null, ProductType.RawMaterial).Sum(p => p.StockValue),
+                _repository.SearchProducts(null, ProductType.FG).Sum(p => p.StockValue),
+                _repository.GetCustomerDueReport().Sum(r => r.BalanceDue),
+                _repository.GetSupplierDueReport().Sum(r => r.BalanceDue));
         }
 
         private void ResetCogsFilters()
